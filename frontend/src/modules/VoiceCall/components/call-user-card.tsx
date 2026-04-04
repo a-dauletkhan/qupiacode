@@ -193,7 +193,7 @@ export function CallAgentCard({
   onVolumeChange,
   className,
 }: CallAgentCardProps) {
-  const avatarVariant = getAvatarVariant(name)
+  const avatarVariant = agentAvatar
 
   return (
     <div
