@@ -1,101 +1,91 @@
 import { MicOffIcon } from "lucide-react"
+import { motion } from "motion/react"
 
 import { cn } from "@/lib/utils"
-import { VolumeSlider } from "@/modules/VoiceCall/components/volume-slider"
 
 const avatarVariants = [
   {
-    base: "bg-rose-50",
+    base: "bg-rose-100",
     blob1:
-      "top-0 left-0.5 size-9 bg-linear-to-br from-rose-200 via-orange-300 to-amber-400",
+      "top-0 left-0.5 size-9 bg-linear-to-br from-rose-300 via-orange-500 to-amber-600",
     blob2:
-      "top-2 left-3 size-5 bg-linear-to-br from-fuchsia-400 via-pink-500 to-rose-500",
+      "top-2 left-3 size-5 bg-linear-to-br from-fuchsia-500 via-pink-600 to-rose-600",
     blob3:
-      "top-5 left-1 size-8 bg-linear-to-br from-amber-300 via-red-500 to-fuchsia-600",
+      "top-5 left-1 size-8 bg-linear-to-br from-amber-400 via-red-600 to-fuchsia-700",
   },
   {
-    base: "bg-sky-50",
+    base: "bg-sky-100",
     blob1:
-      "top-0 -left-1 size-8 bg-linear-to-br from-sky-200 via-cyan-300 to-blue-400",
+      "top-0 -left-1 size-8 bg-linear-to-br from-sky-300 via-cyan-500 to-blue-600",
     blob2:
-      "top-1 left-3 size-7 bg-linear-to-br from-indigo-400 via-blue-500 to-cyan-500",
+      "top-1 left-3 size-7 bg-linear-to-br from-indigo-500 via-blue-600 to-cyan-600",
     blob3:
-      "top-5 left-0 size-8 bg-linear-to-br from-blue-300 via-sky-500 to-indigo-600",
+      "top-5 left-0 size-8 bg-linear-to-br from-blue-400 via-sky-600 to-indigo-700",
   },
   {
-    base: "bg-violet-50",
+    base: "bg-violet-100",
     blob1:
-      "top-1 left-0 size-7 bg-linear-to-br from-violet-200 via-purple-300 to-fuchsia-400",
+      "top-1 left-0 size-7 bg-linear-to-br from-violet-300 via-purple-500 to-fuchsia-600",
     blob2:
-      "-top-1 left-3 size-8 bg-linear-to-br from-purple-400 via-violet-500 to-indigo-500",
+      "-top-1 left-3 size-8 bg-linear-to-br from-purple-500 via-violet-600 to-indigo-600",
     blob3:
-      "top-4 left-2 size-8 bg-linear-to-br from-fuchsia-300 via-purple-500 to-violet-600",
+      "top-4 left-2 size-8 bg-linear-to-br from-fuchsia-400 via-purple-600 to-violet-700",
   },
   {
-    base: "bg-orange-50",
+    base: "bg-orange-100",
     blob1:
-      "-top-2 left-0 size-9 bg-linear-to-br from-yellow-200 via-orange-300 to-red-400",
+      "-top-2 left-0 size-9 bg-linear-to-br from-yellow-300 via-orange-500 to-red-600",
     blob2:
-      "top-2 left-4 size-5 bg-linear-to-br from-orange-400 via-amber-500 to-yellow-500",
+      "top-2 left-4 size-5 bg-linear-to-br from-orange-500 via-amber-600 to-yellow-500",
     blob3:
-      "top-4 left-0 size-9 bg-linear-to-br from-red-300 via-orange-500 to-amber-600",
+      "top-4 left-0 size-9 bg-linear-to-br from-red-400 via-orange-600 to-amber-700",
   },
   {
-    base: "bg-pink-50",
+    base: "bg-pink-100",
     blob1:
-      "top-0 left-2 size-8 bg-linear-to-br from-pink-200 via-rose-300 to-fuchsia-400",
+      "top-0 left-2 size-8 bg-linear-to-br from-pink-300 via-rose-500 to-fuchsia-600",
     blob2:
-      "top-2 -left-1 size-6 bg-linear-to-br from-rose-400 via-pink-500 to-purple-500",
+      "top-2 -left-1 size-6 bg-linear-to-br from-rose-500 via-pink-600 to-purple-600",
     blob3:
-      "top-4 left-3 size-7 bg-linear-to-br from-fuchsia-300 via-rose-500 to-pink-600",
+      "top-4 left-3 size-7 bg-linear-to-br from-fuchsia-400 via-rose-600 to-pink-700",
   },
   {
-    base: "bg-cyan-50",
+    base: "bg-cyan-100",
     blob1:
-      "top-0 left-0 size-8 bg-linear-to-br from-cyan-200 via-teal-300 to-emerald-400",
+      "top-0 left-0 size-8 bg-linear-to-br from-cyan-300 via-teal-500 to-emerald-600",
     blob2:
-      "top-1 left-4 size-6 bg-linear-to-br from-sky-400 via-cyan-500 to-teal-500",
+      "top-1 left-4 size-6 bg-linear-to-br from-sky-500 via-cyan-600 to-teal-600",
     blob3:
-      "top-5 left-1 size-7 bg-linear-to-br from-emerald-300 via-teal-500 to-cyan-600",
+      "top-5 left-1 size-7 bg-linear-to-br from-emerald-400 via-teal-600 to-cyan-700",
   },
   {
-    base: "bg-indigo-50",
+    base: "bg-indigo-100",
     blob1:
-      "-top-1 left-2 size-8 bg-linear-to-br from-indigo-200 via-blue-300 to-violet-400",
+      "-top-1 left-2 size-8 bg-linear-to-br from-indigo-300 via-blue-500 to-violet-600",
     blob2:
-      "top-3 left-0 size-6 bg-linear-to-br from-blue-400 via-indigo-500 to-violet-500",
+      "top-3 left-0 size-6 bg-linear-to-br from-blue-500 via-indigo-600 to-violet-600",
     blob3:
-      "top-4 left-4 size-7 bg-linear-to-br from-violet-300 via-indigo-500 to-blue-600",
+      "top-4 left-4 size-7 bg-linear-to-br from-violet-400 via-indigo-600 to-blue-700",
   },
   {
-    base: "bg-lime-50",
+    base: "bg-lime-100",
     blob1:
-      "top-0 left-1 size-7 bg-linear-to-br from-lime-200 via-green-300 to-emerald-400",
+      "top-0 left-1 size-7 bg-linear-to-br from-lime-300 via-green-500 to-emerald-600",
     blob2:
-      "top-2 left-3 size-7 bg-linear-to-br from-yellow-400 via-lime-500 to-green-500",
+      "top-2 left-3 size-7 bg-linear-to-br from-yellow-500 via-lime-600 to-green-600",
     blob3:
-      "top-5 -left-1 size-8 bg-linear-to-br from-emerald-300 via-lime-500 to-green-600",
+      "top-5 -left-1 size-8 bg-linear-to-br from-emerald-400 via-lime-600 to-green-700",
   },
   {
-    base: "bg-slate-50",
+    base: "bg-slate-100",
     blob1:
-      "top-1 -left-1 size-8 bg-linear-to-br from-slate-200 via-gray-300 to-zinc-400",
+      "top-1 -left-1 size-8 bg-linear-to-br from-slate-300 via-gray-500 to-zinc-600",
     blob2:
-      "-top-1 left-4 size-6 bg-linear-to-br from-cyan-400 via-slate-500 to-indigo-500",
+      "-top-1 left-4 size-6 bg-linear-to-br from-cyan-500 via-slate-600 to-indigo-600",
     blob3:
-      "top-4 left-1 size-8 bg-linear-to-br from-zinc-300 via-slate-500 to-gray-600",
+      "top-4 left-1 size-8 bg-linear-to-br from-zinc-400 via-slate-600 to-gray-700",
   },
 ] as const
-
-const agentAvatar =   {
-    base: "bg-lime-50",
-    blob1:
-      "-top-1 left-1 size-8 bg-linear-to-br from-lime-200 via-lime-300 to-green-400",
-    blob2:
-      "top-3 left-4 size-6 bg-linear-to-br from-teal-400 via-lime-500 to-green-600",
-    blob3:
-      "top-4 -left-1 size-9 bg-linear-to-br from-lime-300 via-green-500 to-teal-600",
-  } as const
 
 function getAvatarVariant(name: string) {
   const hash = [...name].reduce(
@@ -106,14 +96,38 @@ function getAvatarVariant(name: string) {
   return avatarVariants[hash % avatarVariants.length]
 }
 
+function AvatarBlob({
+  className,
+  isSpeaking,
+  maxScale,
+  duration,
+  delay,
+}: {
+  className: string
+  isSpeaking: boolean
+  maxScale: number
+  duration: number
+  delay: number
+}) {
+  return (
+    <motion.div
+      className={cn("absolute rounded-full blur-[2px]", className)}
+      animate={{ scale: isSpeaking ? [1, maxScale, 0.92, 1.08, 1] : 1 }}
+      transition={{
+        duration,
+        delay,
+        ease: "easeInOut",
+        repeat: isSpeaking ? Infinity : 0,
+      }}
+    />
+  )
+}
+
 type CallUserProps = {
   name: string
   status: string
   isMuted?: boolean
   isSpeaking?: boolean
-  volume?: number
-  volumeDisabled?: boolean
-  onVolumeChange?: (nextVolume: number) => void
   className?: string
 }
 
@@ -122,9 +136,6 @@ export function CallUserCard({
   status,
   isMuted = false,
   isSpeaking = false,
-  volume = 100,
-  volumeDisabled = false,
-  onVolumeChange,
   className,
 }: CallUserProps) {
   const avatarVariant = getAvatarVariant(name)
@@ -133,108 +144,61 @@ export function CallUserCard({
     <div
       className={cn(
         "flex shrink-0 items-center gap-3 border-r border-b border-l border-sidebar-border bg-sidebar p-2 transition-colors",
-        isSpeaking && "bg-sidebar-accent/50",
         className
       )}
     >
-      <div className="relative flex size-8 overflow-hidden rounded-full bg-primary/10">
+      <div
+        className={cn(
+          "relative flex size-8 overflow-hidden rounded-full bg-primary/10 outline-2 outline-offset-2 outline-transparent transition-[outline-color]",
+          isSpeaking && "outline-lime-500"
+        )}
+      >
         <div className={cn("absolute inset-0", avatarVariant.base)}>
-          <div
-            className={cn(
-              "absolute rounded-full blur-[2px]",
-              avatarVariant.blob1
-            )}
+          <AvatarBlob
+            className={avatarVariant.blob1}
+            isSpeaking={isSpeaking}
+            maxScale={1.2}
+            duration={1.2}
+            delay={0}
           />
-          <div
-            className={cn(
-              "absolute rounded-full blur-[2px]",
-              avatarVariant.blob2
-            )}
+          <AvatarBlob
+            className={avatarVariant.blob2}
+            isSpeaking={isSpeaking}
+            maxScale={1.35}
+            duration={0.6}
+            delay={0.15}
           />
-          <div
-            className={cn(
-              "absolute rounded-full blur-[2px]",
-              avatarVariant.blob3
-            )}
+          <AvatarBlob
+            className={avatarVariant.blob3}
+            isSpeaking={isSpeaking}
+            maxScale={1.25}
+            duration={0.8}
+            delay={0.3}
           />
         </div>
+
+        <div
+          className={cn(
+            "absolute inset-0 bg-white/30 transition-opacity duration-200",
+            isSpeaking && "opacity-0"
+          )}
+        />
       </div>
 
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-semibold text-foreground">{name}</p>
-        <p className="text-xs text-muted-foreground">{status}</p>
+        <p
+          className={cn(
+            "text-xs text-muted-foreground",
+            isSpeaking && "text-lime-500"
+          )}
+        >
+          {status}
+        </p>
       </div>
 
       {isMuted ? <MicOffIcon className="size-4 text-destructive" /> : null}
 
-      <VolumeSlider
-        value={volume}
-        onValueChange={onVolumeChange}
-        disabled={volumeDisabled}
-      />
-    </div>
-  )
-}
-
-type CallAgentCardProps = {
-  name?: string
-  status?: string
-  volume?: number
-  volumeDisabled?: boolean
-  onVolumeChange?: (nextVolume: number) => void
-  className?: string
-}
-
-export function CallAgentCard({
-  name = "AI Agent",
-  status = "Offline",
-  volume = 100,
-  volumeDisabled = true,
-  onVolumeChange,
-  className,
-}: CallAgentCardProps) {
-  const avatarVariant = agentAvatar
-
-  return (
-    <div
-      className={cn(
-        "flex shrink-0 items-center gap-3 border border-sidebar-border bg-sidebar p-2",
-        className
-      )}
-    >
-      <div className="relative flex size-8 overflow-hidden rounded-full bg-primary/10">
-        <div className={cn("absolute inset-0", avatarVariant.base)}>
-          <div
-            className={cn(
-              "absolute rounded-full blur-[2px]",
-              avatarVariant.blob1
-            )}
-          />
-          <div
-            className={cn(
-              "absolute rounded-full blur-[2px]",
-              avatarVariant.blob2
-            )}
-          />
-          <div
-            className={cn(
-              "absolute rounded-full blur-[2px]",
-              avatarVariant.blob3
-            )}
-          />
-        </div>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-semibold text-foreground">{name}</p>
-        <p className="text-xs text-muted-foreground">{status}</p>
-      </div>
-
-      <VolumeSlider
-        value={volume}
-        onValueChange={onVolumeChange}
-        disabled={volumeDisabled}
-      />
     </div>
   )
 }

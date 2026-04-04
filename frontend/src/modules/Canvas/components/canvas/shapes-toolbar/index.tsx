@@ -189,7 +189,7 @@ export function ShapesToolbar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-              className="shape-style-menu w-72 border border-border/70 bg-card/95 p-0"
+              className="shape-style-menu w-72 border border-border/70 bg-card/95 p-0 shadow-none"
               align="center"
             >
               <ToolbarDefaultsPanel
