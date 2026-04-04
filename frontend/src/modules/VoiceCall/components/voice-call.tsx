@@ -2,10 +2,7 @@ import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import {
-  CallAgentCard,
-  CallUserCard,
-} from "@/modules/VoiceCall/components/call-user-card"
+import { CallUserCard } from "@/modules/VoiceCall/components/call-user-card"
 import { VoiceCallControlPanel } from "@/modules/VoiceCall/components/voice-call-control-panel"
 import { useVoiceCall } from "@/modules/VoiceCall/hooks/use-voice-call"
 
@@ -25,7 +22,6 @@ export function VoiceCall({
   ...props
 }: VoiceCallProps) {
   const {
-    agent,
     audioContainerRef,
     enableSpeakerAudio,
     errorMessage,
@@ -36,14 +32,9 @@ export function VoiceCall({
     leaveCall,
     microphoneAvailable,
     needsAudioResume,
-    participantIdentity,
     participants,
     resolvedCanvasId,
-    resolvedUserId,
     roomName,
-    setAgentVolume,
-    setParticipantVolumeByIdentity,
-    statusMessage,
     toggleMicrophone,
   } = useVoiceCall({
     canvasId,
@@ -61,23 +52,11 @@ export function VoiceCall({
       {...props}
     >
       <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto pb-18">
-        <CallAgentCard
-          className="mb-3"
-          name={agent.name}
-          status={agent.status}
-          volume={agent.volume}
-          volumeDisabled={agent.volumeDisabled}
-          onVolumeChange={setAgentVolume}
-        />
-
         <div className="mb-3 border border-sidebar-border bg-sidebar p-2 text-xs">
           <p className="font-semibold text-foreground">
             {roomName || `Canvas ${resolvedCanvasId}`}
           </p>
-          <p className="mt-1 text-muted-foreground">
-            {participantIdentity || `User ${resolvedUserId}`}
-          </p>
-          <p className="mt-2 text-muted-foreground">{statusMessage}</p>
+
           {errorMessage ? (
             <p className="mt-2 text-destructive">{errorMessage}</p>
           ) : null}
@@ -106,11 +85,6 @@ export function VoiceCall({
               status={participant.status}
               isMuted={participant.isMuted}
               isSpeaking={participant.isSpeaking}
-              volume={participant.volume}
-              volumeDisabled={participant.volumeDisabled}
-              onVolumeChange={(nextVolume) =>
-                setParticipantVolumeByIdentity(participant.id, nextVolume)
-              }
               className={index === 0 ? "border-t" : ""}
             />
           ))
@@ -122,7 +96,7 @@ export function VoiceCall({
 
         <VoiceCallControlPanel
           className="absolute bottom-0 left-1/2 -translate-x-1/2"
-          inCall={inCall}
+          inCall={inCall && !isJoining}
           isWorking={isJoining}
           microphoneEnabled={isMicrophoneEnabled}
           microphoneAvailable={microphoneAvailable}
