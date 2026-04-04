@@ -3,6 +3,7 @@ import { PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react"
 import { usePanelRef } from "react-resizable-panels"
 
 import { AppSidebar } from "@/components/app-sidebar"
+import { ShapesToolbar } from "@/components/shapes-toolbar"
 import { Button } from "@/components/ui/button"
 import {
   ResizableHandle,
@@ -27,15 +28,15 @@ export function App() {
   }, [sidebarPanelRef])
 
   return (
-    <SidebarProvider className="h-svh min-h-0 bg-card">
+    <SidebarProvider className="h-svh min-h-0 bg-background">
       <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
         <ResizablePanel defaultSize={75} minSize={70}>
-          <main className="relative flex h-full min-w-0 items-center justify-center">
+          <main className="relative flex h-full min-w-0 items-center justify-center bg-background">
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="absolute top-4 right-4 z-10"
+              className="absolute top-4 right-4 z-10 border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
               onClick={toggleSidebar}
               aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
             >
@@ -46,8 +47,11 @@ export function App() {
               )}
             </Button>
 
-            {/* Canvas Component will be here */}
-            <p className="text-3xl font-semibold text-foreground">Content</p>
+            <section className="relative flex h-full w-full items-start justify-center overflow-hidden bg-background">
+              <div className="relative flex h-full w-full items-start justify-center bg-background">
+                <ShapesToolbar />
+              </div>
+            </section>
           </main>
         </ResizablePanel>
 
