@@ -5,6 +5,7 @@ import httpx
 from fastapi import HTTPException
 
 from canvas_service.core.config import settings
+from canvas_service.core.supabase import get_supabase_service_role_key
 
 logger = logging.getLogger(__name__)
 
@@ -14,18 +15,20 @@ _LIVEBLOCKS_HEADERS = {
     "Content-Type": "application/json",
 }
 _SUPABASE_AUTH_URL = f"{settings.supabase_url}/auth/v1"
-_SUPABASE_HEADERS = {
-    "apikey": settings.supabase_key,
-    "Authorization": f"Bearer {settings.supabase_key}",
-    "Content-Type": "application/json",
-}
-
-
 def _liveblocks_headers() -> dict[str, str]:
     key = settings.liveblocks_secret_key
     if not key:
         raise HTTPException(status_code=503, detail="LIVEBLOCKS_SECRET_KEY is not configured")
     return {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+
+
+def _supabase_admin_headers() -> dict[str, str]:
+    key = get_supabase_service_role_key()
+    return {
+        "apikey": key,
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
     }
@@ -92,11 +95,19 @@ async def _resolve_user_info(
     client: httpx.AsyncClient,
     user_id: str,
 ) -> dict:
-    resp = await client.get(
-        f"{_SUPABASE_AUTH_URL}/admin/users/{user_id}",
-        headers=_SUPABASE_HEADERS,
-    )
+    try:
+        headers = _supabase_admin_headers()
+    except RuntimeError as exc:
+        logger.warning("Failed to resolve Liveblocks user %s: %s", user_id, exc)
+        return _fallback_user_info(user_id)
+
+    resp = await client.get(f"{_SUPABASE_AUTH_URL}/admin/users/{user_id}", headers=headers)
     if resp.is_error:
+        logger.warning(
+            "Failed to resolve Liveblocks user %s from Supabase admin API: %s",
+            user_id,
+            resp.status_code,
+        )
         return _fallback_user_info(user_id)
 
     user_data = resp.json()
