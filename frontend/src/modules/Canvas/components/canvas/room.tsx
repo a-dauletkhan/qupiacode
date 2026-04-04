@@ -8,9 +8,6 @@ import {
 } from "@liveblocks/react/suspense"
 import { LoaderCircle } from "lucide-react"
 
-const DEFAULT_LIVEBLOCKS_PUBLIC_KEY =
-  "pk_dev_QFb5pt_0sDb3LVyB6vICx5N3k2q1o5QG-MwHURHnRK3aYYJPrcJSshC7zbucmT8c"
-
 type RoomProps = {
   id: string
   children: ReactNode
@@ -19,12 +16,13 @@ type RoomProps = {
 export function Room({ id, children }: RoomProps) {
   return (
     <LiveblocksProvider
-      publicApiKey={
-        import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY ??
-        DEFAULT_LIVEBLOCKS_PUBLIC_KEY
-      }
+      authEndpoint={`${import.meta.env.VITE_API_BASE_URL ?? ""}/api/liveblocks/auth`}
     >
-      <RoomProvider id={id} initialPresence={{ cursor: null }}>
+      <RoomProvider
+        id={id}
+        initialPresence={{ cursor: null, type: "user" }}
+        initialStorage={{ agentIntensity: "balanced" }}
+      >
         <ClientSideSuspense fallback={<RoomLoadingFallback />}>
           {children}
         </ClientSideSuspense>
