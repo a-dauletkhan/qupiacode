@@ -114,7 +114,7 @@ export function Room({ id, children }: RoomProps) {
 
 function RoomLoadingFallback() {
   return (
-    <div className="flex h-full w-full items-center justify-center">
+    <div className="flex h-screen w-full items-center justify-center">
       <LoaderCircle className="size-8 animate-spin text-lime-400" />
     </div>
   )
