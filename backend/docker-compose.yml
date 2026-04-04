@@ -8,7 +8,6 @@ x-backend-service: &backend-service
     APP_ENV: development
     APP_HOST: 0.0.0.0
     APP_PORT: 8000
-    DATABASE_URL: postgresql+asyncpg://postgres:postgres@postgres:5432/qupia
     REDIS_URL: redis://redis:6379/0
     PYTHONUNBUFFERED: "1"
   restart: unless-stopped
@@ -18,8 +17,8 @@ services:
     <<: *backend-service
     command: [".venv/bin/python", "-m", "scripts.bootstrap_db"]
     depends_on:
-      postgres:
-        condition: service_healthy
+      redis:
+        condition: service_started
     restart: "no"
 
   api:
@@ -27,8 +26,6 @@ services:
     command:
       [".venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_started
       db-init:
@@ -47,23 +44,6 @@ services:
       db-init:
         condition: service_completed_successfully
 
-  postgres:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: qupia
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d qupia"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    restart: unless-stopped
-
   redis:
     image: redis:7-alpine
     ports:
@@ -73,5 +53,4 @@ services:
     restart: unless-stopped
 
 volumes:
-  postgres-data:
   redis-data:
