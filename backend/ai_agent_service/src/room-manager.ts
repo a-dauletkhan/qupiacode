@@ -1,4 +1,5 @@
 import { Liveblocks } from "@liveblocks/node";
+import { createClient, type Room as LbRoom } from "@liveblocks/client";
 import { config } from "./config.js";
 import { ContextAccumulator } from "./context-accumulator.js";
 import { DecisionEngine } from "./decision-engine.js";
@@ -8,7 +9,6 @@ import { createProviderRouter } from "./llm/provider-router.js";
 import { createClaudeProvider } from "./llm/claude-provider.js";
 import { createOpenAIProvider } from "./llm/openai-provider.js";
 import type { LLMProvider, Message } from "./llm/types.js";
-import type { Intensity, TranscriptSegment } from "./types.js";
 import type { TranscriptSource } from "./transcript/types.js";
 
 const SYSTEM_PROMPT = `You are an AI assistant participating in a collaborative canvas whiteboarding session. You can see what's on the canvas and hear what users are saying.
@@ -36,25 +36,42 @@ interface RoomSession {
   lastChangeTime: number;
   changeCount: number;
   evaluationTimer: ReturnType<typeof setInterval> | null;
+  presenceRoom: LbRoom | null;
 }
 
 export class RoomManager {
   private liveblocks: Liveblocks;
+  private lbClient: ReturnType<typeof createClient>;
   private llm: LLMProvider;
   private sessions = new Map<string, RoomSession>();
   private transcriptSource: TranscriptSource;
 
   constructor(transcriptSource: TranscriptSource) {
     this.liveblocks = new Liveblocks({ secret: config.liveblocks.secretKey });
+    this.lbClient = createClient({
+      authEndpoint: async (_room) => {
+        const session = this.liveblocks.prepareSession("ai-agent", {
+          userInfo: { name: "AI Agent" },
+        });
+        session.allow("*", session.FULL_ACCESS);
+        const { body } = await session.authorize();
+        return JSON.parse(body);
+      },
+    });
     this.transcriptSource = transcriptSource;
 
     const claude = createClaudeProvider(config.llm.anthropic.apiKey, config.llm.anthropic.model);
-    const openai = createOpenAIProvider(config.llm.openai.apiKey, config.llm.openai.model);
+    const openai = createOpenAIProvider(config.llm.openai.apiKey, config.llm.openai.model, config.llm.openai.baseURL);
     this.llm = createProviderRouter({ claude, openai }, config.llm.provider);
   }
 
   async joinRoom(roomId: string): Promise<void> {
     if (this.sessions.has(roomId)) return;
+
+    // Enter room via client SDK to maintain WebSocket presence
+    const { room: presenceRoom } = this.lbClient.enterRoom(roomId, {
+      initialPresence: { cursor: null, type: "ai_agent", status: "watching" },
+    });
 
     const session: RoomSession = {
       accumulator: new ContextAccumulator({ maxTranscriptSegments: 20, maxRecentChanges: 30 }),
@@ -63,6 +80,7 @@ export class RoomManager {
       lastChangeTime: Date.now(),
       changeCount: 0,
       evaluationTimer: null,
+      presenceRoom,
     };
 
     this.sessions.set(roomId, session);
@@ -98,6 +116,9 @@ export class RoomManager {
 
     if (session.evaluationTimer) clearInterval(session.evaluationTimer);
     this.transcriptSource.unsubscribe(roomId);
+    if (session.presenceRoom) {
+      session.presenceRoom.disconnect();
+    }
     this.sessions.delete(roomId);
 
     console.log(`Left room: ${roomId}`);
@@ -114,7 +135,7 @@ export class RoomManager {
     await this.syncCanvasState(roomId);
   }
 
-  async handleDirectMessage(roomId: string, message: string): Promise<void> {
+  async handleDirectMessage(roomId: string, _message: string): Promise<void> {
     const session = this.sessions.get(roomId);
     if (!session) return;
 
@@ -130,7 +151,7 @@ export class RoomManager {
 
     try {
       const storage = await this.liveblocks.getStorageDocument(roomId, "json");
-      const root = storage.data as Record<string, unknown>;
+      const root = (storage?.data ?? {}) as Record<string, unknown>;
       const nodes = (root.nodes ?? []) as Array<Record<string, unknown>>;
       const edges = (root.edges ?? []) as Array<Record<string, unknown>>;
 
@@ -192,6 +213,9 @@ export class RoomManager {
       },
     ];
 
+    // Update presence to "acting"
+    session.presenceRoom?.updatePresence({ status: "acting" });
+
     try {
       const response = await this.llm.chat(messages, canvasTools);
 
@@ -213,6 +237,9 @@ export class RoomManager {
       session.changeCount = 0;
     } catch (err) {
       console.error(`Action error in room ${roomId}:`, err);
+    } finally {
+      // Return to "watching"
+      session.presenceRoom?.updatePresence({ status: "watching" });
     }
   }
 

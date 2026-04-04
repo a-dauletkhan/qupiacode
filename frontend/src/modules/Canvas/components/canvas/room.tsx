@@ -7,16 +7,33 @@ import {
   RoomProvider,
 } from "@liveblocks/react/suspense"
 import { LoaderCircle } from "lucide-react"
+import { getAccessToken } from "@/lib/auth"
 
 type RoomProps = {
   id: string
   children: ReactNode
 }
 
+const AUTH_URL = `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/liveblocks/auth`
+
 export function Room({ id, children }: RoomProps) {
   return (
     <LiveblocksProvider
-      authEndpoint={`${import.meta.env.VITE_API_BASE_URL ?? ""}/api/liveblocks/auth`}
+      authEndpoint={async (room) => {
+        const token = getAccessToken()
+        const resp = await fetch(AUTH_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ room }),
+        })
+        if (!resp.ok) {
+          throw new Error(`Liveblocks auth failed: ${resp.status}`)
+        }
+        return resp.json()
+      }}
     >
       <RoomProvider
         id={id}
