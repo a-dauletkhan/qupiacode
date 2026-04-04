@@ -1,5 +1,5 @@
 import httpx
-from core.config import settings
+from canvas_service.core.config import settings
 
 _LIVEBLOCKS_HEADERS = {
     "Authorization": f"Bearer {settings.liveblocks_secret_key}",
