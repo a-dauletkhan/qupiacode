@@ -433,6 +433,7 @@ export function useVoiceCall({
   const resolvedCanvasId = canvasId ?? bootstrap.canvasId
   const resolvedUserId = userId ?? bootstrap.userId
   const resolvedDisplayName = displayName ?? bootstrap.displayName
+  const roomScopeKey = `${resolvedCanvasId}:${resolvedUserId}`
 
   const audioContainerRef = React.useRef<HTMLDivElement | null>(null)
   const roomRef = React.useRef<Room | null>(null)
@@ -477,6 +478,7 @@ export function useVoiceCall({
     `Ready for canvas ${resolvedCanvasId}`
   )
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
+  const roomScopeRef = React.useRef(roomScopeKey)
 
   const syncParticipants = React.useCallback(
     (activeRoom: Room | null) => {
@@ -860,6 +862,27 @@ export function useVoiceCall({
       roomRef.current = null
     }
   }, [detachAllAudioTracks])
+
+  React.useEffect(() => {
+    if (roomScopeRef.current === roomScopeKey) {
+      return
+    }
+
+    roomScopeRef.current = roomScopeKey
+    participantVolumesRef.current = {}
+    setErrorMessage(null)
+    setNeedsAudioResume(false)
+
+    const activeRoom = roomRef.current
+    if (activeRoom) {
+      isLeavingRef.current = true
+      void activeRoom.disconnect().finally(() => {
+        isLeavingRef.current = false
+      })
+    }
+
+    resetVoiceState()
+  }, [resetVoiceState, roomScopeKey])
 
   const inCall =
     isJoining ||
