@@ -1,6 +1,13 @@
 import * as React from "react"
 import { useNavigate, useParams } from "react-router-dom"
-import { ArrowLeft, PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react"
+import {
+  ArrowLeft,
+  ChevronDown,
+  Link2,
+  PanelRightCloseIcon,
+  PanelRightOpenIcon,
+  Share2,
+} from "lucide-react"
 import { usePanelRef } from "react-resizable-panels"
 
 import { AppSidebar } from "@/modules/Canvas/components/app-sidebar"
@@ -14,6 +21,12 @@ import { Room } from "@/modules/Canvas/components/canvas/room"
 import { ShapesToolbar } from "@/modules/Canvas/components/canvas/shapes-toolbar"
 import { Button } from "@/modules/Canvas/components/ui/button"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/modules/Canvas/components/ui/dropdown-menu"
+import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -24,12 +37,17 @@ import { useProjects } from "@/lib/projects"
 const DEFAULT_SIDEBAR_WIDTH = 420
 const MIN_SIDEBAR_WIDTH = 360
 const MAX_SIDEBAR_WIDTH = 720
+const SELF_URL = import.meta.env.VITE_SELF_URL?.trim() || window.location.origin
 
 export function CanvasWorkspace() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const { getProject } = useProjects()
   const project = projectId ? getProject(projectId) : null
+  const shareLink = React.useMemo(
+    () => new URL(`/invite/${projectId ?? ""}`, SELF_URL).toString(),
+    [projectId]
+  )
 
   const sidebarPanelRef = usePanelRef()
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true)
@@ -69,6 +87,10 @@ export function CanvasWorkspace() {
     []
   )
 
+  const copyShareLink = React.useCallback(() => {
+    void navigator.clipboard.writeText(shareLink)
+  }, [shareLink])
+
   if (!project) {
     return (
       <div className="flex h-svh flex-col items-center justify-center gap-4 bg-background">
@@ -100,16 +122,40 @@ export function CanvasWorkspace() {
                 </Button>
               </div>
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="absolute top-4 left-4 z-30 gap-1.5 border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
-                onClick={() => navigate("/")}
-              >
-                <ArrowLeft className="size-4" />
-                <span className="max-w-[160px] truncate text-xs">{project.name}</span>
-              </Button>
+              <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
+                  onClick={() => navigate("/")}
+                >
+                  <ArrowLeft className="size-4" />
+                  <span className="max-w-[160px] truncate text-xs">{project.name}</span>
+                </Button>
+
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
+                    >
+                      <Share2 className="size-4" />
+                      Share
+                      <ChevronDown className="size-3" data-icon="inline-end" />
+                    </Button>
+                  </DropdownMenuTrigger>
+
+                  <DropdownMenuContent align="start" className="min-w-44">
+                    <DropdownMenuItem onSelect={copyShareLink}>
+                      <Link2 className="size-4" />
+                      Copy share link
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
               <FlowCanvas
                 activeTool={activeTool}

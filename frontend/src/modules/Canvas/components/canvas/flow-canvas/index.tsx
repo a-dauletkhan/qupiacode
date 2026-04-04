@@ -686,8 +686,8 @@ function FlowCanvasInner({
               size={1.4}
               color="color-mix(in srgb, var(--color-border) 88%, transparent)"
             />
-           <Cursors style={{ width: "100vw", height: "100vh" }}>
-      <AvatarStack />
+           <Cursors className="relative" style={{ width: "100vw", height: "100vh" }}>
+      <AvatarStack className="absolute top-14 left-4"/>
       {/* Rest of your app here */}
     </Cursors>
           </ReactFlow>

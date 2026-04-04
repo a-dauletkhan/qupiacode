@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Mail } from "lucide-react"
 
 import { AuthError, useAuth } from "@/lib/auth"
@@ -13,6 +13,7 @@ import "./auth-page.css"
 type AuthMode = "login" | "signup"
 
 export function AuthPage({ mode }: { mode: AuthMode }) {
+  const location = useLocation()
   const navigate = useNavigate()
   const { login, signup } = useAuth()
 
@@ -24,6 +25,18 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const [loading, setLoading] = React.useState(false)
 
   const isLogin = mode === "login"
+  const returnPath = React.useMemo(() => {
+    if (
+      typeof location.state === "object" &&
+      location.state !== null &&
+      "from" in location.state &&
+      typeof location.state.from === "string"
+    ) {
+      return location.state.from
+    }
+
+    return "/"
+  }, [location.state])
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -51,7 +64,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       } else {
         await signup(email.trim(), password, name.trim())
       }
-      navigate("/")
+      navigate(returnPath, { replace: true })
     } catch (err: unknown) {
       if (err instanceof AuthError) {
         setError(err.message)
@@ -189,14 +202,22 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               {isLogin ? (
                 <p>
                   Don't have an account?{" "}
-                  <Link to="/signup" className="auth-switch-link">
+                  <Link
+                    to="/signup"
+                    state={{ from: returnPath }}
+                    className="auth-switch-link"
+                  >
                     Sign up
                   </Link>
                 </p>
               ) : (
                 <p>
                   Already have an account?{" "}
-                  <Link to="/login" className="auth-switch-link">
+                  <Link
+                    to="/login"
+                    state={{ from: returnPath }}
+                    className="auth-switch-link"
+                  >
                     Sign in
                   </Link>
                 </p>

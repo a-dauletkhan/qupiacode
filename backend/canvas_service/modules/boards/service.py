@@ -17,6 +17,14 @@ async def get_user_boards(db: AsyncSession, user_id: UUID) -> list[Board]:
     return list(result.scalars().all())
 
 
+async def get_board_by_id(db: AsyncSession, board_id: UUID) -> Board:
+    result = await db.execute(select(Board).where(Board.id == board_id))
+    board = result.scalar_one_or_none()
+    if not board:
+        raise HTTPException(status_code=404, detail="Board not found")
+    return board
+
+
 async def create_board(db: AsyncSession, data: BoardCreate, owner_id: UUID) -> Board:
     board = Board(name=data.name, owner_id=owner_id)
     db.add(board)
@@ -55,7 +63,21 @@ async def add_member(
     role: str,
     requesting_user_id: UUID,
 ) -> BoardMember:
-    await get_board(db, board_id, requesting_user_id)
+    if new_user_id == requesting_user_id:
+        await get_board_by_id(db, board_id)
+    else:
+        await get_board(db, board_id, requesting_user_id)
+
+    result = await db.execute(
+        select(BoardMember).where(
+            BoardMember.board_id == board_id,
+            BoardMember.user_id == new_user_id,
+        )
+    )
+    existing_member = result.scalar_one_or_none()
+    if existing_member:
+        return existing_member
+
     member = BoardMember(board_id=board_id, user_id=new_user_id, role=role)
     db.add(member)
     await db.commit()
