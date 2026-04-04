@@ -1,6 +1,7 @@
 import type { ToolCall } from "./llm/types.js";
 import type { AiMetadata } from "./types.js";
 import { randomUUID } from "node:crypto";
+import { logger } from "./logger.js";
 
 export interface AiActionContext {
   actionId: string;
@@ -70,7 +71,7 @@ export class ActionExecutor {
         this.handleRearrange(call.arguments);
         break;
       default:
-        console.warn(`Unknown tool call: ${call.name}`);
+        logger.warn({ toolCall: call.name }, "Unknown tool call");
     }
   }
 

@@ -1,6 +1,13 @@
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
+import {
+  BrowserRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router-dom"
 
 import { AuthPage } from "@/components/auth/auth-page"
+import { InviteAcceptPage } from "@/components/invite/invite-accept-page"
 import { PrivacyPage, TermsPage } from "@/components/legal/legal-page"
 import { CanvasWorkspace } from "@/modules/Canvas/components/canvas/canvas-workspace"
 import { ProjectsDashboard } from "@/components/projects/projects-dashboard"
@@ -8,9 +15,16 @@ import { useAuth } from "@/lib/auth"
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
+  const location = useLocation()
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    return (
+      <Navigate
+        to="/login"
+        replace
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+      />
+    )
   }
 
   return children
@@ -18,9 +32,17 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function GuestRoute({ children }: { children: React.ReactNode }) {
   const { isAuthenticated } = useAuth()
+  const location = useLocation()
+  const from =
+    typeof location.state === "object" &&
+    location.state !== null &&
+    "from" in location.state &&
+    typeof location.state.from === "string"
+      ? location.state.from
+      : "/"
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />
+    return <Navigate to={from} replace />
   }
 
   return children
@@ -59,6 +81,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <CanvasWorkspace />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/invite/:projectId"
+          element={
+            <ProtectedRoute>
+              <InviteAcceptPage />
             </ProtectedRoute>
           }
         />

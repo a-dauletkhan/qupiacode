@@ -1,26 +1,14 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from canvas_service.core.redis import close_redis, init_redis
 from canvas_service.modules.auth.router import router as auth_router
 from canvas_service.modules.boards.router import router as boards_router
-from canvas_service.modules.canvas_objects.router import router as canvas_router
-from canvas_service.modules.collaboration.router import router as collaboration_router
 from canvas_service.modules.liveblocks.router import router as liveblocks_router
 from voice_call_service.app.api.routes import dev, health, voice, webhooks
 from voice_call_service.app.core.config import get_settings as get_voice_settings
 from voice_call_service.app.core.logging import configure_logging
-
-
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    await init_redis()
-    yield
-    await close_redis()
 
 
 def create_app() -> FastAPI:
@@ -36,7 +24,6 @@ def create_app() -> FastAPI:
             "Combined FastAPI application that serves the canvas backend and the "
             "LiveKit voice/token service from a single Railway deployment root."
         ),
-        lifespan=lifespan,
     )
 
     if voice_settings.cors_allowed_origins or voice_settings.cors_allowed_origin_regex:
@@ -59,8 +46,6 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(boards_router)
-    app.include_router(canvas_router)
-    app.include_router(collaboration_router)
     app.include_router(liveblocks_router)
 
     if voice_settings.app_env != "production":

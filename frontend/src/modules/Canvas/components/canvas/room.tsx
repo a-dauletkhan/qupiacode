@@ -16,10 +16,36 @@ type RoomProps = {
 }
 
 const AUTH_URL = buildApiUrl("/api/liveblocks/auth")
+const RESOLVE_USERS_URL = buildApiUrl("/api/liveblocks/resolve-users")
 
 export function Room({ id, children }: RoomProps) {
   return (
     <LiveblocksProvider
+      resolveUsers={async ({ userIds }) => {
+        const fallbackUsers = userIds.map((userId) => ({
+          name: userId,
+          avatar: "",
+        }))
+        const token = getAccessToken()
+        if (!token) {
+          return fallbackUsers
+        }
+
+        const resp = await fetch(RESOLVE_USERS_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ userIds }),
+        })
+        if (!resp.ok) {
+          return fallbackUsers
+        }
+
+
+        return resp.json()
+      }}
       authEndpoint={async (room) => {
         const token = getAccessToken()
         const resp = await fetch(AUTH_URL, {
@@ -33,6 +59,7 @@ export function Room({ id, children }: RoomProps) {
         if (!resp.ok) {
           throw new Error(`Liveblocks auth failed: ${resp.status}`)
         }
+
         return resp.json()
       }}
     >

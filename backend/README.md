@@ -5,7 +5,7 @@
 The two service domains still live in their own packages:
 
 - `canvas_service/`
-  Canvas API, collaboration websocket, SQLAlchemy models, and Redis integration.
+  Canvas auth, board metadata, and Liveblocks session auth.
 - `voice_call_service/`
   LiveKit token routes and the text-only transcription worker.
 
@@ -24,11 +24,25 @@ Everything is now run from `/backend`:
 - [railway.toml](/Users/dauletkhan/gitted/hackathon/qupiacode/backend/railway.toml)
   Railway config for `/backend`.
 
-## Why Postgres Is Still Here
+## Data Ownership
 
-Supabase is still part of the system for auth and storage, but the canvas service currently persists board and canvas data through SQLAlchemy and `DATABASE_URL`.
+The current backend split is:
 
-That means local development still needs a PostgreSQL database, and the Compose stack brings one up for you automatically. Redis also stays local because the collaboration websocket still uses it for pub/sub.
+- Supabase Auth for users and JWT validation
+- Supabase tables for board metadata
+- Liveblocks for collaborative canvas state
+- LiveKit for voice rooms and the silent transcription worker
+
+The old SQLAlchemy-backed board storage and local Redis/websocket canvas sync are no longer part of the active app surface.
+
+The backend board API now expects two Supabase tables:
+
+- `public.boards`
+- `public.board_members`
+
+You can create them by running the checked-in SQL from [supabase/boards.sql](/Users/dauletkhan/gitted/hackathon/qupiacode/backend/supabase/boards.sql) in the Supabase SQL editor.
+
+`SUPABASE_SERVICE_ROLE_KEY` is required for the backend because board metadata is managed server-side through the Supabase admin client.
 
 ## Local Python Flow
 
@@ -54,7 +68,7 @@ make typecheck
 
 ## One-Command Local Stack
 
-For the full local backend stack, including Postgres and Redis:
+For the full local backend stack:
 
 ```bash
 cd backend
@@ -66,14 +80,8 @@ That starts:
 
 - `api`
 - `voice-worker`
-- `postgres`
-- `redis`
 
-The Compose stack uses:
-
-- local Postgres via `DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/qupia`
-- local Redis via `REDIS_URL=redis://redis:6379/0`
-- external LiveKit and Supabase values from `.env`
+The Compose stack now depends only on external LiveKit, Liveblocks, and Supabase values from `.env`.
 
 `VOICE_AGENT_CONNECT_ROOM` defaults to `canvas:demo-canvas`, so the worker auto-connects to a demo room in local Compose without a manual `connect` command.
 

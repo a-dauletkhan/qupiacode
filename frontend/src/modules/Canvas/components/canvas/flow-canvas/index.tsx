@@ -53,6 +53,7 @@ import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
 // import { useAiMockBridge } from "@/modules/Agent/hooks/use-ai-mock-bridge"
 import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
+import { AvatarStack } from "@liveblocks/react-ui"
 
 type FlowCanvasProps = {
   className?: string
@@ -773,7 +774,10 @@ function FlowCanvasInner({
               size={1.4}
               color="color-mix(in srgb, var(--color-border) 88%, transparent)"
             />
-            <Cursors />
+           <Cursors className="relative" style={{ width: "100vw", height: "100vh" }}>
+      <AvatarStack className="absolute top-14 left-4"/>
+      {/* Rest of your app here */}
+    </Cursors>
           </ReactFlow>
         </div>
 

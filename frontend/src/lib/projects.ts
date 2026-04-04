@@ -199,6 +199,37 @@ export function useProjects() {
     )
   }, [])
 
+  const joinProject = useCallback(
+    async (id: string): Promise<Project> => {
+      const addMemberResponse = await requestBoards(`/boards/${id}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: currentUser.id, role: "editor" }),
+      })
+
+      if (!addMemberResponse.ok) {
+        throw new Error("Failed to join project")
+      }
+
+      const projectResponse = await requestBoards(`/boards/${id}`)
+
+      if (!projectResponse.ok) {
+        throw new Error("Failed to fetch project")
+      }
+
+      const board = (await projectResponse.json()) as BoardResponse
+      const project = mapBoardToProject(board, currentUser)
+      updateProjects((currentProjects) => {
+        const otherProjects = currentProjects.filter(
+          (currentProject) => currentProject.id !== id
+        )
+        return [project, ...otherProjects]
+      })
+      return project
+    },
+    [currentUser]
+  )
+
   const touchProject = useCallback((id: string) => {
     const now = new Date().toISOString()
     updateProjects((currentProjects) =>
@@ -225,6 +256,7 @@ export function useProjects() {
     createProject,
     renameProject,
     deleteProject,
+    joinProject,
     touchProject,
     getProject,
     currentUser,

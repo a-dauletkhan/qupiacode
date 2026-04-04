@@ -1,5 +1,6 @@
 import express from "express";
 import { config } from "./config.js";
+import { logger } from "./logger.js";
 import { WebhookTranscriptSource } from "./transcript/webhook-source.js";
 import { RoomManager } from "./room-manager.js";
 import type { AiCommandRequest, AiEventsRequest, AiFeedbackRequest } from "./types.js";
@@ -91,5 +92,5 @@ app.get("/api/ai/rooms/:roomId/queue", (req, res) => {
 });
 
 app.listen(config.server.port, () => {
-  console.log(`AI Agent Service running on port ${config.server.port}`);
+  logger.info({ port: config.server.port }, "AI Agent Service started");
 });
