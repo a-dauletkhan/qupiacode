@@ -4,6 +4,11 @@ import { usePanelRef } from "react-resizable-panels"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { FlowCanvas } from "@/components/canvas/flow-canvas"
+import {
+  DEFAULT_EDITOR_DEFAULTS,
+  type CanvasEditorDefaults,
+  type ToolId,
+} from "@/components/canvas/primitives/schema"
 import { ShapesToolbar } from "@/components/canvas/shapes-toolbar"
 import { Button } from "@/components/ui/button"
 import {
@@ -16,6 +21,11 @@ import { SidebarProvider } from "@/components/ui/sidebar"
 export function App() {
   const sidebarPanelRef = usePanelRef()
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true)
+  const [activeTool, setActiveTool] = React.useState<ToolId>("selection")
+  const [toolLocked, setToolLocked] = React.useState(false)
+  const [editorDefaults, setEditorDefaults] = React.useState<CanvasEditorDefaults>(
+    DEFAULT_EDITOR_DEFAULTS
+  )
 
   const toggleSidebar = React.useCallback(() => {
     if (sidebarPanelRef.current?.isCollapsed()) {
@@ -48,7 +58,24 @@ export function App() {
               )}
             </Button>
 
-            <FlowCanvas overlay={<ShapesToolbar />} />
+            <FlowCanvas
+              activeTool={activeTool}
+              toolLocked={toolLocked}
+              editorDefaults={editorDefaults}
+              onActiveToolChange={setActiveTool}
+              overlay={
+                <ShapesToolbar
+                  activeTool={activeTool}
+                  toolLocked={toolLocked}
+                  editorDefaults={editorDefaults}
+                  onActiveToolChange={setActiveTool}
+                  onToolLockedChange={setToolLocked}
+                  onEditorDefaultsChange={(updater) =>
+                    setEditorDefaults((currentDefaults) => updater(currentDefaults))
+                  }
+                />
+              }
+            />
           </main>
         </ResizablePanel>
 

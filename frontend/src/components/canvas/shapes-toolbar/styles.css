@@ -23,6 +23,10 @@
   @apply inline-flex items-center justify-center text-foreground/75 transition-colors duration-150 hover:bg-accent hover:text-foreground;
 }
 
+.shape-tool-disabled {
+  @apply opacity-40;
+}
+
 .shape-tool-active {
   @apply border-primary/35 bg-primary/15 text-primary shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-primary)_18%,transparent),inset_0_1px_0_rgba(255,255,255,0.04)];
 }
@@ -37,6 +41,22 @@
 
 .shape-divider {
   @apply mx-1 h-6 w-px shrink-0 rounded-full bg-border;
+}
+
+.shape-style-menu [data-slot="dropdown-menu-radio-item"] {
+  @apply cursor-pointer;
+}
+
+.shape-style-menu {
+  @apply min-w-72;
+}
+
+.shape-style-footer {
+  @apply flex items-center gap-2 text-[11px] leading-4 text-muted-foreground;
+}
+
+.shape-style-swatch {
+  @apply block size-3 shrink-0 rounded-full border border-primary/60 bg-primary;
 }
 
 @media (max-width: 640px) {

@@ -3,11 +3,28 @@
 .canvas-grid-backdrop {
   @apply absolute inset-0;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--color-card) 72%, transparent), transparent 38%);
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--color-sidebar) 98%, white 2%),
+      color-mix(in srgb, var(--color-sidebar) 96%, black 4%) 52%,
+      color-mix(in srgb, var(--color-sidebar) 93%, black 7%)
+    );
 }
 
 .canvas-flow {
   @apply h-full w-full bg-transparent;
+}
+
+.canvas-flow-drawing .react-flow__pane {
+  cursor: cell;
+}
+
+.canvas-flow-drawing .react-flow__node {
+  cursor: cell;
+}
+
+.canvas-flow-panning .react-flow__pane {
+  cursor: grab;
 }
 
 .canvas-flow .react-flow__renderer,
@@ -16,11 +33,12 @@
 }
 
 .canvas-flow .react-flow__controls {
-  @apply overflow-hidden rounded-none border border-border/70 bg-card/95 shadow-none backdrop-blur-md;
+  @apply overflow-hidden rounded-lg border-none shadow-none backdrop-blur-none;
+  background: color-mix(in srgb, var(--color-sidebar) 90%, black 10%);
 }
 
 .canvas-flow .react-flow__controls-button {
-  @apply h-9 w-9 border-b border-border/70 bg-transparent text-foreground transition-colors hover:bg-accent;
+  @apply h-9 w-9 border-b border-white/8 bg-transparent text-foreground transition-colors hover:bg-white/[0.06];
 }
 
 .canvas-flow .react-flow__controls-button:last-child {
@@ -78,41 +96,208 @@
 }
 
 .canvas-minimap-toggle {
-  @apply rounded-none border-border/70 bg-card/95 backdrop-blur-md hover:bg-accent;
+  @apply rounded-lg border-none shadow-none backdrop-blur-none hover:bg-white/[0.06];
+  background: color-mix(in srgb, var(--color-sidebar) 90%, black 10%);
 }
 
 .canvas-panel {
-  @apply rounded-none border border-border/70 bg-card/90 px-4 py-3 text-card-foreground shadow-none backdrop-blur-md;
+  @apply rounded-lg border-none px-4 py-3 text-card-foreground shadow-none backdrop-blur-none;
+  background: color-mix(in srgb, var(--color-sidebar) 90%, black 10%);
 }
 
-.canvas-panel-label {
-  @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-primary;
+.canvas-inspector-anchor {
+  @apply pointer-events-auto absolute z-30;
 }
 
-.canvas-node {
-  @apply min-w-64 rounded-none border border-border/80 bg-card/95 px-4 py-4 text-card-foreground shadow-none transition-colors;
+.canvas-inspector-anchor-right {
+  transform: translate(0, 0);
+}
+
+.canvas-inspector-anchor-left {
+  transform: translate(-100%, 0);
+}
+
+.canvas-inspector-trigger {
+  @apply rounded-lg border-none px-2.5 text-xs shadow-none backdrop-blur-none hover:bg-white/[0.06];
+  background: color-mix(in srgb, var(--color-sidebar) 90%, black 10%);
+}
+
+.canvas-inspector-menu {
+  @apply w-56 rounded-xl border-none text-[10px] shadow-none backdrop-blur-none;
+  background: color-mix(in srgb, var(--color-sidebar) 90%, black 10%);
+}
+
+.canvas-inspector-segment {
+  @apply rounded-lg border border-white/10 bg-white/[0.04] text-[9px] uppercase tracking-[0.1em] hover:bg-white/[0.08];
+}
+
+.canvas-inspector-segment-active {
+  @apply border-primary/40 bg-primary/12 text-primary;
+}
+
+.canvas-inspector-color-swatch {
+  @apply h-8 rounded-full border border-white/10 transition-transform hover:scale-[1.02];
+  background: var(--swatch-color);
+}
+
+.canvas-inspector-color-swatch-active {
+  @apply border-2 border-primary;
+}
+
+.canvas-inspector-ok-button {
+  @apply h-8 w-full rounded-lg border border-white/10 bg-white/[0.04] text-[10px] font-semibold uppercase tracking-[0.16em] text-foreground shadow-none hover:bg-white/[0.08];
+}
+
+.primitive-node-shell {
+  @apply relative h-full w-full;
+  cursor: grab;
+}
+
+.primitive-node-frame {
+  @apply relative h-full w-full transition-all duration-150;
+}
+
+.primitive-node-frame-selected {
+  filter: drop-shadow(0 0 14px color-mix(in srgb, var(--color-primary) 16%, transparent));
+}
+
+.primitive-node-frame-draft {
+  @apply opacity-80;
+}
+
+.primitive-node-surface {
+  @apply absolute inset-0;
+  border-width: var(--primitive-stroke-width);
+  border-color: var(--primitive-color);
+  background: var(--primitive-fill);
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    opacity 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.primitive-node-surface-draft {
+  @apply border-dashed;
+}
+
+.primitive-kind-rectangle {
+  @apply rounded-none;
+}
+
+.primitive-kind-ellipse {
+  @apply rounded-full;
+}
+
+.primitive-kind-diamond {
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+.primitive-paint-solid {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--primitive-color) 28%, transparent);
+}
+
+.primitive-paint-outline {
+  background: transparent;
+}
+
+.primitive-paint-sketch {
+  border-style: dashed;
+  background: color-mix(in srgb, var(--primitive-color) 10%, transparent);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--color-primary) 8%, transparent),
-    12px 12px 0 color-mix(in srgb, var(--color-background) 76%, var(--color-border));
+    2px 2px 0 color-mix(in srgb, var(--primitive-color) 16%, transparent),
+    -2px -1px 0 color-mix(in srgb, var(--primitive-color) 12%, transparent);
 }
 
-.canvas-node-selected {
-  @apply border-primary/65;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, transparent),
-    12px 12px 0 color-mix(in srgb, var(--color-background) 72%, var(--color-primary));
+.primitive-paint-hatch {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--primitive-color) 18%, transparent) 0,
+      color-mix(in srgb, var(--primitive-color) 18%, transparent) 6px,
+      transparent 6px,
+      transparent 14px
+    ),
+    color-mix(in srgb, var(--primitive-color) 8%, transparent);
 }
 
-.canvas-node-kind {
-  @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-primary;
+.primitive-node-badge {
+  @apply absolute -top-7 left-0 rounded-lg border-none px-2 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground shadow-none backdrop-blur-none;
+  background: color-mix(in srgb, var(--color-sidebar) 90%, black 10%);
 }
 
-.canvas-node-dot {
-  @apply mt-0.5 block size-3 rounded-full border border-primary/50 bg-primary/20;
+.primitive-node-resize-handle {
+  @apply !size-3 !rounded-md !border !border-card !bg-primary;
 }
 
-.canvas-node-handle {
-  @apply !size-3 !border-2 !border-card !bg-primary;
+.primitive-node-resize-line {
+  @apply !border-primary/50;
+}
+
+.canvas-text-node {
+  @apply relative h-full w-full rounded-xl border border-transparent transition-colors;
+  cursor: grab;
+}
+
+.canvas-text-node-selected {
+  @apply border-primary/35 bg-primary/5;
+}
+
+.canvas-text-node-draft {
+  @apply border-dashed opacity-75;
+}
+
+.canvas-text-content {
+  @apply h-full w-full overflow-hidden whitespace-pre-wrap break-words px-3 py-2 leading-[1.15];
+}
+
+.canvas-text-content-placeholder {
+  @apply text-muted-foreground/70;
+}
+
+.canvas-text-editor {
+  @apply h-full min-h-0 resize-none border-none bg-transparent px-3 py-2 text-inherit leading-[1.15] shadow-none outline-none focus-visible:border-none focus-visible:ring-0;
+  cursor: text;
+}
+
+.canvas-sticky-node {
+  @apply relative h-full w-full rounded-[24px] border border-transparent transition-transform;
+  background: var(--sticky-note-color);
+  cursor: grab;
+}
+
+.canvas-sticky-node-selected {
+  transform: translateY(-2px);
+}
+
+.canvas-sticky-node-draft {
+  @apply border border-dashed opacity-80;
+}
+
+.canvas-sticky-edge {
+  @apply pointer-events-none absolute right-0 top-0 h-7 w-7;
+  background:
+    linear-gradient(135deg, transparent 0 49%, color-mix(in srgb, var(--sticky-note-color) 76%, black) 50% 100%);
+  border-top-right-radius: 24px;
+}
+
+.canvas-sticky-content {
+  @apply h-full w-full overflow-hidden whitespace-pre-wrap break-words text-[length:var(--sticky-note-font-size)] leading-[1.05];
+  padding: 32px;
+  padding-right: 84px;
+  color: var(--sticky-note-text-color);
+}
+
+.canvas-sticky-content-placeholder {
+  color: color-mix(in srgb, var(--sticky-note-text-color) 45%, transparent);
+}
+
+.canvas-sticky-editor {
+  @apply h-full min-h-0 resize-none border-none bg-transparent text-[length:var(--sticky-note-font-size)] leading-[1.05] shadow-none outline-none focus-visible:border-none focus-visible:ring-0;
+  padding: 32px;
+  padding-right: 84px;
+  color: var(--sticky-note-text-color);
+  cursor: text;
 }
 
 @media (max-width: 768px) {
@@ -124,10 +309,11 @@
     @apply max-w-[calc(100vw-2rem)];
   }
 
-  .canvas-node {
-    @apply min-w-56;
-    box-shadow:
-      0 0 0 1px color-mix(in srgb, var(--color-primary) 8%, transparent),
-      8px 8px 0 color-mix(in srgb, var(--color-background) 76%, var(--color-border));
+  .canvas-inspector-anchor {
+    @apply max-w-[calc(100vw-2rem)];
+  }
+
+  .primitive-node-badge {
+    @apply text-[10px];
   }
 }

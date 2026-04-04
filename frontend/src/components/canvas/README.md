@@ -10,7 +10,13 @@ This module contains canvas-specific UI components and supporting documentation.
 ## Current Components
 
 - `flow-canvas/`: interactive React Flow surface for the main canvas workspace.
+- `primitives/`: shared primitive schema, tool metadata, and seeded canvas data.
 - `shapes-toolbar/`: floating tool-selection toolbar for the canvas surface.
+
+## Current Focus
+
+- The canvas now supports shape, text, and sticky-note objects.
+- Selection-specific property editing is handled by a floating inspector at the canvas layer.
 
 ## Guidance
 

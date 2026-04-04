@@ -9,7 +9,7 @@ This directory contains local shadcn-style primitives and wrappers used as the s
 
 ## Contents
 
-- Form primitives such as `input`, `label`, and `separator`
+- Form primitives such as `input`, `textarea`, `label`, and `separator`
 - Layout primitives such as `sidebar`, `sheet`, and `resizable`
 - Interaction primitives such as `button`, `tooltip`, and `dropdown-menu`
 - Support components such as `skeleton`, `navigation-menu`, and `breadcrumb`

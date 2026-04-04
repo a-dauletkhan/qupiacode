@@ -1,19 +1,20 @@
 # ShapesToolbar
 
-`ShapesToolbar` is a presentational drawing-tool toolbar for the canvas module.
+`ShapesToolbar` is the centered control surface for canvas tool selection and creation defaults.
 
 ## Purpose
 
 - Renders a floating island toolbar for shape and drawing tool selection.
 - Lives under the canvas feature because it is specific to the drawing surface.
-- Uses the local shadcn-style `Button` primitive and `lucide-react` icons instead of source HTML.
+- Uses local shadcn-style primitives for buttons, menus, and sliders instead of source HTML.
 
 ## Current Behavior
 
-- Keeps local UI state for active tool selection.
-- Keeps local UI state for the tool-lock toggle.
+- Receives active tool, tool lock, and editor-default settings through explicit props.
+- Keeps local hint visibility state so the onboarding message can fade after interaction.
+- Exposes tool-specific creation defaults through a local dropdown menu.
 - Exposes a `className` prop so parent canvas layouts can position it without editing internals.
-- Does not integrate with a real canvas or editor model yet.
+- Enables shape, text, and sticky-note creation while leaving the unsupported tools disabled.
 
 ## Files
 
@@ -24,10 +25,9 @@
 
 - Import with `import { ShapesToolbar } from "@/components/canvas/shapes-toolbar"`.
 - Render it inside canvas-specific layouts rather than generic app wrappers.
-- If the app later gets a real editor store, lift `activeTool` and `toolLocked` into props or shared state.
+- Keep toolbar state outside the component so backend-driven schema or editor stores can replace local app state without rewriting the toolbar internals.
 
 ## Known Limits
 
-- Hint behavior is inferred from the capture and currently uses a single generic message.
-- "More tools" is visual only and has no menu implementation.
-- Icons are approximate equivalents from `lucide-react`, not source-extracted SVGs.
+- Arrow, line, draw, image, and eraser remain disabled placeholders.
+- Color defaults are still lime-biased until a richer creation-preset system is added.
