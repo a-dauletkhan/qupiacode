@@ -11,7 +11,11 @@ function joinBaseUrl(baseUrl: string, path: string) {
 }
 
 export function getApiBaseUrl() {
-  return import.meta.env.VITE_API_BASE_URL?.trim() || ""
+  return (
+    import.meta.env.VITE_API_BASE_URL?.trim() ||
+    import.meta.env.VITE_VOICE_API_BASE_URL?.trim() ||
+    ""
+  )
 }
 
 export function getVoiceApiBaseUrl() {
