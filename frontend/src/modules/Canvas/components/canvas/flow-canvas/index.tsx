@@ -1,5 +1,7 @@
 import * as React from "react"
+import { useOther } from "@liveblocks/react/suspense"
 import { Cursors, useLiveblocksFlow } from "@liveblocks/react-flow"
+import { Cursor as LiveblocksCursor } from "@liveblocks/react-ui"
 import {
   Background,
   BackgroundVariant,
@@ -71,6 +73,14 @@ const nodeTypes = {
 }
 
 const MINIMAP_ACTIVITY_HIDE_DELAY_MS = 1200
+const CURSOR_COLORS = [
+  "#60a5fa",
+  "#f97316",
+  "#a855f7",
+  "#14b8a6",
+  "#ec4899",
+  "#eab308",
+]
 
 export function FlowCanvas(props: FlowCanvasProps) {
   return (
@@ -683,7 +693,7 @@ function FlowCanvasInner({
               size={1.4}
               color="color-mix(in srgb, var(--color-border) 88%, transparent)"
             />
-            <Cursors />
+            <Cursors components={{ Cursor: CollaboratorCursor }} />
           </ReactFlow>
         </div>
 
@@ -753,4 +763,39 @@ function areStringArraysEqual(left: string[], right: string[]) {
   }
 
   return left.every((value, index) => value === right[index])
+}
+
+function CollaboratorCursor({ connectionId }: { connectionId: number }) {
+  const userEmail = useOther(
+    connectionId,
+    (otherUser) => otherUser.presence.userEmail
+  )
+
+  return (
+    <LiveblocksCursor
+      color={getCollaboratorCursorColor(connectionId)}
+      label={formatCollaboratorCursorLabel(userEmail)}
+    />
+  )
+}
+
+function getCollaboratorCursorColor(connectionId: number) {
+  return CURSOR_COLORS[connectionId % CURSOR_COLORS.length]
+}
+
+function formatCollaboratorCursorLabel(userEmail: unknown) {
+  if (typeof userEmail !== "string" || !userEmail.trim()) {
+    return "Anonymous"
+  }
+
+  const [localPart] = userEmail.split("@")
+  const displayName = localPart
+    .replace(/[._-]+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ")
+
+  return displayName || userEmail
 }
