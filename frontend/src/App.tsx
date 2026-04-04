@@ -58,7 +58,7 @@ export function App() {
           collapsible
           collapsedSize={0}
           defaultSize="25%"
-          maxSize="30%"
+          maxSize="40%"
           minSize="20%"
           onResize={(panelSize) => setIsSidebarOpen(panelSize.asPercentage > 0)}
           panelRef={sidebarPanelRef}

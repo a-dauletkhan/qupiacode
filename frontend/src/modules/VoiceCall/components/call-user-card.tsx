@@ -14,15 +14,6 @@ const avatarVariants = [
       "top-5 left-1 size-8 bg-linear-to-br from-amber-300 via-red-500 to-fuchsia-600",
   },
   {
-    base: "bg-emerald-50",
-    blob1:
-      "-top-1 left-1 size-8 bg-linear-to-br from-emerald-200 via-lime-300 to-green-400",
-    blob2:
-      "top-3 left-4 size-6 bg-linear-to-br from-teal-400 via-emerald-500 to-green-600",
-    blob3:
-      "top-4 -left-1 size-9 bg-linear-to-br from-lime-300 via-green-500 to-teal-600",
-  },
-  {
     base: "bg-sky-50",
     blob1:
       "top-0 -left-1 size-8 bg-linear-to-br from-sky-200 via-cyan-300 to-blue-400",
@@ -95,6 +86,16 @@ const avatarVariants = [
       "top-4 left-1 size-8 bg-linear-to-br from-zinc-300 via-slate-500 to-gray-600",
   },
 ] as const
+
+const agentAvatar =   {
+    base: "bg-lime-50",
+    blob1:
+      "-top-1 left-1 size-8 bg-linear-to-br from-lime-200 via-lime-300 to-green-400",
+    blob2:
+      "top-3 left-4 size-6 bg-linear-to-br from-teal-400 via-lime-500 to-green-600",
+    blob3:
+      "top-4 -left-1 size-9 bg-linear-to-br from-lime-300 via-green-500 to-teal-600",
+  } as const
 
 function getAvatarVariant(name: string) {
   const hash = [...name].reduce(

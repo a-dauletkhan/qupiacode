@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/resizable"
 import { Sidebar, SidebarContent } from "@/components/ui/sidebar"
 import { VoiceCall } from "@/modules/VoiceCall/components/voice-call"
+import { Chat } from "@/modules/Chat/components/Chat"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
@@ -20,11 +21,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <ResizableHandle withHandle />
 
           <ResizablePanel defaultSize={65} minSize={20}>
-            <div className="flex h-full items-center justify-center">
-              <p className="text-lg font-semibold text-foreground">
-                Bottom Panel
-              </p>
-            </div>
+            <Chat />
           </ResizablePanel>
         </ResizablePanelGroup>
       </SidebarContent>

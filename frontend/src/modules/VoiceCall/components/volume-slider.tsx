@@ -58,7 +58,16 @@ export function VolumeSlider({
 
       <DropdownMenuContent align="end" className="w-40 p-3">
         <div className="flex items-center gap-2">
-          <VolumeIcon className="size-4 shrink-0 text-muted-foreground" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-6 shrink-0 text-muted-foreground"
+            onClick={handleToggleMute}
+          >
+            <VolumeIcon className="size-4" />
+            <span className="sr-only">Toggle mute</span>
+          </Button>
           <Slider
             min={0}
             max={100}
