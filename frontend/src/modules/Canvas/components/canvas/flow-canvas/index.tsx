@@ -5,7 +5,6 @@ import {
   BackgroundVariant,
   ConnectionMode,
   Controls,
-  MiniMap,
   Panel,
   ReactFlow,
   ReactFlowProvider,
@@ -17,18 +16,18 @@ import {
   type NodeMouseHandler,
   type OnSelectionChangeFunc,
 } from "@xyflow/react"
-import { Eye, EyeOff } from "lucide-react"
 
 import "@xyflow/react/dist/style.css"
 import "@liveblocks/react-ui/styles.css"
 import "@liveblocks/react-flow/styles.css"
 
 import { CanvasObjectInspector } from "@/modules/Canvas/components/canvas/flow-canvas/canvas-object-inspector"
-import {
-  CanvasEditorProvider,
-} from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
+import { CanvasEditorProvider } from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
 // Node type components are now wrapped by AI-aware nodes in Agent module
-import { initialEdges, initialNodes } from "@/modules/Canvas/components/canvas/primitives/mock-data"
+import {
+  initialEdges,
+  initialNodes,
+} from "@/modules/Canvas/components/canvas/primitives/mock-data"
 import {
   DRAFT_CANVAS_OBJECT_ID,
   createShapeNode,
@@ -51,7 +50,6 @@ import { AiPromptInput } from "@/modules/Agent/components/ai-prompt-input"
 import { AiQueueStatus } from "@/modules/Agent/components/ai-queue-status"
 import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
 // import { useAiMockBridge } from "@/modules/Agent/hooks/use-ai-mock-bridge"
-import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
 import { AvatarStack } from "@liveblocks/react-ui"
 
@@ -71,8 +69,6 @@ type DraftCreation = {
 
 const nodeTypes = aiAwareNodeTypes
 
-const MINIMAP_ACTIVITY_HIDE_DELAY_MS = 1200
-
 export function FlowCanvas(props: FlowCanvasProps) {
   return (
     <ReactFlowProvider>
@@ -89,41 +85,34 @@ function FlowCanvasInner({
   onActiveToolChange,
 }: FlowCanvasProps) {
   const sectionRef = React.useRef<HTMLElement | null>(null)
-  const hasMeasuredCanvasRef = React.useRef(false)
-  const miniMapActivityTimeoutRef = React.useRef<ReturnType<
-    typeof window.setTimeout
-  > | null>(null)
-  const {
-    nodes,
-    edges,
-    onNodesChange,
-    onEdgesChange,
-    onConnect,
-    onDelete,
-  } = useLiveblocksFlow<CanvasObjectNode, Edge>({
-    suspense: true,
-    nodes: {
-      initial: initialNodes,
-    },
-    edges: {
-      initial: initialEdges,
-    },
-  })
-  const [isMiniMapVisible, setIsMiniMapVisible] = React.useState(true)
-  const [draftCreation, setDraftCreation] = React.useState<DraftCreation | null>(
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
+    useLiveblocksFlow<CanvasObjectNode, Edge>({
+      suspense: true,
+      nodes: {
+        initial: initialNodes,
+      },
+      edges: {
+        initial: initialEdges,
+      },
+    })
+  const [draftCreation, setDraftCreation] =
+    React.useState<DraftCreation | null>(null)
+  const [draftNode, setDraftNode] = React.useState<CanvasObjectNode | null>(
     null
   )
-  const [draftNode, setDraftNode] = React.useState<CanvasObjectNode | null>(null)
   const [selectedObjectIds, setSelectedObjectIds] = React.useState<string[]>([])
-  const [editingObjectId, setEditingObjectId] = React.useState<string | null>(null)
-  const [inspectorOpen, setInspectorOpen] = React.useState(false)
-  const [inspectedObjectId, setInspectedObjectId] = React.useState<string | null>(
+  const [editingObjectId, setEditingObjectId] = React.useState<string | null>(
     null
   )
+  const [inspectorOpen, setInspectorOpen] = React.useState(false)
+  const [inspectedObjectId, setInspectedObjectId] = React.useState<
+    string | null
+  >(null)
   const [aiPromptOpen, setAiPromptOpen] = React.useState(false)
-  const [aiPromptPosition, setAiPromptPosition] = React.useState<{ x: number; y: number } | null>(null)
-  const [isMiniMapActivityVisible, setIsMiniMapActivityVisible] =
-    React.useState(false)
+  const [aiPromptPosition, setAiPromptPosition] = React.useState<{
+    x: number
+    y: number
+  } | null>(null)
   const aiAgent = useAiAgentOptional()
   // useAiMockBridge({ onNodesChange })  // Mock bridge disabled — Liveblocks handles AI node sync
 
@@ -133,9 +122,8 @@ function FlowCanvasInner({
     return aiAgent.registerCanvasAction((action) => {
       if (action.type === "reject") {
         // Remove rejected nodes from canvas
-        const removeChanges: NodeChange<CanvasObjectNode>[] = action.nodeIds.map(
-          (id) => ({ type: "remove", id }),
-        )
+        const removeChanges: NodeChange<CanvasObjectNode>[] =
+          action.nodeIds.map((id) => ({ type: "remove", id }))
         onNodesChange(removeChanges)
       } else if (action.type === "approve") {
         // Update node data to mark as approved
@@ -193,10 +181,7 @@ function FlowCanvasInner({
   )
 
   const updateCanvasObject = React.useCallback(
-    (
-      id: string,
-      updater: (node: CanvasObjectNode) => CanvasObjectNode
-    ) => {
+    (id: string, updater: (node: CanvasObjectNode) => CanvasObjectNode) => {
       const currentNode = nodes.find((node) => node.id === id)
 
       if (!currentNode) {
@@ -213,50 +198,6 @@ function FlowCanvasInner({
     },
     [nodes, onNodesChange]
   )
-
-  const revealMiniMapActivity = React.useCallback(() => {
-    if (miniMapActivityTimeoutRef.current) {
-      window.clearTimeout(miniMapActivityTimeoutRef.current)
-    }
-
-    setIsMiniMapActivityVisible(true)
-    miniMapActivityTimeoutRef.current = window.setTimeout(() => {
-      setIsMiniMapActivityVisible(false)
-      miniMapActivityTimeoutRef.current = null
-    }, MINIMAP_ACTIVITY_HIDE_DELAY_MS)
-  }, [])
-
-  React.useEffect(
-    () => () => {
-      if (miniMapActivityTimeoutRef.current) {
-        window.clearTimeout(miniMapActivityTimeoutRef.current)
-      }
-    },
-    []
-  )
-
-  React.useEffect(() => {
-    const canvasSection = sectionRef.current
-
-    if (!canvasSection) {
-      return
-    }
-
-    const canvasResizeObserver = new ResizeObserver(() => {
-      if (!hasMeasuredCanvasRef.current) {
-        hasMeasuredCanvasRef.current = true
-        return
-      }
-
-      revealMiniMapActivity()
-    })
-
-    canvasResizeObserver.observe(canvasSection)
-
-    return () => {
-      canvasResizeObserver.disconnect()
-    }
-  }, [revealMiniMapActivity])
 
   const finishEditing = React.useCallback(() => {
     setEditingObjectId(null)
@@ -280,8 +221,7 @@ function FlowCanvasInner({
 
       if (
         changes.some(
-          (change) =>
-            change.type === "remove" && change.id === editingObjectId
+          (change) => change.type === "remove" && change.id === editingObjectId
         )
       ) {
         finishEditing()
@@ -320,7 +260,10 @@ function FlowCanvasInner({
       // Push selection events to AI event batcher
       if (aiAgent) {
         if (nextIds.length > 0) {
-          aiAgent.pushEvent({ type: "node:selected", data: { nodeIds: nextIds } })
+          aiAgent.pushEvent({
+            type: "node:selected",
+            data: { nodeIds: nextIds },
+          })
         } else {
           aiAgent.pushEvent({ type: "node:deselected", data: {} })
         }
@@ -376,8 +319,16 @@ function FlowCanvasInner({
     return {
       left:
         side === "right"
-          ? clamp(rightScreenPosition.x - bounds.left + 12, 24, bounds.width - 24)
-          : clamp(leftScreenPosition.x - bounds.left - 12, 24, bounds.width - 24),
+          ? clamp(
+              rightScreenPosition.x - bounds.left + 12,
+              24,
+              bounds.width - 24
+            )
+          : clamp(
+              leftScreenPosition.x - bounds.left - 12,
+              24,
+              bounds.width - 24
+            ),
       top: clamp(leftScreenPosition.y - bounds.top, 24, bounds.height - 24),
       side,
       width,
@@ -428,7 +379,7 @@ function FlowCanvasInner({
         source: "canvas_context_menu",
       })
     },
-    [aiAgent, selectedObjectIds, viewport],
+    [aiAgent, selectedObjectIds, viewport]
   )
 
   const handleNodeDoubleClick = React.useCallback<
@@ -540,13 +491,12 @@ function FlowCanvasInner({
         selected: true,
       })
 
-      const selectionChanges: NodeChange<CanvasObjectNode>[] = selectedObjectIds.map(
-        (id) => ({
+      const selectionChanges: NodeChange<CanvasObjectNode>[] =
+        selectedObjectIds.map((id) => ({
           id,
           selected: false,
           type: "select",
-        })
-      )
+        }))
 
       onNodesChange([
         ...selectionChanges,
@@ -681,16 +631,6 @@ function FlowCanvasInner({
               setInspectorOpen(false)
               setAiPromptOpen(false)
             }}
-            onMoveStart={(event) => {
-              if (event) {
-                revealMiniMapActivity()
-              }
-            }}
-            onMove={(event) => {
-              if (event) {
-                revealMiniMapActivity()
-              }
-            }}
             onNodeContextMenu={handleNodeContextMenu}
             onNodeDoubleClick={handleNodeDoubleClick}
             onSelectionChange={handleSelectionChange}
@@ -705,7 +645,9 @@ function FlowCanvasInner({
             nodesDraggable={activeTool === "selection" && !editingObjectId}
             selectionOnDrag={activeTool === "selection"}
             selectNodesOnDrag={activeTool === "selection"}
-            elementsSelectable={activeTool === "selection" || Boolean(editingObjectId)}
+            elementsSelectable={
+              activeTool === "selection" || Boolean(editingObjectId)
+            }
             className={cn(
               "canvas-flow",
               isCanvasCreationTool(activeTool) && "canvas-flow-drawing",
@@ -714,8 +656,10 @@ function FlowCanvasInner({
             proOptions={{ hideAttribution: true }}
           >
             <Panel position="bottom-left" className="canvas-panel">
-              <div className="flex items-center gap-6 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                <span>{nodes.filter((node) => !node.data.draft).length} objects</span>
+              <div className="flex items-center gap-6 text-xs tracking-[0.16em] text-muted-foreground uppercase">
+                <span>
+                  {nodes.filter((node) => !node.data.draft).length} objects
+                </span>
                 <span>{activeTool}</span>
                 <span>{selectedObjectIds.length} selected</span>
                 {aiAgent ? (
@@ -730,45 +674,6 @@ function FlowCanvasInner({
               </div>
             </Panel>
 
-            {isMiniMapActivityVisible ? (
-              <Panel
-                position="bottom-right"
-                className={cn(
-                  "canvas-minimap-toggle-panel",
-                  isMiniMapVisible && "canvas-minimap-toggle-panel-visible"
-                )}
-              >
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  className="canvas-minimap-toggle"
-                  onClick={() => setIsMiniMapVisible((current) => !current)}
-                  aria-label={isMiniMapVisible ? "Hide minimap" : "Show minimap"}
-                  title={isMiniMapVisible ? "Hide minimap" : "Show minimap"}
-                >
-                  {isMiniMapVisible ? (
-                    <EyeOff className="size-4" />
-                  ) : (
-                    <Eye className="size-4" />
-                  )}
-                </Button>
-              </Panel>
-            ) : null}
-
-            {isMiniMapVisible && isMiniMapActivityVisible ? (
-              <MiniMap
-                pannable
-                zoomable
-                className="canvas-minimap"
-                bgColor="oklch(0.145 0 0)"
-                nodeStrokeColor="oklch(0.768 0.233 130.85)"
-                nodeColor="oklch(0.145 0 0)"
-                nodeStrokeWidth={2}
-                maskColor="color(srgb 0.0393766 0.039393 0.0393945 / 0.72)"
-              />
-            ) : null}
-
             <Controls className="canvas-controls" showInteractive={false} />
             <Background
               id="canvas-grid"
@@ -777,13 +682,22 @@ function FlowCanvasInner({
               size={1.4}
               color="color-mix(in srgb, var(--color-border) 88%, transparent)"
             />
-           <Cursors className="relative" style={{ width: "100vw", height: "100vh", pointerEvents: "none" }}>
-      <AvatarStack className="absolute top-14 left-4" style={{ pointerEvents: "auto" }}/>
-    </Cursors>
+            <Cursors
+              className="relative"
+              style={{ width: "100vw", height: "100vh", pointerEvents: "none" }}
+            >
+              <AvatarStack
+                className="absolute top-14 left-4"
+                style={{ pointerEvents: "auto" }}
+              />
+            </Cursors>
           </ReactFlow>
         </div>
 
-        {aiPromptOpen && aiPromptPosition && selectedObjectIds.length > 0 && aiAgent ? (
+        {aiPromptOpen &&
+        aiPromptPosition &&
+        selectedObjectIds.length > 0 &&
+        aiAgent ? (
           <div
             className="absolute z-40"
             style={{ left: aiPromptPosition.x, top: aiPromptPosition.y }}
@@ -798,7 +712,10 @@ function FlowCanvasInner({
           </div>
         ) : null}
 
-        {inspectorOpen && inspectorAnchor && selectedObject && selectedObject.id === inspectedObjectId ? (
+        {inspectorOpen &&
+        inspectorAnchor &&
+        selectedObject &&
+        selectedObject.id === inspectedObjectId ? (
           <CanvasObjectInspector
             anchor={inspectorAnchor}
             side={inspectorAnchor.side}
@@ -822,7 +739,9 @@ function FlowCanvasInner({
         <div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 flex justify-center">
           <div className="pointer-events-auto">
             <AiAskButton
-              visible={selectedObjectIds.length > 0 && aiAgent != null && !aiPromptOpen}
+              visible={
+                selectedObjectIds.length > 0 && aiAgent != null && !aiPromptOpen
+              }
               selectedCount={selectedObjectIds.length}
               onClick={handleAskAiClick}
             />
@@ -861,7 +780,10 @@ function createCanvasObjectId(prefix: string) {
 }
 
 function isPaneTarget(target: EventTarget | null) {
-  return target instanceof HTMLElement && Boolean(target.closest(".react-flow__pane"))
+  return (
+    target instanceof HTMLElement &&
+    Boolean(target.closest(".react-flow__pane"))
+  )
 }
 
 function clamp(value: number, min: number, max: number) {

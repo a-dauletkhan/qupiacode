@@ -1,6 +1,7 @@
 import * as React from "react"
-import { useCreateThread, useThreads } from "@liveblocks/react/suspense"
-import { Thread } from "@liveblocks/react-ui"
+import type { CommentData } from "@liveblocks/core"
+import { useCreateThread, useSelf, useThreads } from "@liveblocks/react/suspense"
+import { Comment } from "@liveblocks/react-ui"
 import { ArrowDown, Send } from "lucide-react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
@@ -8,6 +9,7 @@ import "@liveblocks/react-ui/styles.css"
 import "@liveblocks/react-ui/styles/dark/attributes.css"
 import "@/modules/Chat/components/chat-liveblocks.css"
 
+import { cn } from "@/lib/utils"
 import { Button } from "@/modules/Canvas/components/ui/button"
 import { useVoiceCallContext } from "@/modules/VoiceCall/context/voice-call-context"
 import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
@@ -20,6 +22,44 @@ const VIRTUOSO_COMPONENTS = {
   Footer: ChatMessageFooter,
 }
 
+type ChatFeedMessage = {
+  id: string
+  comment: CommentData
+  isOwnMessage: boolean
+}
+
+function getCommentTimestamp(value: Date | string | number) {
+  return new Date(value).getTime()
+}
+
+function ChatFeedItem({
+  comment,
+  isOwnMessage,
+}: {
+  comment: CommentData
+  isOwnMessage: boolean
+}) {
+  return (
+    <div className="w-full px-2 py-1">
+      <div
+        className={cn(
+          "chat-message w-fit max-w-[90%]",
+          isOwnMessage
+            ? "chat-message--self ml-auto"
+            : "chat-message--other mr-auto",
+        )}
+      >
+        <Comment
+          comment={comment}
+          className="max-w-full w-full"
+          author={isOwnMessage ? "You" : undefined}
+          showReactions={false}
+        />
+      </div>
+    </div>
+  )
+}
+
 function EmptyState({
   inCall,
   errorMessage,
@@ -27,10 +67,10 @@ function EmptyState({
   inCall: boolean
   errorMessage: string | null
 }) {
-  const title = inCall ? "No chat threads yet" : "Join a call to start"
+  const title = inCall ? "No chat messages yet" : "Join a call to start"
   const body = inCall
-    ? "Start a thread to share updates with everyone in the active room."
-    : "This panel becomes the shared threaded chat feed for the active room."
+    ? "Send a message to share updates with everyone in the active room."
+    : "This panel becomes the shared room chat feed for the active room."
 
   return (
     <div className="flex h-full items-center justify-center px-6 py-8 text-center">
@@ -50,18 +90,38 @@ export function Chat() {
   const [isAtBottom, setIsAtBottom] = React.useState(true)
   const [input, setInput] = React.useState("")
   const { threads } = useThreads()
+  const currentUserId = useSelf((me) => me.id)
   const createThread = useCreateThread()
-  const { errorMessage, inCall, roomName } = useVoiceCallContext()
+  const { errorMessage, inCall } = useVoiceCallContext()
   const aiAgent = useAiAgentOptional()
-  const initialThreadIndex = Math.max(threads.length - 1, 0)
+  const messages: ChatFeedMessage[] = threads
+    .flatMap((thread) =>
+      thread.comments.map((comment) => ({
+        id: `${thread.id}:${comment.id}`,
+        comment,
+        isOwnMessage: comment.userId === currentUserId,
+      })),
+    )
+    .sort((left, right) => {
+      const timestampDifference =
+        getCommentTimestamp(left.comment.createdAt) -
+        getCommentTimestamp(right.comment.createdAt)
 
-  function scrollToLatestThread() {
-    if (threads.length === 0) {
+      if (timestampDifference !== 0) {
+        return timestampDifference
+      }
+
+      return left.comment.id.localeCompare(right.comment.id)
+    })
+  const initialMessageIndex = Math.max(messages.length - 1, 0)
+
+  function scrollToLatestMessage() {
+    if (messages.length === 0) {
       return
     }
 
     virtuosoRef.current?.scrollToIndex({
-      index: threads.length - 1,
+      index: messages.length - 1,
       align: "end",
       behavior: "smooth",
     })
@@ -96,7 +156,7 @@ export function Chat() {
     })
 
     setInput("")
-    window.setTimeout(scrollToLatestThread, 100)
+    window.setTimeout(scrollToLatestMessage, 0)
   }
 
   return (
@@ -110,19 +170,21 @@ export function Chat() {
         </div>
 
         <div className="relative min-h-0">
-          {threads.length > 0 ? (
+          {messages.length > 0 ? (
             <>
               <Virtuoso
                 ref={virtuosoRef}
-                data={threads}
+                data={messages}
+                computeItemKey={(_, message) => message.id}
                 atBottomStateChange={setIsAtBottom}
                 followOutput={(atBottom) => (atBottom ? "smooth" : false)}
-                initialTopMostItemIndex={initialThreadIndex}
+                initialTopMostItemIndex={initialMessageIndex}
                 components={VIRTUOSO_COMPONENTS}
-                itemContent={(_, thread) => (
-                  <div className="px-2 py-1">
-                    <Thread thread={thread} />
-                  </div>
+                itemContent={(_, message) => (
+                  <ChatFeedItem
+                    comment={message.comment}
+                    isOwnMessage={message.isOwnMessage}
+                  />
                 )}
                 style={{ height: "100%" }}
                 increaseViewportBy={{ top: 200, bottom: 400 }}
@@ -133,7 +195,7 @@ export function Chat() {
                   type="button"
                   variant="secondary"
                   size="icon"
-                  onClick={scrollToLatestThread}
+                  onClick={scrollToLatestMessage}
                   aria-label="Scroll to latest message"
                   className="absolute right-4 bottom-4 z-10 rounded-full shadow-sm"
                 >

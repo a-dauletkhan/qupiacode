@@ -21,6 +21,59 @@
   border-radius: 8px;
 }
 
+.chat-message .lb-comment {
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  border: 1px solid oklch(1 0 0 / 8%);
+  border-radius: 14px;
+}
+
+.chat-message .lb-comment-actions {
+  display: none;
+}
+
+.chat-message--other .lb-comment {
+  background-color: oklch(1 0 0 / 4%);
+}
+
+.chat-message--self .lb-comment {
+  background-color: color-mix(in srgb, var(--chart-3) 14%, transparent);
+  border-color: color-mix(in srgb, var(--chart-3) 55%, transparent);
+}
+
+.chat-message--self .lb-comment-content,
+.chat-message--self .lb-comment-body {
+  text-align: right;
+}
+
+.chat-message--self .lb-comment-details,
+.chat-message--self .lb-comment-details-labels {
+  justify-content: flex-end;
+}
+
+.chat-message--self .lb-comment-details-labels {
+  align-items: flex-end;
+}
+
+.chat-message--self .lb-comment:where(.lb-comment\:indent-content) :where(.lb-comment-avatar) {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+}
+
+.chat-message--self
+  .lb-comment:where(.lb-comment\:indent-content)
+  :where(.lb-comment-details-labels) {
+  margin-inline-start: 0;
+  margin-inline-end: calc(var(--lb-comment-avatar-size) + 0.75 * var(--lb-spacing));
+}
+
+.chat-message--self
+  .lb-comment:where(.lb-comment\:indent-content)
+  :where(.lb-comment-content) {
+  padding-inline-start: 0;
+  padding-inline-end: calc(var(--lb-comment-avatar-size) + 0.75 * var(--lb-spacing));
+}
+
 /* Thread container */
 .dark .lb-thread {
   background-color: transparent;
@@ -44,6 +97,11 @@
 .dark .lb-avatar {
   background-color: oklch(0.269 0 0);
   color: oklch(0.708 0 0);
+}
+
+.chat-message--self .lb-avatar {
+  background-color: var(--chart-3);
+  color: oklch(0.205 0 0);
 }
 
 /* Author name */
