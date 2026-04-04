@@ -1,4 +1,4 @@
-@reference "../../index.css";
+@reference "../../../index.css";
 
 .shape-island {
   @apply relative flex w-full justify-center rounded-2xl border border-border/70 bg-card/95 p-1 text-card-foreground backdrop-blur-xl;
@@ -8,7 +8,11 @@
 }
 
 .shape-hint-viewer {
-  @apply pointer-events-none absolute left-0 top-14 flex w-full justify-center px-4;
+  @apply pointer-events-none absolute left-0 top-14 flex w-full justify-center px-4 transition-all duration-200 ease-out;
+}
+
+.shape-hint-hidden {
+  @apply translate-y-1 opacity-0;
 }
 
 .shape-hint-viewer span {

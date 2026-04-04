@@ -3,7 +3,8 @@ import { PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react"
 import { usePanelRef } from "react-resizable-panels"
 
 import { AppSidebar } from "@/components/app-sidebar"
-import { ShapesToolbar } from "@/components/shapes-toolbar"
+import { FlowCanvas } from "@/components/canvas/flow-canvas"
+import { ShapesToolbar } from "@/components/canvas/shapes-toolbar"
 import { Button } from "@/components/ui/button"
 import {
   ResizableHandle,
@@ -31,7 +32,7 @@ export function App() {
     <SidebarProvider className="h-svh min-h-0 bg-background">
       <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
         <ResizablePanel defaultSize={75} minSize={70}>
-          <main className="relative flex h-full min-w-0 items-center justify-center bg-background">
+          <main className="relative flex h-full min-w-0 bg-background">
             <Button
               type="button"
               variant="outline"
@@ -47,11 +48,7 @@ export function App() {
               )}
             </Button>
 
-            <section className="relative flex h-full w-full items-start justify-center overflow-hidden bg-background">
-              <div className="relative flex h-full w-full items-start justify-center bg-background">
-                <ShapesToolbar />
-              </div>
-            </section>
+            <FlowCanvas overlay={<ShapesToolbar />} />
           </main>
         </ResizablePanel>
 
