@@ -202,11 +202,11 @@ export const TOOL_CONFIGS: ToolConfig[] = [
     fillable: true,
     implemented: true,
   },
-  { id: "text", label: "Text", shortcut: "9", icon: Type, implemented: true },
+  { id: "text", label: "Text", shortcut: "6", icon: Type, implemented: true },
   {
     id: "image",
     label: "Insert image",
-    shortcut: "0",
+    shortcut: "7",
     icon: ImageIcon,
     implemented: false,
   },

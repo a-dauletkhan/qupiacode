@@ -104,24 +104,10 @@ async function requestBoards(
   })
 }
 
-async function fetchProjects(currentUser: ProjectUser) {
-  const response = await requestBoards("/boards")
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch projects")
-  }
-
-  const boards = (await response.json()) as BoardResponse[]
-  setProjects(
-    boards.map((board) => mapBoardToProject(board, currentUser)),
-    getAccessToken()
-  )
-}
-
 // ---- public hook ----
 
 export function useProjects() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const projects = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
   const currentUser: ProjectUser = useMemo(
     () => ({
@@ -129,6 +115,25 @@ export function useProjects() {
       name: user?.email ?? "You",
     }),
     [user?.email, user?.id]
+  )
+
+  const handleUnauthorized = useCallback(() => {
+    setProjects([], null)
+    logout()
+  }, [logout])
+
+  const requestAuthorizedBoards = useCallback(
+    async (path: string, options: RequestInit = {}) => {
+      const response = await requestBoards(path, options)
+
+      if (response.status === 401 || response.status === 403) {
+        handleUnauthorized()
+        throw new Error("Unauthorized")
+      }
+
+      return response
+    },
+    [handleUnauthorized]
   )
 
   useEffect(() => {
@@ -152,12 +157,30 @@ export function useProjects() {
       return
     }
 
-    void fetchProjects(currentUser)
-  }, [currentUser])
+    void (async () => {
+      const response = await requestAuthorizedBoards("/boards")
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch projects")
+      }
+
+      const boards = (await response.json()) as BoardResponse[]
+      setProjects(
+        boards.map((board) => mapBoardToProject(board, currentUser)),
+        getAccessToken()
+      )
+    })().catch((error: unknown) => {
+      if (error instanceof Error && error.message === "Unauthorized") {
+        return
+      }
+
+      throw error
+    })
+  }, [currentUser, requestAuthorizedBoards])
 
   const createProject = useCallback(
     async (name: string): Promise<Project> => {
-      const response = await requestBoards("/boards", {
+      const response = await requestAuthorizedBoards("/boards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
@@ -172,7 +195,7 @@ export function useProjects() {
       updateProjects((currentProjects) => [project, ...currentProjects])
       return project
     },
-    [currentUser]
+    [currentUser, requestAuthorizedBoards]
   )
 
   const renameProject = useCallback((id: string, name: string) => {
@@ -186,7 +209,7 @@ export function useProjects() {
   }, [])
 
   const deleteProject = useCallback(async (id: string) => {
-    const response = await requestBoards(`/boards/${id}`, {
+    const response = await requestAuthorizedBoards(`/boards/${id}`, {
       method: "DELETE",
     })
 
@@ -197,11 +220,11 @@ export function useProjects() {
     updateProjects((currentProjects) =>
       currentProjects.filter((project) => project.id !== id)
     )
-  }, [])
+  }, [requestAuthorizedBoards])
 
   const joinProject = useCallback(
     async (id: string): Promise<Project> => {
-      const addMemberResponse = await requestBoards(`/boards/${id}/members`, {
+      const addMemberResponse = await requestAuthorizedBoards(`/boards/${id}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: currentUser.id, role: "editor" }),
@@ -211,7 +234,7 @@ export function useProjects() {
         throw new Error("Failed to join project")
       }
 
-      const projectResponse = await requestBoards(`/boards/${id}`)
+      const projectResponse = await requestAuthorizedBoards(`/boards/${id}`)
 
       if (!projectResponse.ok) {
         throw new Error("Failed to fetch project")
@@ -227,7 +250,7 @@ export function useProjects() {
       })
       return project
     },
-    [currentUser]
+    [currentUser, requestAuthorizedBoards]
   )
 
   const touchProject = useCallback((id: string) => {

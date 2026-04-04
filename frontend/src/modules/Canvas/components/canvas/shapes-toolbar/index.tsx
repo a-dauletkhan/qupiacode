@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from "react"
-import { Lock, LockOpen, Settings2 } from "lucide-react"
+import { Settings2 } from "lucide-react"
 
 import {
   PAINT_STYLE_OPTIONS,
@@ -28,10 +28,8 @@ import { cn } from "@/lib/utils"
 type ShapesToolbarProps = {
   className?: string
   activeTool: ToolId
-  toolLocked: boolean
   editorDefaults: CanvasEditorDefaults
   onActiveToolChange: (tool: ToolId) => void
-  onToolLockedChange: (locked: boolean) => void
   onEditorDefaultsChange: (
     updater: (defaults: CanvasEditorDefaults) => CanvasEditorDefaults
   ) => void
@@ -40,10 +38,8 @@ type ShapesToolbarProps = {
 export function ShapesToolbar({
   className,
   activeTool,
-  toolLocked,
   editorDefaults,
   onActiveToolChange,
-  onToolLockedChange,
   onEditorDefaultsChange,
 }: ShapesToolbarProps) {
   const [isHintVisible, setIsHintVisible] = useState(true)
@@ -122,25 +118,6 @@ export function ShapesToolbar({
           aria-label="Canvas object toolbar"
           className="flex flex-wrap items-center justify-center gap-1"
         >
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-pressed={toolLocked}
-            aria-label="Keep selected tool active after drawing"
-            title="Keep selected tool active after drawing"
-            className={cn(
-              "shape-tool size-8 rounded-xl border border-transparent p-0 text-foreground/80",
-              toolLocked && "shape-tool-active"
-            )}
-            onClick={() => onToolLockedChange(!toolLocked)}
-            onPointerDown={dismissHint}
-          >
-            {renderIcon(toolLocked ? Lock : LockOpen)}
-          </Button>
-
-          <div className="shape-divider" aria-hidden="true" />
-
           {TOOL_CONFIGS.map((tool) => {
             const isActive = activeTool === tool.id
 

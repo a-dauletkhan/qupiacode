@@ -55,7 +55,6 @@ type FlowCanvasProps = {
   className?: string
   overlay?: React.ReactNode
   activeTool: ToolId
-  toolLocked: boolean
   editorDefaults: CanvasEditorDefaults
   onActiveToolChange: (tool: ToolId) => void
 }
@@ -86,7 +85,6 @@ function FlowCanvasInner({
   className,
   overlay,
   activeTool,
-  toolLocked,
   editorDefaults,
   onActiveToolChange,
 }: FlowCanvasProps) {
@@ -475,10 +473,7 @@ function FlowCanvasInner({
       setDraftCreation(null)
 
       setEditingObjectId(createdNode.id)
-
-      if (!toolLocked) {
-        onActiveToolChange("selection")
-      }
+      onActiveToolChange("selection")
     },
     [
       buildNodeFromTool,
@@ -486,7 +481,6 @@ function FlowCanvasInner({
       onActiveToolChange,
       onNodesChange,
       selectedObjectIds,
-      toolLocked,
     ]
   )
 

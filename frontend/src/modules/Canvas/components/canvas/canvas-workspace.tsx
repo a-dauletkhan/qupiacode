@@ -14,6 +14,7 @@ import { AppSidebar } from "@/modules/Canvas/components/app-sidebar"
 import { FlowCanvas } from "@/modules/Canvas/components/canvas/flow-canvas"
 import {
   DEFAULT_EDITOR_DEFAULTS,
+  TOOL_CONFIGS,
   type CanvasEditorDefaults,
   type ToolId,
 } from "@/modules/Canvas/components/canvas/primitives/schema"
@@ -38,6 +39,26 @@ const DEFAULT_SIDEBAR_WIDTH = 420
 const MIN_SIDEBAR_WIDTH = 360
 const MAX_SIDEBAR_WIDTH = 720
 const SELF_URL = import.meta.env.VITE_SELF_URL?.trim() || window.location.origin
+const TOOL_SHORTCUTS = new Map(
+  TOOL_CONFIGS.filter((tool) => tool.implemented).map((tool) => [
+    tool.shortcut.toLowerCase(),
+    tool.id,
+  ])
+)
+
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  if (target.isContentEditable) {
+    return true
+  }
+
+  return Boolean(
+    target.closest("input, textarea, select, [contenteditable='true']")
+  )
+}
 
 export function CanvasWorkspace() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -53,10 +74,36 @@ export function CanvasWorkspace() {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true)
   const [lastSidebarSize, setLastSidebarSize] = React.useState(DEFAULT_SIDEBAR_WIDTH)
   const [activeTool, setActiveTool] = React.useState<ToolId>("selection")
-  const [toolLocked, setToolLocked] = React.useState(false)
   const [editorDefaults, setEditorDefaults] = React.useState<CanvasEditorDefaults>(
     DEFAULT_EDITOR_DEFAULTS
   )
+
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || event.metaKey || event.ctrlKey || event.altKey) {
+        return
+      }
+
+      if (isEditableTarget(event.target)) {
+        return
+      }
+
+      const nextTool = TOOL_SHORTCUTS.get(event.key.toLowerCase())
+
+      if (!nextTool) {
+        return
+      }
+
+      event.preventDefault()
+      setActiveTool(nextTool)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [])
 
   const toggleSidebar = React.useCallback(() => {
     if (!sidebarPanelRef.current) return
@@ -159,16 +206,13 @@ export function CanvasWorkspace() {
 
               <FlowCanvas
                 activeTool={activeTool}
-                toolLocked={toolLocked}
                 editorDefaults={editorDefaults}
                 onActiveToolChange={setActiveTool}
                 overlay={
                   <ShapesToolbar
                     activeTool={activeTool}
-                    toolLocked={toolLocked}
                     editorDefaults={editorDefaults}
                     onActiveToolChange={setActiveTool}
-                    onToolLockedChange={setToolLocked}
                     onEditorDefaultsChange={(updater) =>
                       setEditorDefaults((currentDefaults) => updater(currentDefaults))
                     }
