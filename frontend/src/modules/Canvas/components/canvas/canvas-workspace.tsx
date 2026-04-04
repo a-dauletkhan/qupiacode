@@ -110,7 +110,7 @@ export function CanvasWorkspace() {
               <span className="max-w-[160px] truncate text-xs">{project.name}</span>
             </Button>
 
-            <Room>
+            <Room id={project.id}>
               <FlowCanvas
                 activeTool={activeTool}
                 toolLocked={toolLocked}

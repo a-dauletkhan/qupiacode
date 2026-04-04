@@ -12,10 +12,11 @@ const DEFAULT_LIVEBLOCKS_PUBLIC_KEY =
   "pk_dev_QFb5pt_0sDb3LVyB6vICx5N3k2q1o5QG-MwHURHnRK3aYYJPrcJSshC7zbucmT8c"
 
 type RoomProps = {
+  id: string
   children: ReactNode
 }
 
-export function Room({ children }: RoomProps) {
+export function Room({ id, children }: RoomProps) {
   return (
     <LiveblocksProvider
       publicApiKey={
@@ -23,7 +24,7 @@ export function Room({ children }: RoomProps) {
         DEFAULT_LIVEBLOCKS_PUBLIC_KEY
       }
     >
-      <RoomProvider id="my-room" initialPresence={{ cursor: null }}>
+      <RoomProvider id={id} initialPresence={{ cursor: null }}>
         <ClientSideSuspense fallback={<RoomLoadingFallback />}>
           {children}
         </ClientSideSuspense>

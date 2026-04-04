@@ -66,14 +66,4 @@ export function App() {
   )
 }
 
-function isEditableShortcutTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) {
-    return false
-  }
-
-  return Boolean(
-    target.closest("input, textarea, select, [contenteditable='true']")
-  )
-}
-
 export default App

@@ -139,5 +139,5 @@ function getPrimitiveCssVars(
     "--primitive-fill": `color-mix(in srgb, ${color} 20%, transparent)`,
     "--primitive-fill-soft": `color-mix(in srgb, ${color} 12%, transparent)`,
     "--primitive-stroke-width": `${strokeWidth}px`,
-  } as CSSProperties
+  } as React.CSSProperties
 }

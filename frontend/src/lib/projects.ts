@@ -1,4 +1,6 @@
-import { useCallback, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react"
+
+import { getAccessToken, useAuth } from "@/lib/auth"
 
 export type ProjectUser = {
   id: string
@@ -17,44 +19,48 @@ export type Project = {
   updatedAt: string
 }
 
-const STORAGE_KEY = "qupia_projects"
-
-// Placeholder current user — will come from auth in production
-const CURRENT_USER: ProjectUser = {
-  id: "user-self",
-  name: "You",
+type BoardResponse = {
+  id: string
+  name: string
+  owner_id: string
+  created_at: string
+  updated_at: string
 }
 
-function generateId() {
-  return `proj-${Date.now()}-${Math.round(Math.random() * 1000)}`
+type ProjectsState = {
+  projects: Project[]
+  syncToken: string | null
 }
 
-function migrateProject(raw: Record<string, unknown>): Project {
+const projectsState: ProjectsState = {
+  projects: [],
+  syncToken: null,
+}
+
+function mapBoardToProject(board: BoardResponse, currentUser: ProjectUser): Project {
   return {
-    id: (raw.id as string) ?? generateId(),
-    name: (raw.name as string) ?? "Untitled",
-    owner: (raw.owner as ProjectUser) ?? CURRENT_USER,
-    onlineUsers: (raw.onlineUsers as ProjectUser[]) ?? [],
-    lastOpenedAt: (raw.lastOpenedAt as string) ?? (raw.updatedAt as string) ?? new Date().toISOString(),
-    lastOpenedBy: (raw.lastOpenedBy as ProjectUser | null) ?? null,
-    createdAt: (raw.createdAt as string) ?? new Date().toISOString(),
-    updatedAt: (raw.updatedAt as string) ?? new Date().toISOString(),
+    id: board.id,
+    name: board.name,
+    owner:
+      board.owner_id === currentUser.id
+        ? currentUser
+        : { id: board.owner_id, name: "Owner" },
+    onlineUsers: [],
+    lastOpenedAt: board.updated_at,
+    lastOpenedBy: null,
+    createdAt: board.created_at,
+    updatedAt: board.updated_at,
   }
 }
 
-function readProjects(): Project[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw) as Record<string, unknown>[]
-    return parsed.map(migrateProject)
-  } catch {
-    return []
-  }
+function setProjects(projects: Project[], syncToken: string | null) {
+  projectsState.projects = projects
+  projectsState.syncToken = syncToken
+  notifyListeners()
 }
 
-function writeProjects(projects: Project[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(projects))
+function updateProjects(updater: (projects: Project[]) => Project[]) {
+  projectsState.projects = updater(projectsState.projects)
   notifyListeners()
 }
 
@@ -73,74 +79,140 @@ function notifyListeners() {
 }
 
 function getSnapshot() {
-  return localStorage.getItem(STORAGE_KEY) ?? "[]"
+  return projectsState.projects
 }
 
-// ---- mock collaborators ----
+// ---- API calls ----
 
-const MOCK_COLLABORATORS: ProjectUser[] = [
-  { id: "user-a", name: "Alice" },
-  { id: "user-b", name: "Bob" },
-  { id: "user-c", name: "Charlie" },
-  { id: "user-d", name: "Dana" },
-]
+async function requestBoards(
+  path: string,
+  options: RequestInit = {}
+): Promise<Response> {
+  const accessToken = getAccessToken()
 
-function pickRandomCollaborators(max: number): ProjectUser[] {
-  const count = Math.floor(Math.random() * (max + 1))
-  const shuffled = [...MOCK_COLLABORATORS].sort(() => Math.random() - 0.5)
-  return shuffled.slice(0, count)
+  if (!accessToken) {
+    throw new Error("Missing access token")
+  }
+
+  return fetch(path, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      ...options.headers,
+    },
+  })
+}
+
+async function fetchProjects(currentUser: ProjectUser) {
+  const response = await requestBoards("/boards")
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch projects")
+  }
+
+  const boards = (await response.json()) as BoardResponse[]
+  setProjects(
+    boards.map((board) => mapBoardToProject(board, currentUser)),
+    getAccessToken()
+  )
 }
 
 // ---- public hook ----
 
 export function useProjects() {
-  const raw = useSyncExternalStore(subscribe, getSnapshot)
-  const projects: Project[] = (JSON.parse(raw) as Record<string, unknown>[]).map(migrateProject)
+  const { user } = useAuth()
+  const projects = useSyncExternalStore(subscribe, getSnapshot, getSnapshot)
+  const currentUser: ProjectUser = useMemo(
+    () => ({
+      id: user?.id ?? "",
+      name: user?.email ?? "You",
+    }),
+    [user?.email, user?.id]
+  )
 
-  const createProject = useCallback((name: string): Project => {
-    const now = new Date().toISOString()
-    const project: Project = {
-      id: generateId(),
-      name,
-      owner: CURRENT_USER,
-      onlineUsers: [],
-      lastOpenedAt: now,
-      lastOpenedBy: CURRENT_USER,
-      createdAt: now,
-      updatedAt: now,
+  useEffect(() => {
+    const accessToken = getAccessToken()
+
+    if (!currentUser.id || !accessToken) {
+      if (projectsState.projects.length > 0 || projectsState.syncToken !== null) {
+        setProjects([], null)
+      }
+      return
     }
-    writeProjects([project, ...readProjects()])
-    return project
-  }, [])
+
+    if (projectsState.syncToken === accessToken) {
+      updateProjects((currentProjects) =>
+        currentProjects.map((project) => ({
+          ...project,
+          owner:
+            project.owner.id === currentUser.id ? currentUser : project.owner,
+        }))
+      )
+      return
+    }
+
+    void fetchProjects(currentUser)
+  }, [currentUser])
+
+  const createProject = useCallback(
+    async (name: string): Promise<Project> => {
+      const response = await requestBoards("/boards", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to create project")
+      }
+
+      const board = (await response.json()) as BoardResponse
+      const project = mapBoardToProject(board, currentUser)
+      updateProjects((currentProjects) => [project, ...currentProjects])
+      return project
+    },
+    [currentUser]
+  )
 
   const renameProject = useCallback((id: string, name: string) => {
-    writeProjects(
-      readProjects().map((p) =>
-        p.id === id ? { ...p, name, updatedAt: new Date().toISOString() } : p
+    updateProjects((currentProjects) =>
+      currentProjects.map((project) =>
+        project.id === id
+          ? { ...project, name, updatedAt: new Date().toISOString() }
+          : project
       )
     )
   }, [])
 
-  const deleteProject = useCallback((id: string) => {
-    writeProjects(readProjects().filter((p) => p.id !== id))
+  const deleteProject = useCallback(async (id: string) => {
+    const response = await requestBoards(`/boards/${id}`, {
+      method: "DELETE",
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to delete project")
+    }
+
+    updateProjects((currentProjects) =>
+      currentProjects.filter((project) => project.id !== id)
+    )
   }, [])
 
   const touchProject = useCallback((id: string) => {
     const now = new Date().toISOString()
-    writeProjects(
-      readProjects().map((p) =>
-        p.id === id
+    updateProjects((currentProjects) =>
+      currentProjects.map((project) =>
+        project.id === id
           ? {
-              ...p,
+              ...project,
               lastOpenedAt: now,
-              lastOpenedBy: CURRENT_USER,
-              onlineUsers: pickRandomCollaborators(3),
+              lastOpenedBy: currentUser,
               updatedAt: now,
             }
-          : p
+          : project
       )
     )
-  }, [])
+  }, [currentUser])
 
   const getProject = useCallback(
     (id: string) => projects.find((p) => p.id === id) ?? null,
@@ -154,6 +226,6 @@ export function useProjects() {
     deleteProject,
     touchProject,
     getProject,
-    currentUser: CURRENT_USER,
+    currentUser,
   }
 }

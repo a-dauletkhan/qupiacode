@@ -26,6 +26,10 @@ export default defineConfig(({ mode }) => {
           target: voiceApiProxyTarget,
           changeOrigin: true,
         },
+        "/boards": {
+          target: voiceApiProxyTarget,
+          changeOrigin: true,
+        },
       },
     },
   }

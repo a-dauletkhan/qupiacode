@@ -74,13 +74,13 @@ export function ProjectsDashboard() {
     setTargetProject(null)
   }
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     const name = dialogValue.trim()
     if (!name) return
 
     if (dialogMode === "create") {
-      const project = createProject(name)
+      const project = await createProject(name)
       closeDialog()
       navigate(`/project/${project.id}`)
     } else if (dialogMode === "rename" && targetProject) {
@@ -89,8 +89,8 @@ export function ProjectsDashboard() {
     }
   }
 
-  const handleDelete = (project: Project) => {
-    deleteProject(project.id)
+  const handleDelete = async (project: Project) => {
+    await deleteProject(project.id)
   }
 
   const handleOpen = (project: Project) => {
