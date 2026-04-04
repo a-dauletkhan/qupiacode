@@ -1,4 +1,4 @@
-import { useId, useState } from "react"
+import { useEffect, useId, useState } from "react"
 import {
   ArrowRight,
   Circle,
@@ -16,7 +16,7 @@ import {
   Type,
 } from "lucide-react"
 
-import "@/components/shapes-toolbar/styles.css"
+import "@/components/canvas/shapes-toolbar/styles.css"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -95,7 +95,28 @@ const primaryTools: ToolConfig[] = [
 export function ShapesToolbar({ className }: ShapesToolbarProps) {
   const [activeTool, setActiveTool] = useState<ToolId>("selection")
   const [toolLocked, setToolLocked] = useState(false)
+  const [isHintVisible, setIsHintVisible] = useState(true)
   const headingId = useId()
+
+  const dismissHint = () => {
+    setIsHintVisible(false)
+  }
+
+  useEffect(() => {
+    if (!isHintVisible) {
+      return
+    }
+
+    const handlePointerDown = () => {
+      setIsHintVisible(false)
+    }
+
+    window.addEventListener("pointerdown", handlePointerDown, true)
+
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown, true)
+    }
+  }, [isHintVisible])
 
   return (
     <section
@@ -106,7 +127,10 @@ export function ShapesToolbar({ className }: ShapesToolbarProps) {
       )}
     >
       <div className="shape-island">
-        <div className="shape-hint-viewer" aria-live="polite">
+        <div
+          className={cn("shape-hint-viewer", !isHintVisible && "shape-hint-hidden")}
+          aria-live="polite"
+        >
           <span>{TOOL_HINT}</span>
         </div>
 
@@ -131,6 +155,7 @@ export function ShapesToolbar({ className }: ShapesToolbarProps) {
               toolLocked && "shape-tool-active"
             )}
             onClick={() => setToolLocked((value) => !value)}
+            onPointerDown={dismissHint}
           >
             {renderIcon(toolLocked ? Lock : LockOpen)}
           </Button>
@@ -154,7 +179,11 @@ export function ShapesToolbar({ className }: ShapesToolbarProps) {
                   isActive && "shape-tool-active",
                   tool.fillable && "shape-tool-fillable"
                 )}
-                onClick={() => setActiveTool(tool.id)}
+                onClick={() => {
+                  setActiveTool(tool.id)
+                  dismissHint()
+                }}
+                onPointerDown={dismissHint}
               >
                 {renderIcon(tool.icon)}
                 <span className="shape-keybinding">{tool.shortcut}</span>
@@ -171,6 +200,7 @@ export function ShapesToolbar({ className }: ShapesToolbarProps) {
             aria-label="More tools"
             title="More tools"
             className="shape-tool size-10 rounded-xl border border-transparent p-0 text-foreground/80"
+            onPointerDown={dismissHint}
           >
             {renderIcon(Shapes)}
           </Button>

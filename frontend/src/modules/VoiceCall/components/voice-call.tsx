@@ -1,21 +1,57 @@
+import * as React from "react"
+
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   CallAgentCard,
   CallUserCard,
 } from "@/modules/VoiceCall/components/call-user-card"
 import { VoiceCallControlPanel } from "@/modules/VoiceCall/components/voice-call-control-panel"
+import { useVoiceCall } from "@/modules/VoiceCall/hooks/use-voice-call"
 
-const callUsers = [
-  { id: 1, name: "User 1", status: "Connected", isMuted: false },
-  { id: 2, name: "User 2", status: "Connected", isMuted: false },
-  { id: 3, name: "User 3", status: "Muted", isMuted: true },
-  { id: 4, name: "User 4", status: "Speaking", isMuted: false },
-]
+type VoiceCallProps = React.ComponentProps<"section"> & {
+  canvasId?: string
+  userId?: string
+  displayName?: string
+  apiBaseUrl?: string
+}
 
 export function VoiceCall({
   className,
+  canvasId,
+  userId,
+  displayName,
+  apiBaseUrl = import.meta.env.VITE_VOICE_API_BASE_URL,
   ...props
-}: React.ComponentProps<"section">) {
+}: VoiceCallProps) {
+  const {
+    agent,
+    audioContainerRef,
+    enableSpeakerAudio,
+    errorMessage,
+    inCall,
+    isJoining,
+    isMicrophoneEnabled,
+    joinCall,
+    leaveCall,
+    microphoneAvailable,
+    needsAudioResume,
+    participantIdentity,
+    participants,
+    resolvedCanvasId,
+    resolvedUserId,
+    roomName,
+    setAgentVolume,
+    setParticipantVolumeByIdentity,
+    statusMessage,
+    toggleMicrophone,
+  } = useVoiceCall({
+    canvasId,
+    userId,
+    displayName,
+    apiBaseUrl,
+  })
+
   return (
     <section
       className={cn(
@@ -24,27 +60,89 @@ export function VoiceCall({
       )}
       {...props}
     >
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
-        <CallAgentCard className="mb-3"></CallAgentCard>
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto pb-18">
+        <CallAgentCard
+          className="mb-3"
+          name={agent.name}
+          status={agent.status}
+          volume={agent.volume}
+          volumeDisabled={agent.volumeDisabled}
+          onVolumeChange={setAgentVolume}
+        />
 
-        {callUsers.length > 0 ? (
-          callUsers.map((user, index) => (
+        <div className="mb-3 border border-sidebar-border bg-sidebar p-2 text-xs">
+          <p className="font-semibold text-foreground">
+            {roomName || `Canvas ${resolvedCanvasId}`}
+          </p>
+          <p className="mt-1 text-muted-foreground">
+            {participantIdentity || `User ${resolvedUserId}`}
+          </p>
+          <p className="mt-2 text-muted-foreground">{statusMessage}</p>
+          {errorMessage ? (
+            <p className="mt-2 text-destructive">{errorMessage}</p>
+          ) : null}
+          {needsAudioResume ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={enableSpeakerAudio}
+            >
+              Enable speaker audio
+            </Button>
+          ) : null}
+        </div>
+
+        {participants.length > 0 ? (
+          participants.map((participant, index) => (
             <CallUserCard
-              key={user.id}
-              name={user.name}
-              status={user.status}
-              isMuted={user.isMuted}
-              className={index == 0 ? "border-t" : ""}
+              key={participant.id}
+              name={
+                participant.isLocal
+                  ? `${participant.name} (You)`
+                  : participant.name
+              }
+              status={participant.status}
+              isMuted={participant.isMuted}
+              isSpeaking={participant.isSpeaking}
+              volume={participant.volume}
+              volumeDisabled={participant.volumeDisabled}
+              onVolumeChange={(nextVolume) =>
+                setParticipantVolumeByIdentity(participant.id, nextVolume)
+              }
+              className={index === 0 ? "border-t" : ""}
             />
           ))
         ) : (
-          <div className="text-center text-sm text-muted-foreground py-2">
-            Nobody here...
+          <div className="border border-sidebar-border bg-sidebar px-2 py-3 text-center text-sm text-muted-foreground">
+            Join the call to see participants.
           </div>
         )}
 
-        <VoiceCallControlPanel className="absolute bottom-0 left-1/2 -translate-x-1/2" />
+        <VoiceCallControlPanel
+          className="absolute bottom-0 left-1/2 -translate-x-1/2"
+          inCall={inCall}
+          isWorking={isJoining}
+          microphoneEnabled={isMicrophoneEnabled}
+          microphoneAvailable={microphoneAvailable}
+          needsAudioResume={needsAudioResume}
+          onJoinCall={() => {
+            void joinCall()
+          }}
+          onToggleMicrophone={() => {
+            void toggleMicrophone()
+          }}
+          onResumeAudio={() => {
+            void enableSpeakerAudio()
+          }}
+          onEndCall={() => {
+            void leaveCall()
+          }}
+        />
       </div>
+
+      <div ref={audioContainerRef} className="hidden" aria-hidden="true" />
     </section>
   )
 }

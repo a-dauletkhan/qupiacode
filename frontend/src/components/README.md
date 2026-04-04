@@ -5,8 +5,8 @@ This module contains application-specific UI composition plus local wrappers aro
 ## Purpose
 
 - `app-sidebar.tsx`: app-level sidebar composition using the local sidebar and resizable primitives.
+- `canvas/`: canvas-specific feature components and documentation.
 - `theme-provider.tsx`: theme state and dark or light mode application.
-- `shapes-toolbar/`: a documented feature component for the drawing toolbar UI.
 - `ui/`: shared shadcn-style primitives and low-level building blocks.
 
 ## Documentation Convention

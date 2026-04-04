@@ -12,37 +12,34 @@ import { cn } from "@/lib/utils"
 
 type VolumeSliderProps = {
   defaultValue?: number
+  value?: number
+  disabled?: boolean
+  onValueChange?: (nextValue: number) => void
   className?: string
 }
 
 export function VolumeSlider({
   defaultValue = 75,
+  value,
+  disabled = false,
+  onValueChange,
   className,
 }: VolumeSliderProps) {
-  const [volume, setVolume] = React.useState(defaultValue)
-  const [lastNonZeroVolume, setLastNonZeroVolume] = React.useState(
-    defaultValue > 0 ? defaultValue : 75
-  )
+  const [internalVolume, setInternalVolume] = React.useState(defaultValue)
+  const isControlled = value !== undefined
+  const volume = isControlled ? value : internalVolume
   const VolumeIcon = volume === 0 ? VolumeOffIcon : Volume2Icon
 
-  const handleToggleMute = React.useCallback(() => {
-    if (volume === 0) {
-      setVolume(lastNonZeroVolume)
-      return
-    }
-
-    setLastNonZeroVolume(volume)
-    setVolume(0)
-  }, [lastNonZeroVolume, volume])
-
-  const handleSliderChange = React.useCallback(([nextVolume]: number[]) => {
-    const safeVolume = nextVolume ?? 0
-    setVolume(safeVolume)
-
-    if (safeVolume > 0) {
-      setLastNonZeroVolume(safeVolume)
-    }
-  }, [])
+  const handleVolumeChange = React.useCallback(
+    ([nextVolume]: number[]) => {
+      const safeVolume = nextVolume ?? 0
+      if (!isControlled) {
+        setInternalVolume(safeVolume)
+      }
+      onValueChange?.(safeVolume)
+    },
+    [isControlled, onValueChange]
+  )
 
   return (
     <DropdownMenu>
@@ -52,6 +49,7 @@ export function VolumeSlider({
           variant="ghost"
           size="icon-sm"
           className={cn("text-muted-foreground", className)}
+          disabled={disabled}
         >
           <VolumeIcon className="size-4" />
           <span className="sr-only">Adjust user volume</span>
@@ -75,7 +73,8 @@ export function VolumeSlider({
             max={100}
             step={1}
             value={[volume]}
-            onValueChange={handleSliderChange}
+            onValueChange={handleVolumeChange}
+            disabled={disabled}
           />
         </div>
       </DropdownMenuContent>
