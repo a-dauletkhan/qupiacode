@@ -17,6 +17,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const { login, signup } = useAuth()
 
   const [showEmail, setShowEmail] = React.useState(false)
+  const [name, setName] = React.useState("")
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
   const [error, setError] = React.useState("")
@@ -27,6 +28,11 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
     setError("")
+
+    if (!isLogin && !name.trim()) {
+      setError("Name is required")
+      return
+    }
 
     if (!email.trim()) {
       setError("Email is required")
@@ -43,7 +49,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
       if (isLogin) {
         await login(email.trim(), password)
       } else {
-        await signup(email.trim(), password)
+        await signup(email.trim(), password, name.trim())
       }
       navigate("/")
     } catch (err: unknown) {
@@ -118,12 +124,26 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             {/* Email form */}
             {showEmail && (
               <form onSubmit={handleSubmit} className="auth-email-form">
+                {!isLogin && (
+                  <div className="auth-field">
+                    <Label htmlFor="auth-name">Name</Label>
+                    <Input
+                      id="auth-name"
+                      type="text"
+                      autoFocus
+                      placeholder="Your name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      disabled={loading}
+                    />
+                  </div>
+                )}
                 <div className="auth-field">
                   <Label htmlFor="auth-email">Email</Label>
                   <Input
                     id="auth-email"
                     type="email"
-                    autoFocus
+                    autoFocus={isLogin}
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}

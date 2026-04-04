@@ -86,11 +86,11 @@ async function apiLogin(email: string, password: string): Promise<AuthSession> {
   return parseSupabaseResponse(data)
 }
 
-async function apiSignup(email: string, password: string): Promise<AuthSession> {
+async function apiSignup(email: string, password: string, name: string): Promise<AuthSession> {
   const resp = await fetch("/auth/signup", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ email, password, name }),
   })
 
   if (!resp.ok) {
@@ -140,8 +140,8 @@ export function useAuth() {
     return authSession.user
   }, [])
 
-  const signup = useCallback(async (email: string, password: string) => {
-    const authSession = await apiSignup(email, password)
+  const signup = useCallback(async (email: string, password: string, name: string) => {
+    const authSession = await apiSignup(email, password, name)
     writeState({ session: authSession })
     return authSession.user
   }, [])
