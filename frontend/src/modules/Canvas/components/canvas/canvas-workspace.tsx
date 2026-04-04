@@ -82,35 +82,35 @@ export function CanvasWorkspace() {
   }
 
   return (
-    <SidebarProvider className="h-svh min-h-0 bg-background">
-      <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
-        <ResizablePanel defaultSize="70%" minSize="45%">
-          <main className="relative flex h-full min-w-0 bg-background">
-            <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+    <Room id={project.id}>
+      <SidebarProvider className="h-svh min-h-0 bg-background">
+        <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
+          <ResizablePanel defaultSize="70%" minSize="45%">
+            <main className="relative flex h-full min-w-0 bg-background">
+              <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
+                  onClick={toggleSidebar}
+                  aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                >
+                  {isSidebarOpen ? <PanelRightCloseIcon /> : <PanelRightOpenIcon />}
+                </Button>
+              </div>
+
               <Button
                 type="button"
                 variant="outline"
-                size="icon"
-                className="border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
-                onClick={toggleSidebar}
-                aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                size="sm"
+                className="absolute top-4 left-4 z-30 gap-1.5 border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
+                onClick={() => navigate("/")}
               >
-                {isSidebarOpen ? <PanelRightCloseIcon /> : <PanelRightOpenIcon />}
+                <ArrowLeft className="size-4" />
+                <span className="max-w-[160px] truncate text-xs">{project.name}</span>
               </Button>
-            </div>
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="absolute top-4 left-4 z-30 gap-1.5 border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
-              onClick={() => navigate("/")}
-            >
-              <ArrowLeft className="size-4" />
-              <span className="max-w-[160px] truncate text-xs">{project.name}</span>
-            </Button>
-
-            <Room id={project.id}>
               <FlowCanvas
                 activeTool={activeTool}
                 toolLocked={toolLocked}
@@ -129,24 +129,24 @@ export function CanvasWorkspace() {
                   />
                 }
               />
-            </Room>
-          </main>
-        </ResizablePanel>
+            </main>
+          </ResizablePanel>
 
-        <ResizableHandle withHandle />
+          <ResizableHandle withHandle />
 
-        <ResizablePanel
-          collapsible
-          collapsedSize={0}
-          defaultSize={`${DEFAULT_SIDEBAR_WIDTH}px`}
-          maxSize={`${MAX_SIDEBAR_WIDTH}px`}
-          minSize={`${MIN_SIDEBAR_WIDTH}px`}
-          onResize={handleSidebarResize}
-          panelRef={sidebarPanelRef}
-        >
-          <AppSidebar side="right" collapsible="none" className="w-full" />
-        </ResizablePanel>
-      </ResizablePanelGroup>
-    </SidebarProvider>
+          <ResizablePanel
+            collapsible
+            collapsedSize={0}
+            defaultSize={`${DEFAULT_SIDEBAR_WIDTH}px`}
+            maxSize={`${MAX_SIDEBAR_WIDTH}px`}
+            minSize={`${MIN_SIDEBAR_WIDTH}px`}
+            onResize={handleSidebarResize}
+            panelRef={sidebarPanelRef}
+          >
+            <AppSidebar side="right" collapsible="none" className="w-full" />
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </SidebarProvider>
+    </Room>
   )
 }

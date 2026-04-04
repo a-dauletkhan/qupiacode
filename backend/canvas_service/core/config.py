@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     supabase_key: str
     supabase_jwt_secret: str
     supabase_storage_bucket: str = "canvas-media"
+    liveblocks_secret_key: str = ""
 
     model_config = {"env_file": ".env", "extra": "ignore"}
 
