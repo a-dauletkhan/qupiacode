@@ -22,7 +22,7 @@ export function App() {
 
         <ResizablePanel defaultSize={32} minSize={'25%'}>
           <ResizablePanelGroup orientation="vertical" className="h-full">
-            <ResizablePanel defaultSize={30} minSize={20}>
+            <ResizablePanel defaultSize={30} minSize={'30%'}>
               <div className="flex h-full items-center justify-center">
                 <p className="text-3xl font-semibold text-foreground">
                   Call Info
@@ -32,7 +32,7 @@ export function App() {
 
             <ResizableHandle withHandle />
 
-            <ResizablePanel defaultSize={70} minSize={20}>
+            <ResizablePanel defaultSize={70} minSize={'30%'}>
               <div className="flex h-full items-center justify-center">
                 <p className="text-3xl font-semibold text-foreground">
                   Chat info
