@@ -2,15 +2,13 @@
 
 ## Purpose
 
-Owns the actual voice room integration for the sidebar by fetching backend tokens, connecting to LiveKit, tracking participants, and passing presentational props into the leaf UI components.
+Renders the actual voice room sidebar by consuming the VoiceCall hook and passing
+presentational props into the leaf UI components.
 
 ## Owned state
 
-- LiveKit `Room` lifecycle and connection state
-- token request state and error messages
-- participant list view models
-- microphone and speaker playback status
-- per-participant volume values
+- no direct transport or backend state
+- layout-only rendering concerns for the sidebar surface
 
 ## Props
 
@@ -22,15 +20,15 @@ Owns the actual voice room integration for the sidebar by fetching backend token
 
 ## Dependencies
 
-- `livekit-client` for room connection and participant media
+- `useVoiceCall` for backend + LiveKit orchestration
 - `CallAgentCard`, `CallUserCard`, and `VoiceCallControlPanel` for UI composition
 - `Button` for the speaker-audio recovery action
 
 ## Integration notes
 
-- In local Vite development, `/api/*` is proxied to the FastAPI backend.
-- For browser microphone access, open the frontend on `localhost` or HTTPS rather than `0.0.0.0`.
-- The component currently uses URL query params as a lightweight stand-in until the app has real canvas and user state wired in.
+- backend token requests live in `services/voice-call-service.ts`
+- LiveKit room orchestration and state shaping live in `hooks/use-voice-call.ts`
+- the component still accepts explicit `canvasId`, `userId`, `displayName`, and `apiBaseUrl`
 
 ## Known limits
 
