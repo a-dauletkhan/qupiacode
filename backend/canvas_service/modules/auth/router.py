@@ -1,6 +1,8 @@
 import httpx
 from fastapi import APIRouter, HTTPException
-from core.config import settings
+
+from canvas_service.core.config import settings
+
 from .schemas import LoginRequest, SignUpRequest
 
 router = APIRouter(prefix="/auth", tags=["auth"])

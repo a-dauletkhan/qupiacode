@@ -1,9 +1,8 @@
-from typing import Optional
-
 import redis.asyncio as aioredis
-from core.config import settings
 
-_redis_client: Optional[aioredis.Redis] = None
+from canvas_service.core.config import settings
+
+_redis_client: aioredis.Redis | None = None
 
 
 async def init_redis() -> None:
@@ -19,4 +18,6 @@ async def close_redis() -> None:
 
 
 async def get_redis() -> aioredis.Redis:
+    if _redis_client is None:
+        raise RuntimeError("Redis client is not initialized.")
     return _redis_client

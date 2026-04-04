@@ -5,8 +5,8 @@ from datetime import timedelta
 from livekit import api
 from pydantic import SecretStr
 
-from app.core.config import Settings
-from app.models.voice import VoiceAgentMetadata, VoiceTokenResponse
+from ..core.config import Settings
+from ..models.voice import VoiceAgentMetadata, VoiceTokenResponse
 
 logger = logging.getLogger(__name__)
 

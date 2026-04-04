@@ -1,17 +1,11 @@
-import sys
 from collections.abc import Generator
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
 
 def _get_settings():
-    from app.core.config import get_settings
+    from voice_call_service.app.core.config import get_settings
 
     return get_settings
 
@@ -51,7 +45,7 @@ def _configure_test_environment(monkeypatch: pytest.MonkeyPatch) -> Generator[No
 
 @pytest.fixture
 def client() -> Generator[TestClient, None, None]:
-    from app.main import create_app
+    from voice_call_service.app.main import create_app
 
     with TestClient(create_app()) as test_client:
         yield test_client

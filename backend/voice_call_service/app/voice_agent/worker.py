@@ -17,10 +17,10 @@ from livekit.agents import (
     UserInputTranscribedEvent,
 )
 
-from app.core.config import get_settings
-from app.core.logging import configure_logging
-from app.voice_agent.forwarder import VoiceAgentTranscriptForwarder
-from app.voice_agent.runtime import (
+from ..core.config import get_settings
+from ..core.logging import configure_logging
+from .forwarder import VoiceAgentTranscriptForwarder
+from .runtime import (
     build_forwarded_transcript_payload,
     build_mock_transcript_text,
     build_mock_transcription,

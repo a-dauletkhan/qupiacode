@@ -1,8 +1,10 @@
 import uuid
-from sqlalchemy import Column, Text, DateTime, String, ForeignKey
+
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
-from core.database import Base
+
+from canvas_service.core.database import Base
 
 
 class Board(Base):

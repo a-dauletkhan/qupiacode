@@ -3,8 +3,8 @@ from typing import cast
 from livekit import rtc
 from livekit.agents import inference, room_io
 
-from app.core.config import Settings
-from app.voice_agent.runtime import (
+from voice_call_service.app.core.config import Settings
+from voice_call_service.app.voice_agent.runtime import (
     VoiceAgentConfigurationError,
     build_forwarded_transcript_payload,
     build_mock_transcript_text,

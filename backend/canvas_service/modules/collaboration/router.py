@@ -2,15 +2,15 @@ import asyncio
 import json
 from uuid import UUID
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
+from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
-from core.auth import verify_token
-from core.redis import get_redis
-from core.database import AsyncSessionLocal
-from modules.collaboration.connection_manager import manager
-from modules.collaboration.events import EventType, make_event
-from modules.canvas_objects import service as canvas_service
-from modules.canvas_objects.schemas import NodeUpdate, EdgeUpdate
+from canvas_service.core.auth import verify_token
+from canvas_service.core.database import AsyncSessionLocal
+from canvas_service.core.redis import get_redis
+from canvas_service.modules.canvas_objects import service as canvas_service
+from canvas_service.modules.canvas_objects.schemas import EdgeUpdate, NodeUpdate
+from canvas_service.modules.collaboration.connection_manager import manager
+from canvas_service.modules.collaboration.events import EventType, make_event
 
 router = APIRouter(tags=["collaboration"])
 

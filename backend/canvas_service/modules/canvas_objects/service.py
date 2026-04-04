@@ -1,14 +1,21 @@
+# pyright: reportAttributeAccessIssue=false, reportGeneralTypeIssues=false
+
 from datetime import timezone
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
 
-from modules.canvas_objects.models import CanvasNode, CanvasEdge
-from modules.canvas_objects.schemas import (
-    NodeCreate, NodeUpdate, NodeResponse,
-    EdgeCreate, EdgeUpdate, EdgeResponse, CanvasResponse,
+from canvas_service.modules.canvas_objects.models import CanvasEdge, CanvasNode
+from canvas_service.modules.canvas_objects.schemas import (
+    CanvasResponse,
+    EdgeCreate,
+    EdgeResponse,
+    EdgeUpdate,
+    NodeCreate,
+    NodeResponse,
+    NodeUpdate,
 )
 
 

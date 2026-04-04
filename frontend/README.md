@@ -12,15 +12,25 @@ For cheap prototyping, set `VOICE_AGENT_TRANSCRIPTION_MODE=mock` in the backend 
 Run the backend first:
 
 ```bash
-cd ../backend/voice_call_service
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+cd ../backend
+uv sync
+uv run python -m scripts.run_backend_stack --worker-mode connect --room canvas:demo-canvas --reload
 ```
 
-Run the text-only agent worker in a second backend terminal:
+Simpler option for local prototyping:
 
 ```bash
-cd ../backend/voice_call_service
-uv run python voice_agent_worker.py dev
+cd ../backend
+make dev-connect ROOM=canvas:demo-canvas
+```
+
+That starts the API and connects the worker in one backend terminal.
+
+For the full local backend stack, including Postgres and Redis, you can also run:
+
+```bash
+cd ../backend
+docker compose up --build
 ```
 
 Run LiveKit locally:
@@ -54,13 +64,6 @@ http://localhost:5173/?canvas_id=demo-canvas&user_id=alice&display_name=Alice
 
 ```text
 http://localhost:5173/?canvas_id=demo-canvas&user_id=bob&display_name=Bob
-```
-
-To force the current worker implementation into that room during local testing:
-
-```bash
-cd ../backend/voice_call_service
-uv run python voice_agent_worker.py connect --room canvas:demo-canvas
 ```
 
 In `mock` mode, joining the room is enough to see placeholder transcript items in Chat.

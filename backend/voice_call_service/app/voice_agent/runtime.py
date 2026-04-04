@@ -9,7 +9,7 @@ from livekit import rtc
 from livekit.agents import inference, room_io
 from livekit.rtc._proto import track_pb2
 
-from app.core.config import Settings
+from ..core.config import Settings
 
 TranscriptAttributionSource = Literal["participant", "diarization", "ambiguous"]
 

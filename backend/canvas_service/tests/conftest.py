@@ -1,17 +1,30 @@
+import os
+from datetime import datetime, timedelta, timezone
+
+import fakeredis.aioredis
 import pytest
 import pytest_asyncio
-from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock
-
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 from jose import jwt
-from sqlalchemy import event, String, Text
-from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID, JSONB
+from sqlalchemy import event
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.compiler import compiles
 
-from core.config import settings
-from core.database import Base, get_db
-from core.redis import get_redis
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:postgres@localhost:5432/qupia_test",
+)
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
+os.environ.setdefault("SUPABASE_KEY", "test-supabase-key")
+os.environ.setdefault("SUPABASE_JWT_SECRET", "test-supabase-jwt-secret")
+os.environ.setdefault("SUPABASE_STORAGE_BUCKET", "canvas-media")
+
+from canvas_service.core.config import settings
+from canvas_service.core.database import Base, get_db
+from canvas_service.core.redis import get_redis
 
 TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 TEST_USER_ID_2 = "00000000-0000-0000-0000-000000000002"
@@ -28,9 +41,6 @@ def _set_sqlite_pragma(dbapi_conn, connection_record):
     dbapi_conn.execute("PRAGMA foreign_keys=ON")
 
 
-# Map PostgreSQL-only column types to SQLite-compatible equivalents
-from sqlalchemy.ext.compiler import compiles
-
 @compiles(PG_UUID, "sqlite")
 def _compile_uuid_sqlite(type_, compiler, **kw):
     return "VARCHAR(36)"
@@ -38,12 +48,6 @@ def _compile_uuid_sqlite(type_, compiler, **kw):
 @compiles(JSONB, "sqlite")
 def _compile_jsonb_sqlite(type_, compiler, **kw):
     return "TEXT"
-
-
-# ---------------------------------------------------------------------------
-# Fake Redis (in-memory)
-# ---------------------------------------------------------------------------
-import fakeredis.aioredis
 
 
 @pytest_asyncio.fixture(scope="session", autouse=True)
@@ -57,8 +61,8 @@ async def _dispose_engine():
 async def _setup_db():
     """Create all tables before each test, drop after."""
     # Import models so they register with Base.metadata
-    import modules.boards.models  # noqa: F401
-    import modules.canvas_objects.models  # noqa: F401
+    import canvas_service.modules.boards.models  # noqa: F401
+    import canvas_service.modules.canvas_objects.models  # noqa: F401
 
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -105,7 +109,7 @@ def expired_token() -> str:
 # ---------------------------------------------------------------------------
 @pytest_asyncio.fixture
 async def client(_setup_db):
-    from main import app
+    from canvas_service.main import app
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_redis] = _override_get_redis

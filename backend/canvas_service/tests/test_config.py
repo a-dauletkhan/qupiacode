@@ -1,4 +1,4 @@
-from core.config import settings
+from canvas_service.core.config import settings
 
 
 def test_settings_has_required_fields():

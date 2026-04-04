@@ -8,7 +8,7 @@ from typing import cast
 from google.protobuf.json_format import MessageToDict, ParseDict, ParseError
 from livekit import api
 
-from app.models.webhooks import StoredWebhookEvent
+from ..models.webhooks import StoredWebhookEvent
 
 logger = logging.getLogger(__name__)
 

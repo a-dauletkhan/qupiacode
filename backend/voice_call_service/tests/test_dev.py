@@ -1,7 +1,7 @@
 from fastapi.testclient import TestClient
 
-from app.core.config import get_settings
-from app.main import create_app
+from voice_call_service.app.core.config import get_settings
+from voice_call_service.app.main import create_app
 
 
 def test_voice_test_page_is_available_in_test_env(client: TestClient) -> None:

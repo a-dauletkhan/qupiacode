@@ -1,4 +1,4 @@
-from app.voice_agent.runtime import (
+from .runtime import (
     VoiceAgentConfigurationError,
     build_forwarded_transcript_payload,
     build_mock_transcript_text,

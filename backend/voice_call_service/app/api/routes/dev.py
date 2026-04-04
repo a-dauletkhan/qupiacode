@@ -4,7 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse
 
-from app.core.config import Settings, get_settings
+from ...core.config import Settings, get_settings
 
 router = APIRouter(tags=["dev"])
 
