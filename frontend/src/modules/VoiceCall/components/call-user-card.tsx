@@ -109,6 +109,10 @@ type CallUserProps = {
   name: string
   status: string
   isMuted?: boolean
+  isSpeaking?: boolean
+  volume?: number
+  volumeDisabled?: boolean
+  onVolumeChange?: (nextVolume: number) => void
   className?: string
 }
 
@@ -116,6 +120,10 @@ export function CallUserCard({
   name,
   status,
   isMuted = false,
+  isSpeaking = false,
+  volume = 100,
+  volumeDisabled = false,
+  onVolumeChange,
   className,
 }: CallUserProps) {
   const avatarVariant = getAvatarVariant(name)
@@ -123,7 +131,8 @@ export function CallUserCard({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center gap-3 border-r border-b border-l border-sidebar-border bg-sidebar p-2",
+        "flex shrink-0 items-center gap-3 border-r border-b border-l border-sidebar-border bg-sidebar p-2 transition-colors",
+        isSpeaking && "bg-sidebar-accent/50",
         className
       )}
     >
@@ -157,13 +166,33 @@ export function CallUserCard({
 
       {isMuted ? <MicOffIcon className="size-4 text-destructive" /> : null}
 
-      <VolumeSlider />
+      <VolumeSlider
+        value={volume}
+        onValueChange={onVolumeChange}
+        disabled={volumeDisabled}
+      />
     </div>
   )
 }
 
-export function CallAgentCard({ className }: { className?: string }) {
-  const avatarVariant = getAvatarVariant("AI Agent")
+type CallAgentCardProps = {
+  name?: string
+  status?: string
+  volume?: number
+  volumeDisabled?: boolean
+  onVolumeChange?: (nextVolume: number) => void
+  className?: string
+}
+
+export function CallAgentCard({
+  name = "AI Agent",
+  status = "Offline",
+  volume = 100,
+  volumeDisabled = true,
+  onVolumeChange,
+  className,
+}: CallAgentCardProps) {
+  const avatarVariant = getAvatarVariant(name)
 
   return (
     <div
@@ -196,13 +225,15 @@ export function CallAgentCard({ className }: { className?: string }) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-semibold text-foreground">
-          AI Agent
-        </p>
-        <p className="text-xs text-muted-foreground">Online</p>
+        <p className="truncate text-xs font-semibold text-foreground">{name}</p>
+        <p className="text-xs text-muted-foreground">{status}</p>
       </div>
 
-      <VolumeSlider />
+      <VolumeSlider
+        value={volume}
+        onValueChange={onVolumeChange}
+        disabled={volumeDisabled}
+      />
     </div>
   )
 }

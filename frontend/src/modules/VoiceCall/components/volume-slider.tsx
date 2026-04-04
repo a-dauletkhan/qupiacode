@@ -12,15 +12,34 @@ import { cn } from "@/lib/utils"
 
 type VolumeSliderProps = {
   defaultValue?: number
+  value?: number
+  disabled?: boolean
+  onValueChange?: (nextValue: number) => void
   className?: string
 }
 
 export function VolumeSlider({
   defaultValue = 75,
+  value,
+  disabled = false,
+  onValueChange,
   className,
 }: VolumeSliderProps) {
-  const [volume, setVolume] = React.useState(defaultValue)
+  const [internalVolume, setInternalVolume] = React.useState(defaultValue)
+  const isControlled = value !== undefined
+  const volume = isControlled ? value : internalVolume
   const VolumeIcon = volume === 0 ? VolumeOffIcon : Volume2Icon
+
+  const handleVolumeChange = React.useCallback(
+    ([nextVolume]: number[]) => {
+      const safeVolume = nextVolume ?? 0
+      if (!isControlled) {
+        setInternalVolume(safeVolume)
+      }
+      onValueChange?.(safeVolume)
+    },
+    [isControlled, onValueChange]
+  )
 
   return (
     <DropdownMenu>
@@ -30,6 +49,7 @@ export function VolumeSlider({
           variant="ghost"
           size="icon-sm"
           className={cn("text-muted-foreground", className)}
+          disabled={disabled}
         >
           <VolumeIcon className="size-4" />
           <span className="sr-only">Adjust user volume</span>
@@ -44,7 +64,8 @@ export function VolumeSlider({
             max={100}
             step={1}
             value={[volume]}
-            onValueChange={([nextVolume]) => setVolume(nextVolume ?? 0)}
+            onValueChange={handleVolumeChange}
+            disabled={disabled}
           />
         </div>
       </DropdownMenuContent>
