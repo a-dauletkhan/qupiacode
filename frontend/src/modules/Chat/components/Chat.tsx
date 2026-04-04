@@ -16,6 +16,7 @@ import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useVoiceCallContext } from "@/modules/VoiceCall/context/voice-call-context"
 import { type VoiceCallChatMessageView } from "@/modules/VoiceCall/hooks/use-voice-call"
+import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
 
 type MessageType = VoiceCallChatMessageView["type"]
 
@@ -143,6 +144,7 @@ export function Chat() {
   const { threads } = useThreads()
   const createThread = useCreateThread()
   const { chatMessages, errorMessage, inCall, roomName } = useVoiceCallContext()
+  const aiAgent = useAiAgentOptional()
 
   const initialMessageIndex = Math.max(chatMessages.length - 1, 0)
 
@@ -164,6 +166,12 @@ export function Chat() {
     const text = input.trim()
     if (!text) {
       return
+    }
+
+    // Detect @agent commands and route to AI agent service
+    const agentMatch = text.match(/^@agent\s+(.+)/i)
+    if (agentMatch && aiAgent) {
+      aiAgent.sendCommand(agentMatch[1], { source: "chat" })
     }
 
     createThread({
@@ -248,7 +256,7 @@ export function Chat() {
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder="Type a message..."
+          placeholder={aiAgent ? "Type a message or @agent..." : "Type a message..."}
           className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-lime-500"
         />
         <button
