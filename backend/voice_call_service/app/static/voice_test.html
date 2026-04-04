@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Voice Test</title>
+    <style>
+      :root {
+        color-scheme: light;
+        font-family: "SF Mono", "Monaco", "Cascadia Code", monospace;
+        --bg: #f5f1e8;
+        --panel: #fffdf8;
+        --ink: #1e1b18;
+        --muted: #6b6258;
+        --accent: #0d6b57;
+        --accent-strong: #084c3e;
+        --border: #d9cdb8;
+        --danger: #b53a2b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top left, rgba(13, 107, 87, 0.12), transparent 28%),
+          radial-gradient(circle at bottom right, rgba(181, 58, 43, 0.08), transparent 24%),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      main {
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 32px 16px 48px;
+      }
+
+      .hero {
+        margin-bottom: 24px;
+      }
+
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 0.14em;
+        font-size: 12px;
+        color: var(--accent);
+        margin-bottom: 8px;
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: clamp(30px, 5vw, 54px);
+        line-height: 0.95;
+      }
+
+      .lead {
+        margin: 0;
+        max-width: 720px;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      @media (min-width: 900px) {
+        .grid {
+          grid-template-columns: 1.1fr 0.9fr;
+        }
+      }
+
+      .card {
+        background: rgba(255, 253, 248, 0.86);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        padding: 18px;
+        box-shadow: 0 16px 40px rgba(48, 37, 24, 0.08);
+        backdrop-filter: blur(12px);
+      }
+
+      .card h2 {
+        margin: 0 0 12px;
+        font-size: 15px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      input {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        background: #fff;
+        color: var(--ink);
+        padding: 12px 14px;
+        font: inherit;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 11px 16px;
+        font: inherit;
+        cursor: pointer;
+        color: white;
+        background: var(--accent);
+      }
+
+      button.secondary {
+        background: #60574e;
+      }
+
+      button.danger {
+        background: var(--danger);
+      }
+
+      button:disabled {
+        cursor: not-allowed;
+        opacity: 0.5;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: #fff;
+        border: 1px solid var(--border);
+        color: var(--muted);
+      }
+
+      .participants {
+        display: grid;
+        gap: 10px;
+      }
+
+      .participant {
+        border: 1px dashed var(--border);
+        border-radius: 14px;
+        padding: 10px 12px;
+        background: rgba(255, 255, 255, 0.7);
+      }
+
+      .participant strong {
+        display: block;
+        margin-bottom: 4px;
+      }
+
+      .log {
+        min-height: 240px;
+        max-height: 360px;
+        overflow: auto;
+        padding: 14px;
+        border-radius: 16px;
+        background: #1a1714;
+        color: #efe9de;
+        line-height: 1.5;
+        white-space: pre-wrap;
+      }
+
+      .hint {
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--muted);
+      }
+
+      .remote-audio {
+        display: grid;
+        gap: 12px;
+      }
+
+      .remote-audio-item {
+        display: grid;
+        gap: 6px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        background: #fff;
+      }
+
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div class="eyebrow">Local Voice Smoke Test</div>
+        <h1>Open two tabs. Same canvas. Different users.</h1>
+        <p class="lead">
+          This page fetches a token from your FastAPI backend, joins the matching LiveKit room,
+          and turns on the microphone. Use headphones to avoid feedback.
+        </p>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <h2>Join Room</h2>
+          <form id="join-form" class="stack">
+            <label>
+              Canvas ID
+              <input id="canvas-id" name="canvas_id" value="demo-canvas" maxlength="128" required />
+            </label>
+            <label>
+              User ID
+              <input id="user-id" name="user_id" maxlength="128" required />
+            </label>
+            <label>
+              Display Name
+              <input id="display-name" name="display_name" maxlength="120" />
+            </label>
+            <div class="actions">
+              <button id="join-button" type="button">Join and Unmute</button>
+              <button id="leave-button" type="button" class="danger" disabled>Leave</button>
+              <button id="toggle-mic-button" type="button" class="secondary" disabled>Mute</button>
+              <button id="resume-audio-button" type="button" class="secondary hidden">
+                Enable Speaker Audio
+              </button>
+            </div>
+          </form>
+          <p class="hint">
+            Keep the <strong>same canvas ID</strong> in both tabs and use a
+            <strong>different user ID</strong> in each tab. Example:
+            <code>demo-canvas</code>, <code>alice</code>, <code>bob</code>.
+          </p>
+        </section>
+
+        <section class="card">
+          <h2>Session</h2>
+          <div class="stack">
+            <div id="status-pill" class="pill">Disconnected</div>
+            <div class="participants" id="participants"></div>
+            <div class="remote-audio" id="remote-audio"></div>
+          </div>
+        </section>
+      </div>
+
+      <section class="card" style="margin-top: 16px">
+        <h2>Event Log</h2>
+        <div id="log" class="log">Waiting for a room join...</div>
+      </section>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.17.2/dist/livekit-client.umd.min.js"></script>
+    <script>
+      const joinForm = document.getElementById("join-form");
+      const canvasIdInput = document.getElementById("canvas-id");
+      const userIdInput = document.getElementById("user-id");
+      const displayNameInput = document.getElementById("display-name");
+      const joinButton = document.getElementById("join-button");
+      const leaveButton = document.getElementById("leave-button");
+      const toggleMicButton = document.getElementById("toggle-mic-button");
+      const resumeAudioButton = document.getElementById("resume-audio-button");
+      const statusPill = document.getElementById("status-pill");
+      const participants = document.getElementById("participants");
+      const remoteAudio = document.getElementById("remote-audio");
+      const logElement = document.getElementById("log");
+
+      let room = null;
+      let micEnabled = false;
+      const attachedTrackKeys = new Set();
+
+      function generateFallbackId() {
+        return `user-${Math.random().toString(36).slice(2, 10)}`;
+      }
+
+      function getDefaultUserId() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") {
+          return `user-${window.crypto.randomUUID().slice(0, 8)}`;
+        }
+        return generateFallbackId();
+      }
+
+      function applyInitialFormValues() {
+        const params = new URLSearchParams(window.location.search);
+        const canvasId = params.get("canvas_id");
+        const userId = params.get("user_id");
+        const displayName = params.get("display_name");
+
+        if (canvasId) {
+          canvasIdInput.value = canvasId;
+        }
+
+        userIdInput.value = userId || getDefaultUserId();
+        displayNameInput.value = displayName || `Guest ${userIdInput.value.slice(-4)}`;
+      }
+
+      applyInitialFormValues();
+
+      function appendLog(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        const nextLine = `[${timestamp}] ${message}`;
+        logElement.textContent =
+          logElement.textContent === "Waiting for a room join..."
+            ? nextLine
+            : `${logElement.textContent}\n${nextLine}`;
+        logElement.scrollTop = logElement.scrollHeight;
+      }
+
+      function setStatus(text) {
+        statusPill.textContent = text;
+      }
+
+      function setConnectedUi(isConnected) {
+        joinButton.disabled = isConnected;
+        leaveButton.disabled = !isConnected;
+        toggleMicButton.disabled = !isConnected;
+      }
+
+      function setSdkUnavailableUi() {
+        setStatus("LiveKit browser SDK failed to load");
+        appendLog(
+          "The LiveKit browser SDK did not load. This page currently fetches it from jsDelivr, so check internet access and browser console errors.",
+        );
+      }
+
+      function canUseMicrophone() {
+        return Boolean(window.navigator?.mediaDevices?.getUserMedia);
+      }
+
+      function logMicrophoneUnavailable() {
+        appendLog(
+          `Microphone API unavailable. origin=${window.location.origin} secureContext=${window.isSecureContext}`,
+        );
+        appendLog(
+          "Open this page with http://localhost:8000/dev/voice-test or HTTPS, then allow microphone access in the browser.",
+        );
+      }
+
+      function getLivekitSdk() {
+        return window.LivekitClient || null;
+      }
+
+      function renderParticipants() {
+        if (!room) {
+          participants.innerHTML = "";
+          return;
+        }
+
+        const items = [];
+        items.push({
+          identity: room.localParticipant.identity,
+          name: room.localParticipant.name || "(no display name)",
+          kind: "local",
+        });
+
+        room.remoteParticipants.forEach((participant) => {
+          items.push({
+            identity: participant.identity,
+            name: participant.name || "(no display name)",
+            kind: "remote",
+          });
+        });
+
+        participants.innerHTML = items
+          .map(
+            (item) => `
+              <div class="participant">
+                <strong>${escapeHtml(item.name)}</strong>
+                <div>${escapeHtml(item.identity)}</div>
+                <div>${item.kind}</div>
+              </div>
+            `,
+          )
+          .join("");
+      }
+
+      function attachRemoteTrack(track, participant) {
+        if (track.kind !== "audio") {
+          return;
+        }
+
+        const trackKey = `${participant.identity}:${track.sid}`;
+        if (attachedTrackKeys.has(trackKey)) {
+          return;
+        }
+        attachedTrackKeys.add(trackKey);
+
+        const wrapper = document.createElement("div");
+        wrapper.className = "remote-audio-item";
+        wrapper.dataset.trackKey = trackKey;
+
+        const title = document.createElement("div");
+        title.textContent = `${participant.name || participant.identity} audio`;
+        wrapper.appendChild(title);
+
+        const element = track.attach();
+        element.controls = true;
+        element.autoplay = true;
+        wrapper.appendChild(element);
+        remoteAudio.appendChild(wrapper);
+      }
+
+      function detachRemoteTrack(track, participant) {
+        const trackKey = `${participant.identity}:${track.sid}`;
+        attachedTrackKeys.delete(trackKey);
+
+        const wrapper = remoteAudio.querySelector(`[data-track-key="${CSS.escape(trackKey)}"]`);
+        if (!wrapper) {
+          return;
+        }
+
+        track.detach();
+        wrapper.remove();
+      }
+
+      function attachExistingRemoteTracks() {
+        if (!room) {
+          return;
+        }
+
+        room.remoteParticipants.forEach((participant) => {
+          participant.trackPublications.forEach((publication) => {
+            if (publication.track) {
+              attachRemoteTrack(publication.track, participant);
+            }
+          });
+        });
+      }
+
+      function wireRoomEvents(activeRoom, roomEventEnum) {
+        activeRoom.on(roomEventEnum.Connected, () => {
+          appendLog(`Connected to ${activeRoom.name}`);
+          renderParticipants();
+        });
+
+        activeRoom.on(roomEventEnum.ParticipantConnected, (participant) => {
+          appendLog(`Participant joined: ${participant.identity}`);
+          renderParticipants();
+        });
+
+        activeRoom.on(roomEventEnum.ParticipantDisconnected, (participant) => {
+          appendLog(`Participant left: ${participant.identity}`);
+          renderParticipants();
+        });
+
+        activeRoom.on(roomEventEnum.TrackSubscribed, (track, publication, participant) => {
+          appendLog(`Subscribed to ${publication.kind} from ${participant.identity}`);
+          attachRemoteTrack(track, participant);
+        });
+
+        activeRoom.on(roomEventEnum.TrackUnsubscribed, (track, publication, participant) => {
+          appendLog(`Unsubscribed from ${publication.kind} from ${participant.identity}`);
+          detachRemoteTrack(track, participant);
+        });
+
+        activeRoom.on(roomEventEnum.AudioPlaybackStatusChanged, () => {
+          if (activeRoom.canPlaybackAudio) {
+            resumeAudioButton.classList.add("hidden");
+          } else {
+            resumeAudioButton.classList.remove("hidden");
+            appendLog("Browser blocked autoplay. Click 'Enable Speaker Audio'.");
+          }
+        });
+
+        activeRoom.on(roomEventEnum.Disconnected, () => {
+          appendLog("Disconnected");
+          cleanupAfterDisconnect();
+        });
+      }
+
+      function cleanupAfterDisconnect() {
+        attachedTrackKeys.clear();
+        remoteAudio.innerHTML = "";
+        micEnabled = false;
+        toggleMicButton.textContent = "Mute";
+        resumeAudioButton.classList.add("hidden");
+        setConnectedUi(false);
+        setStatus("Disconnected");
+        room = null;
+        renderParticipants();
+      }
+
+      async function leaveRoom() {
+        if (!room) {
+          return;
+        }
+
+        await room.disconnect();
+        cleanupAfterDisconnect();
+      }
+
+      async function joinRoom() {
+        const livekitSdk = getLivekitSdk();
+        const Room = livekitSdk?.Room;
+        const RoomEvent = livekitSdk?.RoomEvent;
+
+        if (!Room || !RoomEvent) {
+          throw new Error(
+            "LiveKit browser SDK is unavailable. Check internet access or CDN blocking.",
+          );
+        }
+
+        if (room) {
+          await leaveRoom();
+        }
+
+        const payload = {
+          canvas_id: canvasIdInput.value.trim(),
+          user_id: userIdInput.value.trim(),
+          display_name: displayNameInput.value.trim() || null,
+        };
+
+        setStatus("Requesting token...");
+        appendLog(`Fetching token for canvas ${payload.canvas_id}`);
+
+        const response = await fetch("/api/voice/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          const detail = data?.detail || "Token request failed.";
+          throw new Error(detail);
+        }
+
+        room = new Room({
+          adaptiveStream: true,
+          dynacast: true,
+        });
+        wireRoomEvents(room, RoomEvent);
+
+        await room.connect(data.server_url, data.token);
+        setConnectedUi(true);
+        setStatus(`Connected: ${data.room_name}`);
+        appendLog(`Joined as ${data.participant_identity}`);
+        attachExistingRemoteTracks();
+        renderParticipants();
+
+        if (canUseMicrophone()) {
+          await room.localParticipant.setMicrophoneEnabled(true);
+          micEnabled = true;
+          toggleMicButton.textContent = "Mute";
+          appendLog("Microphone enabled");
+        } else {
+          micEnabled = false;
+          toggleMicButton.textContent = "Mic unavailable";
+          appendLog("Connected in listen-only mode.");
+          logMicrophoneUnavailable();
+        }
+
+        if (typeof room.startAudio === "function") {
+          try {
+            await room.startAudio();
+          } catch (error) {
+            appendLog(`Speaker audio needs a manual click: ${error.message}`);
+            resumeAudioButton.classList.remove("hidden");
+          }
+        }
+      }
+
+      async function toggleMicrophone() {
+        if (!room) {
+          return;
+        }
+
+        if (!canUseMicrophone()) {
+          logMicrophoneUnavailable();
+          return;
+        }
+
+        micEnabled = !micEnabled;
+        await room.localParticipant.setMicrophoneEnabled(micEnabled);
+        toggleMicButton.textContent = micEnabled ? "Mute" : "Unmute";
+        appendLog(micEnabled ? "Microphone enabled" : "Microphone muted");
+      }
+
+      function escapeHtml(value) {
+        return value
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      if (!getLivekitSdk()) {
+        setSdkUnavailableUi();
+      }
+
+      joinForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+      });
+
+      joinButton.addEventListener("click", async () => {
+        try {
+          await joinRoom();
+        } catch (error) {
+          setStatus("Join failed");
+          appendLog(`Error: ${error.message}`);
+        }
+      });
+
+      leaveButton.addEventListener("click", async () => {
+        await leaveRoom();
+      });
+
+      toggleMicButton.addEventListener("click", async () => {
+        try {
+          await toggleMicrophone();
+        } catch (error) {
+          appendLog(`Mic toggle failed: ${error.message}`);
+        }
+      });
+
+      resumeAudioButton.addEventListener("click", async () => {
+        if (!room) {
+          return;
+        }
+
+        try {
+          await room.startAudio();
+          resumeAudioButton.classList.add("hidden");
+          appendLog("Speaker audio enabled");
+        } catch (error) {
+          appendLog(`Speaker audio still blocked: ${error.message}`);
+        }
+      });
+    </script>
+  </body>
+</html>
