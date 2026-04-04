@@ -1,0 +1,49 @@
+@reference "../../index.css";
+
+.legal-root {
+  @apply flex min-h-svh justify-center bg-background px-4 py-8;
+}
+
+.legal-container {
+  @apply w-full max-w-2xl;
+}
+
+.legal-nav {
+  @apply mb-8;
+}
+
+.legal-back {
+  @apply inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground;
+}
+
+.legal-header {
+  @apply mb-8 border-b border-border/60 pb-6;
+}
+
+.legal-title {
+  @apply text-2xl font-semibold tracking-tight text-foreground;
+}
+
+.legal-updated {
+  @apply mt-2 text-xs text-muted-foreground;
+}
+
+.legal-body {
+  @apply flex flex-col gap-6 pb-16;
+}
+
+.legal-body section {
+  @apply flex flex-col gap-2;
+}
+
+.legal-body h2 {
+  @apply text-sm font-semibold text-foreground;
+}
+
+.legal-body p {
+  @apply text-sm leading-relaxed text-muted-foreground;
+}
+
+.legal-body ul {
+  @apply ml-4 list-disc space-y-1 text-sm leading-relaxed text-muted-foreground;
+}

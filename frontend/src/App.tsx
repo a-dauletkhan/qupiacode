@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 
 import { AuthPage } from "@/components/auth/auth-page"
+import { PrivacyPage, TermsPage } from "@/components/legal/legal-page"
 import { CanvasWorkspace } from "@/modules/Canvas/components/canvas/canvas-workspace"
 import { ProjectsDashboard } from "@/components/projects/projects-dashboard"
 import { useAuth } from "@/lib/auth"
@@ -61,6 +62,8 @@ export function App() {
             </ProtectedRoute>
           }
         />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
       </Routes>
     </BrowserRouter>
   )

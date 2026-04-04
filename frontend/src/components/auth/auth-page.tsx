@@ -65,11 +65,13 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             {/* Logo + heading */}
             <div className="auth-heading">
               <span className="auth-logo">
-                <QupiaBrand />
+                <HigJamBrand />
               </span>
               <div className="auth-heading-text">
                 <h1 className="auth-title">
-                  {isLogin ? "Welcome back" : "Welcome to Qupia"}
+                  <Typewriter
+                    text={isLogin ? "Welcome back" : "Welcome to HigJam"}
+                  />
                 </h1>
                 <p className="auth-subtitle">
                   {isLogin
@@ -183,13 +185,13 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             {/* Legal footer */}
             <p className="auth-legal">
               By continuing, I acknowledge the{" "}
-              <a href="#" className="auth-legal-link">
+              <Link to="/privacy" className="auth-legal-link">
                 Privacy Policy
-              </a>{" "}
+              </Link>{" "}
               and agree to the{" "}
-              <a href="#" className="auth-legal-link">
+              <Link to="/terms" className="auth-legal-link">
                 Terms of Use
-              </a>
+              </Link>
               .
             </p>
           </div>
@@ -213,7 +215,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 </span>
               </div>
               <div className="auth-showcase-text">
-                <h2 className="auth-showcase-title">QUPIA CANVAS</h2>
+                <h2 className="auth-showcase-title">HIGJAM CANVAS</h2>
                 <p className="auth-showcase-desc">
                   Collaborate in real-time on an infinite canvas with voice
                   calls, chat, and powerful drawing tools
@@ -227,9 +229,52 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   )
 }
 
+// ---- Typewriter animation ----
+
+function Typewriter({ text }: { text: string }) {
+  const [displayed, setDisplayed] = React.useState("")
+  const [done, setDone] = React.useState(false)
+
+  const [hidden, setHidden] = React.useState(false)
+
+  React.useEffect(() => {
+    setDisplayed("")
+    setDone(false)
+    setHidden(false)
+    let i = 0
+    const id = setInterval(() => {
+      i++
+      setDisplayed(text.slice(0, i))
+      if (i >= text.length) {
+        clearInterval(id)
+        setDone(true)
+        setTimeout(() => setHidden(true), 300)
+      }
+    }, 30)
+    return () => clearInterval(id)
+  }, [text])
+
+  return (
+    <span className={hidden ? "auth-typewriter auth-typewriter-shine" : "auth-typewriter"}>
+      {displayed}
+      <span
+        className={
+          done
+            ? hidden
+              ? "auth-cursor auth-cursor-hidden"
+              : "auth-cursor auth-cursor-blink"
+            : "auth-cursor"
+        }
+      >
+        |
+      </span>
+    </span>
+  )
+}
+
 // ---- Brand / OAuth icons ----
 
-function QupiaBrand() {
+function HigJamBrand() {
   return (
     <svg
       width="32"
@@ -248,7 +293,7 @@ function QupiaBrand() {
         fill="var(--primary-foreground)"
         fontFamily="var(--font-sans)"
       >
-        Q
+        H
       </text>
     </svg>
   )

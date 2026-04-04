@@ -33,6 +33,53 @@
   @apply flex w-full max-w-sm flex-col;
 }
 
+/* ---- typewriter ---- */
+
+.auth-typewriter {
+  @apply inline-block;
+}
+
+.auth-typewriter-shine {
+  animation: text-shine 1.6s cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  background: linear-gradient(
+    90deg,
+    var(--foreground) 0%,
+    var(--foreground) 35%,
+    var(--primary) 45%,
+    var(--primary) 55%,
+    var(--foreground) 65%,
+    var(--foreground) 100%
+  );
+  background-size: 300% 100%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes text-shine {
+  0% { background-position: 100% 50%; }
+  100% { background-position: -50% 50%; }
+}
+
+.auth-cursor {
+  @apply font-light text-primary;
+  transition: opacity 0.3s ease;
+}
+
+.auth-cursor-blink {
+  animation: cursor-blink 1s step-end infinite;
+}
+
+.auth-cursor-hidden {
+  opacity: 0;
+  animation: none;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
 /* ---- heading ---- */
 
 .auth-heading {
