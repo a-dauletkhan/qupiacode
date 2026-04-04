@@ -26,20 +26,37 @@ export function VolumeSlider({
   className,
 }: VolumeSliderProps) {
   const [internalVolume, setInternalVolume] = React.useState(defaultValue)
+  const savedVolumeRef = React.useRef(defaultValue > 0 ? defaultValue : 75)
   const isControlled = value !== undefined
   const volume = isControlled ? value : internalVolume
   const VolumeIcon = volume === 0 ? VolumeOffIcon : Volume2Icon
 
-  const handleVolumeChange = React.useCallback(
-    ([nextVolume]: number[]) => {
-      const safeVolume = nextVolume ?? 0
+  React.useEffect(() => {
+    if (volume > 0) {
+      savedVolumeRef.current = volume
+    }
+  }, [volume])
+
+  const updateVolume = React.useCallback(
+    (nextVolume: number) => {
       if (!isControlled) {
-        setInternalVolume(safeVolume)
+        setInternalVolume(nextVolume)
       }
-      onValueChange?.(safeVolume)
+      onValueChange?.(nextVolume)
     },
     [isControlled, onValueChange]
   )
+
+  const handleVolumeChange = React.useCallback(
+    ([nextVolume]: number[]) => {
+      updateVolume(nextVolume ?? 0)
+    },
+    [updateVolume]
+  )
+
+  const handleToggleMute = React.useCallback(() => {
+    updateVolume(volume === 0 ? savedVolumeRef.current : 0)
+  }, [updateVolume, volume])
 
   return (
     <DropdownMenu>
