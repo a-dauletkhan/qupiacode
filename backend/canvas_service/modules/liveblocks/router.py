@@ -1,7 +1,14 @@
 from fastapi import APIRouter, Depends, Request
 
 from canvas_service.core.auth import get_current_user
-from canvas_service.modules.liveblocks.service import create_liveblocks_session
+from canvas_service.modules.liveblocks.schemas import (
+    LiveblocksUserInfo,
+    ResolveUsersRequest,
+)
+from canvas_service.modules.liveblocks.service import (
+    create_liveblocks_session,
+    resolve_liveblocks_users,
+)
 
 router = APIRouter(prefix="/api/liveblocks", tags=["liveblocks"])
 
@@ -21,3 +28,11 @@ async def liveblocks_auth(request: Request, user_id: str = Depends(get_current_u
         room_id=room_id,
     )
     return result
+
+
+@router.post("/resolve-users", response_model=list[LiveblocksUserInfo])
+async def resolve_users(
+    body: ResolveUsersRequest,
+    _: str = Depends(get_current_user),
+):
+    return await resolve_liveblocks_users(body.user_ids)
