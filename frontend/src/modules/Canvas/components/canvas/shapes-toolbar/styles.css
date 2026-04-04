@@ -1,7 +1,7 @@
 @reference "../../../../../index.css";
 
 .shape-island {
-  @apply relative flex w-full justify-center rounded-2xl border border-border/70 bg-card/95 p-1 text-card-foreground backdrop-blur-xl;
+  @apply relative flex h-[42px] w-full justify-center rounded-none border border-border/70 bg-card/95 px-1 text-card-foreground backdrop-blur-xl;
 }
 
 .shape-hint-viewer {
@@ -58,7 +58,7 @@
 
 @media (max-width: 640px) {
   .shape-island {
-    @apply rounded-[1.25rem];
+    @apply rounded-none;
   }
 
   .shape-hint-viewer {

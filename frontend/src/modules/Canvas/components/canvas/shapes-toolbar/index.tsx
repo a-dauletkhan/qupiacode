@@ -130,7 +130,7 @@ export function ShapesToolbar({
             aria-label="Keep selected tool active after drawing"
             title="Keep selected tool active after drawing"
             className={cn(
-              "shape-tool size-10 rounded-xl border border-transparent p-0 text-foreground/80",
+              "shape-tool size-8 rounded-xl border border-transparent p-0 text-foreground/80",
               toolLocked && "shape-tool-active"
             )}
             onClick={() => onToolLockedChange(!toolLocked)}
@@ -154,7 +154,7 @@ export function ShapesToolbar({
                 aria-label={tool.label}
                 title={`${tool.label} — ${tool.shortcut}`}
                 className={cn(
-                  "shape-tool relative size-10 rounded-xl border border-transparent p-0 text-foreground/80",
+                  "shape-tool relative size-8 rounded-xl border border-transparent p-0 text-foreground/80",
                   isActive && "shape-tool-active",
                   tool.fillable && "shape-tool-fillable",
                   !tool.implemented && "shape-tool-disabled"
@@ -182,7 +182,7 @@ export function ShapesToolbar({
                 size="icon"
                 aria-label="Default object settings"
                 title="Default object settings"
-                className="shape-tool size-10 rounded-xl border border-transparent p-0 text-foreground/80"
+                className="shape-tool size-8 rounded-xl border border-transparent p-0 text-foreground/80"
                 onPointerDown={dismissHint}
               >
                 {renderIcon(Settings2)}

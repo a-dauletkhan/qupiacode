@@ -46,7 +46,7 @@ export function VoiceCall({
   return (
     <section
       className={cn(
-        "flex h-full w-full flex-col justify-between bg-sidebar p-2",
+        "flex h-full w-full flex-col justify-between bg-sidebar p-2  pt-4 ",
         className
       )}
       {...props}

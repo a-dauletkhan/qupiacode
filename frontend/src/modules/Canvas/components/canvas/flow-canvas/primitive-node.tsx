@@ -1,6 +1,7 @@
 import { memo, type CSSProperties } from "react"
 import { NodeResizer, type NodeProps } from "@xyflow/react"
 
+import { NodeConnectionHandles } from "@/modules/Canvas/components/canvas/flow-canvas/node-connection-handles"
 import {
   type PrimitivePaintStyle,
   type ShapeNode,
@@ -15,7 +16,9 @@ const paintStyleBadges: Record<PrimitivePaintStyle, string> = {
 }
 
 export const ShapeNodeCard = memo(function ShapeNodeCard({
+  id,
   data,
+  isConnectable,
   selected,
   width,
   height,
@@ -24,6 +27,13 @@ export const ShapeNodeCard = memo(function ShapeNodeCard({
 
   return (
     <div className="primitive-node-shell">
+      <NodeConnectionHandles
+        nodeId={id}
+        isConnectable={isConnectable}
+        selected={selected}
+        hidden={data.draft}
+      />
+
       <NodeResizer
         color="oklch(0.768 0.233 130.85)"
         isVisible={selected && !data.draft}

@@ -71,6 +71,17 @@
   @apply hidden;
 }
 
+.canvas-flow .react-flow__edge-path,
+.canvas-flow .react-flow__connection-path {
+  stroke: var(--color-primary);
+  stroke-width: 2;
+}
+
+.canvas-flow .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--color-primary);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--color-primary) 30%, transparent));
+}
+
 .canvas-minimap {
   @apply !mr-12 !rounded-none !border !border-primary/70 shadow-none;
   --xy-minimap-background-color-props: oklch(0.145 0 0);
@@ -151,6 +162,15 @@
 .primitive-node-shell {
   @apply relative h-full w-full;
   cursor: grab;
+}
+
+.canvas-node-handle {
+  @apply !size-3 !border-2 !border-background !bg-primary opacity-0 transition-opacity;
+}
+
+.canvas-node-handle-visible,
+.react-flow__node:hover .canvas-node-handle {
+  @apply opacity-100;
 }
 
 .primitive-node-frame {

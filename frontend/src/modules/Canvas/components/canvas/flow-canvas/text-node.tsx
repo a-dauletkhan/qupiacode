@@ -2,6 +2,7 @@ import * as React from "react"
 import { NodeResizer, type NodeProps } from "@xyflow/react"
 
 import { useCanvasEditor } from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
+import { NodeConnectionHandles } from "@/modules/Canvas/components/canvas/flow-canvas/node-connection-handles"
 import { isTextNode, type TextNode } from "@/modules/Canvas/components/canvas/primitives/schema"
 import { Textarea } from "@/modules/Canvas/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -9,6 +10,7 @@ import { cn } from "@/lib/utils"
 export const TextNodeCard = React.memo(function TextNodeCard({
   id,
   data,
+  isConnectable,
   selected,
 }: NodeProps<TextNode>) {
   const { editingObjectId, finishEditing, updateCanvasObject } = useCanvasEditor()
@@ -42,6 +44,13 @@ export const TextNodeCard = React.memo(function TextNodeCard({
         data.draft && "canvas-text-node-draft"
       )}
     >
+      <NodeConnectionHandles
+        nodeId={id}
+        isConnectable={isConnectable}
+        selected={selected}
+        hidden={data.draft}
+      />
+
       <NodeResizer
         color="oklch(0.768 0.233 130.85)"
         isVisible={selected && !data.draft}

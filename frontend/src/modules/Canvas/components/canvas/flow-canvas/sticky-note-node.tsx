@@ -2,6 +2,7 @@ import * as React from "react"
 import { NodeResizer, type NodeProps } from "@xyflow/react"
 
 import { useCanvasEditor } from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
+import { NodeConnectionHandles } from "@/modules/Canvas/components/canvas/flow-canvas/node-connection-handles"
 import {
   isStickyNoteNode,
   type StickyNoteNode,
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils"
 export const StickyNoteNodeCard = React.memo(function StickyNoteNodeCard({
   id,
   data,
+  isConnectable,
   selected,
 }: NodeProps<StickyNoteNode>) {
   const { editingObjectId, finishEditing, updateCanvasObject } =
@@ -46,6 +48,13 @@ export const StickyNoteNodeCard = React.memo(function StickyNoteNodeCard({
       )}
       style={noteStyle}
     >
+      <NodeConnectionHandles
+        nodeId={id}
+        isConnectable={isConnectable}
+        selected={selected}
+        hidden={data.draft}
+      />
+
       <NodeResizer
         color="oklch(0.768 0.233 130.85)"
         isVisible={selected && !data.draft}

@@ -3,6 +3,7 @@ import { Cursors, useLiveblocksFlow } from "@liveblocks/react-flow"
 import {
   Background,
   BackgroundVariant,
+  ConnectionMode,
   Controls,
   MiniMap,
   Panel,
@@ -10,6 +11,7 @@ import {
   ReactFlowProvider,
   useReactFlow,
   useViewport,
+  type Connection,
   type Edge,
   type NodeChange,
   type NodeMouseHandler,
@@ -70,6 +72,8 @@ const nodeTypes = {
   sticky_note: StickyNoteNodeCard,
 }
 
+const MINIMAP_ACTIVITY_HIDE_DELAY_MS = 1200
+
 export function FlowCanvas(props: FlowCanvasProps) {
   return (
     <ReactFlowProvider>
@@ -87,6 +91,10 @@ function FlowCanvasInner({
   onActiveToolChange,
 }: FlowCanvasProps) {
   const sectionRef = React.useRef<HTMLElement | null>(null)
+  const hasMeasuredCanvasRef = React.useRef(false)
+  const miniMapActivityTimeoutRef = React.useRef<ReturnType<
+    typeof window.setTimeout
+  > | null>(null)
   const {
     nodes,
     edges,
@@ -114,12 +122,35 @@ function FlowCanvasInner({
   const [inspectedObjectId, setInspectedObjectId] = React.useState<string | null>(
     null
   )
+  const [isMiniMapActivityVisible, setIsMiniMapActivityVisible] =
+    React.useState(false)
   const reactFlow = useReactFlow<CanvasObjectNode, Edge>()
   const viewport = useViewport()
 
   const renderedNodes = React.useMemo(
     () => (draftNode ? [...nodes, draftNode] : nodes),
     [draftNode, nodes]
+  )
+
+  const isValidConnection = React.useCallback(
+    (connection: Connection | Edge) => {
+      if (!connection.source || !connection.target) {
+        return false
+      }
+
+      if (connection.source === connection.target) {
+        return false
+      }
+
+      return !edges.some(
+        (edge) =>
+          edge.source === connection.source &&
+          edge.target === connection.target &&
+          edge.sourceHandle === connection.sourceHandle &&
+          edge.targetHandle === connection.targetHandle
+      )
+    },
+    [edges]
   )
 
   const updateCanvasObject = React.useCallback(
@@ -143,6 +174,50 @@ function FlowCanvasInner({
     },
     [nodes, onNodesChange]
   )
+
+  const revealMiniMapActivity = React.useCallback(() => {
+    if (miniMapActivityTimeoutRef.current) {
+      window.clearTimeout(miniMapActivityTimeoutRef.current)
+    }
+
+    setIsMiniMapActivityVisible(true)
+    miniMapActivityTimeoutRef.current = window.setTimeout(() => {
+      setIsMiniMapActivityVisible(false)
+      miniMapActivityTimeoutRef.current = null
+    }, MINIMAP_ACTIVITY_HIDE_DELAY_MS)
+  }, [])
+
+  React.useEffect(
+    () => () => {
+      if (miniMapActivityTimeoutRef.current) {
+        window.clearTimeout(miniMapActivityTimeoutRef.current)
+      }
+    },
+    []
+  )
+
+  React.useEffect(() => {
+    const canvasSection = sectionRef.current
+
+    if (!canvasSection) {
+      return
+    }
+
+    const canvasResizeObserver = new ResizeObserver(() => {
+      if (!hasMeasuredCanvasRef.current) {
+        hasMeasuredCanvasRef.current = true
+        return
+      }
+
+      revealMiniMapActivity()
+    })
+
+    canvasResizeObserver.observe(canvasSection)
+
+    return () => {
+      canvasResizeObserver.disconnect()
+    }
+  }, [revealMiniMapActivity])
 
   const finishEditing = React.useCallback(() => {
     setEditingObjectId(null)
@@ -505,8 +580,21 @@ function FlowCanvasInner({
               setInspectedObjectId(null)
               setInspectorOpen(false)
             }}
+            onMoveStart={(event) => {
+              if (event) {
+                revealMiniMapActivity()
+              }
+            }}
+            onMove={(event) => {
+              if (event) {
+                revealMiniMapActivity()
+              }
+            }}
             onNodeContextMenu={handleNodeContextMenu}
             onSelectionChange={handleSelectionChange}
+            connectionMode={ConnectionMode.Loose}
+            nodesConnectable={activeTool === "selection" && !editingObjectId}
+            isValidConnection={isValidConnection}
             fitView
             fitViewOptions={{ padding: 0.18 }}
             minZoom={0.5}
@@ -531,31 +619,33 @@ function FlowCanvasInner({
               </div>
             </Panel>
 
-            <Panel
-              position="bottom-right"
-              className={cn(
-                "canvas-minimap-toggle-panel",
-                isMiniMapVisible && "canvas-minimap-toggle-panel-visible"
-              )}
-            >
-              <Button
-                type="button"
-                variant="outline"
-                size="icon-sm"
-                className="canvas-minimap-toggle"
-                onClick={() => setIsMiniMapVisible((current) => !current)}
-                aria-label={isMiniMapVisible ? "Hide minimap" : "Show minimap"}
-                title={isMiniMapVisible ? "Hide minimap" : "Show minimap"}
-              >
-                {isMiniMapVisible ? (
-                  <EyeOff className="size-4" />
-                ) : (
-                  <Eye className="size-4" />
+            {isMiniMapActivityVisible ? (
+              <Panel
+                position="bottom-right"
+                className={cn(
+                  "canvas-minimap-toggle-panel",
+                  isMiniMapVisible && "canvas-minimap-toggle-panel-visible"
                 )}
-              </Button>
-            </Panel>
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  className="canvas-minimap-toggle"
+                  onClick={() => setIsMiniMapVisible((current) => !current)}
+                  aria-label={isMiniMapVisible ? "Hide minimap" : "Show minimap"}
+                  title={isMiniMapVisible ? "Hide minimap" : "Show minimap"}
+                >
+                  {isMiniMapVisible ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </Button>
+              </Panel>
+            ) : null}
 
-            {isMiniMapVisible ? (
+            {isMiniMapVisible && isMiniMapActivityVisible ? (
               <MiniMap
                 pannable
                 zoomable

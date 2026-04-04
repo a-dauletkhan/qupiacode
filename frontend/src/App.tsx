@@ -76,7 +76,7 @@ export function App() {
               type="button"
               variant="outline"
               size="icon"
-              className="absolute top-4 right-4 z-30 border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
+              className="absolute top-[16px] size-[40px] right-4 z-30 border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
               onClick={toggleSidebar}
               aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
             >

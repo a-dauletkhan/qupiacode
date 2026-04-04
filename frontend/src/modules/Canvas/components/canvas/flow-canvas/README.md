@@ -36,10 +36,11 @@
 - Pass canvas overlays through `overlay` rather than positioning them in `App.tsx`.
 - Keep editor-specific node types in this module unless they become reusable across multiple canvas features.
 - Dragging on the empty pane while a creation tool is active creates a draft object, previews its bounds, and commits it on pointer release.
+- Hover or select a node in selection mode to reveal side handles, then drag from one handle to another node to create an edge.
 - A floating inspector is anchored to a single selected object and edits it without embedding property menus inside the node renderers.
 
 ## Known Limits
 
 - Initial objects are still seeded mock content.
 - The component does not persist flow state yet.
-- Shape, text, and sticky-note creation are wired; line/arrow/draw/image remain future work.
+- Shape, text, sticky-note, and handle-based edge creation are wired; dedicated line/arrow toolbar tools plus draw/image remain future work.
