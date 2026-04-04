@@ -1,0 +1,8 @@
+[build]
+builder = "RAILPACK"
+watchPatterns = ["/backend/voice_call_service/**"]
+
+[deploy]
+startCommand = "sh -c '.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT}'"
+healthcheckPath = "/healthz"
+healthcheckTimeout = 100

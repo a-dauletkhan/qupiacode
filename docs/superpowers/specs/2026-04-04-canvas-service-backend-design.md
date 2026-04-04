@@ -102,13 +102,13 @@ PRIMARY KEY (board_id, user_id)
 ```sql
 id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
 board_id    UUID REFERENCES boards(id) ON DELETE CASCADE
-type        TEXT NOT NULL   -- 'node' | 'sticky_note' | 'drawing' | 'text' | 'image'
+type        TEXT NOT NULL   -- React Flow node type, e.g. 'canvas-node' (frontend-defined, no enum constraint)
 position    JSONB NOT NULL  -- { "x": float, "y": float }  React Flow format
 width       FLOAT
 height      FLOAT
 z_index     INT DEFAULT 0
 parent_id   UUID REFERENCES canvas_nodes(id)  -- React Flow parentId for grouping
-data        JSONB           -- type-specific: color, text content, stroke points, src URL, etc.
+data        JSONB           -- frontend-defined payload: { label, kind, note, color, text, src, ... }
 updated_by  UUID NOT NULL
 updated_at  TIMESTAMPTZ DEFAULT now()   -- used for LWW conflict resolution
 ```
@@ -256,13 +256,13 @@ WS     /ws/{board_id}?token=<jwt>
   "nodes": [
     {
       "id": "uuid",
-      "type": "sticky_note",
+      "type": "canvas-node",
       "position": { "x": 100, "y": 200 },
-      "width": 200,
-      "height": 150,
-      "zIndex": 1,
+      "width": null,
+      "height": null,
+      "zIndex": 0,
       "parentId": null,
-      "data": { "text": "Hello", "color": "#ffeb3b" }
+      "data": { "label": "Project brief", "kind": "Input", "note": "Scope, references, and constraints land here first." }
     }
   ],
   "edges": [

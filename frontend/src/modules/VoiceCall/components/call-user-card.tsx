@@ -14,15 +14,6 @@ const avatarVariants = [
       "top-5 left-1 size-8 bg-linear-to-br from-amber-300 via-red-500 to-fuchsia-600",
   },
   {
-    base: "bg-emerald-50",
-    blob1:
-      "-top-1 left-1 size-8 bg-linear-to-br from-emerald-200 via-lime-300 to-green-400",
-    blob2:
-      "top-3 left-4 size-6 bg-linear-to-br from-teal-400 via-emerald-500 to-green-600",
-    blob3:
-      "top-4 -left-1 size-9 bg-linear-to-br from-lime-300 via-green-500 to-teal-600",
-  },
-  {
     base: "bg-sky-50",
     blob1:
       "top-0 -left-1 size-8 bg-linear-to-br from-sky-200 via-cyan-300 to-blue-400",
@@ -96,6 +87,16 @@ const avatarVariants = [
   },
 ] as const
 
+const agentAvatar =   {
+    base: "bg-lime-50",
+    blob1:
+      "-top-1 left-1 size-8 bg-linear-to-br from-lime-200 via-lime-300 to-green-400",
+    blob2:
+      "top-3 left-4 size-6 bg-linear-to-br from-teal-400 via-lime-500 to-green-600",
+    blob3:
+      "top-4 -left-1 size-9 bg-linear-to-br from-lime-300 via-green-500 to-teal-600",
+  } as const
+
 function getAvatarVariant(name: string) {
   const hash = [...name].reduce(
     (accumulator, character) => accumulator + character.charCodeAt(0),
@@ -109,6 +110,10 @@ type CallUserProps = {
   name: string
   status: string
   isMuted?: boolean
+  isSpeaking?: boolean
+  volume?: number
+  volumeDisabled?: boolean
+  onVolumeChange?: (nextVolume: number) => void
   className?: string
 }
 
@@ -116,6 +121,10 @@ export function CallUserCard({
   name,
   status,
   isMuted = false,
+  isSpeaking = false,
+  volume = 100,
+  volumeDisabled = false,
+  onVolumeChange,
   className,
 }: CallUserProps) {
   const avatarVariant = getAvatarVariant(name)
@@ -123,7 +132,8 @@ export function CallUserCard({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center gap-3 border-r border-b border-l border-sidebar-border bg-sidebar p-2",
+        "flex shrink-0 items-center gap-3 border-r border-b border-l border-sidebar-border bg-sidebar p-2 transition-colors",
+        isSpeaking && "bg-sidebar-accent/50",
         className
       )}
     >
@@ -157,13 +167,33 @@ export function CallUserCard({
 
       {isMuted ? <MicOffIcon className="size-4 text-destructive" /> : null}
 
-      <VolumeSlider />
+      <VolumeSlider
+        value={volume}
+        onValueChange={onVolumeChange}
+        disabled={volumeDisabled}
+      />
     </div>
   )
 }
 
-export function CallAgentCard({ className }: { className?: string }) {
-  const avatarVariant = getAvatarVariant("AI Agent")
+type CallAgentCardProps = {
+  name?: string
+  status?: string
+  volume?: number
+  volumeDisabled?: boolean
+  onVolumeChange?: (nextVolume: number) => void
+  className?: string
+}
+
+export function CallAgentCard({
+  name = "AI Agent",
+  status = "Offline",
+  volume = 100,
+  volumeDisabled = true,
+  onVolumeChange,
+  className,
+}: CallAgentCardProps) {
+  const avatarVariant = agentAvatar
 
   return (
     <div
@@ -196,13 +226,15 @@ export function CallAgentCard({ className }: { className?: string }) {
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-semibold text-foreground">
-          AI Agent
-        </p>
-        <p className="text-xs text-muted-foreground">Online</p>
+        <p className="truncate text-xs font-semibold text-foreground">{name}</p>
+        <p className="text-xs text-muted-foreground">{status}</p>
       </div>
 
-      <VolumeSlider />
+      <VolumeSlider
+        value={volume}
+        onValueChange={onVolumeChange}
+        disabled={volumeDisabled}
+      />
     </div>
   )
 }
