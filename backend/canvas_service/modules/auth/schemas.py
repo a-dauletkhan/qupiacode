@@ -9,3 +9,4 @@ class LoginRequest(BaseModel):
 class SignUpRequest(BaseModel):
     email: EmailStr
     password: str
+    name: str

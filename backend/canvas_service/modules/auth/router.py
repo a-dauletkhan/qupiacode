@@ -23,7 +23,10 @@ async def login(body: LoginRequest):
     if resp.status_code != 200:
         detail = resp.json().get("error_description", resp.text)
         raise HTTPException(status_code=resp.status_code, detail=detail)
-    return resp.json()
+    data = resp.json()
+    user_meta = data.get("user", {}).get("user_metadata", {})
+    data["name"] = user_meta.get("name", "")
+    return data
 
 
 @router.post("/signup")
@@ -32,7 +35,11 @@ async def signup(body: SignUpRequest):
         resp = await client.post(
             f"{SUPABASE_AUTH_URL}/signup",
             headers=HEADERS,
-            json={"email": body.email, "password": body.password},
+            json={
+                "email": body.email,
+                "password": body.password,
+                "data": {"name": body.name},
+            },
         )
     if resp.status_code not in (200, 201):
         detail = resp.json().get("msg", resp.text)

@@ -9,7 +9,7 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str
     supabase_storage_bucket: str = "canvas-media"
 
-    model_config = {"env_file": ".env"}
+    model_config = {"env_file": ".env", "extra": "ignore"}
 
 
 settings = Settings()
