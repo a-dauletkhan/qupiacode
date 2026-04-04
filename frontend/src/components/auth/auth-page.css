@@ -1,0 +1,175 @@
+@reference "../../index.css";
+
+/* ---- root layout ---- */
+
+.auth-root {
+  @apply flex min-h-svh items-center justify-center bg-background p-3 md:p-6;
+}
+
+.auth-container {
+  @apply flex w-full max-w-[352px] overflow-hidden rounded-[20px] border border-border/20 bg-card shadow-[inset_0_0_32px_rgba(0,0,0,0.2)] md:max-w-[560px] md:rounded-[24px] xl:max-w-[1120px];
+  min-height: min(620px, calc(100dvh - 48px));
+}
+
+@media (min-width: 768px) {
+  .auth-container {
+    min-height: min(700px, calc(100dvh - 48px));
+  }
+}
+
+@media (min-width: 1280px) {
+  .auth-container {
+    min-height: min(720px, calc(100dvh - 64px));
+  }
+}
+
+/* ---- form panel (left) ---- */
+
+.auth-form-panel {
+  @apply flex flex-1 flex-col items-center overflow-y-auto px-5 py-6 md:px-[88px] md:py-8;
+}
+
+.auth-form-inner {
+  @apply flex w-full max-w-sm flex-col;
+}
+
+/* ---- heading ---- */
+
+.auth-heading {
+  @apply mb-6 flex flex-col items-center gap-4 text-center md:mb-10;
+}
+
+.auth-logo {
+  @apply flex justify-center;
+}
+
+.auth-heading-text {
+  @apply flex flex-col gap-3;
+}
+
+.auth-title {
+  @apply text-[30px] font-semibold leading-[36px] text-foreground;
+}
+
+.auth-subtitle {
+  @apply text-sm leading-5 text-muted-foreground;
+}
+
+/* ---- oauth buttons ---- */
+
+.auth-buttons {
+  @apply flex w-full flex-col gap-3;
+}
+
+.auth-oauth-group {
+  @apply flex flex-col gap-3;
+}
+
+.auth-oauth-btn {
+  @apply flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-foreground/10 bg-transparent py-3.5 text-center text-sm font-semibold text-foreground transition-colors hover:border-foreground/30 md:py-5;
+}
+
+.auth-divider {
+  @apply flex w-full items-center justify-center;
+}
+
+.auth-divider > span {
+  @apply text-xs text-muted-foreground/70;
+}
+
+/* ---- email form ---- */
+
+.auth-email-form {
+  @apply flex w-full flex-col gap-4;
+}
+
+.auth-field {
+  @apply flex flex-col gap-1.5;
+}
+
+.auth-error {
+  @apply text-xs text-destructive;
+}
+
+.auth-submit-btn {
+  @apply mt-1 w-full;
+}
+
+.auth-back-link {
+  @apply cursor-pointer text-center text-xs text-muted-foreground underline transition-colors hover:text-foreground;
+}
+
+/* ---- switch mode ---- */
+
+.auth-switch {
+  @apply mt-6 border-t border-foreground/8 pt-4 text-center text-xs text-muted-foreground;
+}
+
+.auth-switch-link {
+  @apply font-medium text-foreground underline;
+}
+
+/* ---- legal footer ---- */
+
+.auth-legal {
+  @apply mt-4 text-center text-xs leading-[18px] text-foreground/30;
+}
+
+.auth-legal-link {
+  @apply font-medium text-foreground/40 underline;
+}
+
+/* ---- showcase panel (right, xl only) ---- */
+
+.auth-showcase-panel {
+  @apply hidden w-1/2 min-h-0 p-2 pl-0 xl:block;
+}
+
+.auth-showcase-inner {
+  @apply relative flex h-full flex-col overflow-hidden rounded-xl bg-black;
+}
+
+.auth-showcase-bg {
+  @apply absolute inset-0;
+  background:
+    radial-gradient(ellipse at 30% 20%, oklch(0.768 0.233 130.85 / 0.15), transparent 60%),
+    radial-gradient(ellipse at 70% 80%, oklch(0.72 0.16 240 / 0.1), transparent 60%),
+    linear-gradient(135deg, oklch(0.205 0 0) 0%, oklch(0.145 0 0) 100%);
+}
+
+.auth-showcase-overlay {
+  @apply absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/80;
+}
+
+.auth-showcase-content {
+  @apply absolute bottom-0 left-0 right-0 flex flex-col gap-8 p-8;
+}
+
+.auth-showcase-badges {
+  @apply flex flex-wrap gap-1;
+}
+
+.auth-badge {
+  @apply inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[10px] font-semibold leading-[14px];
+}
+
+.auth-badge-primary {
+  @apply bg-primary text-primary-foreground;
+}
+
+.auth-badge-glass {
+  @apply border border-white/10 bg-white/10 text-white backdrop-blur-[20px];
+}
+
+.auth-showcase-text {
+  @apply flex flex-col gap-1.5;
+}
+
+.auth-showcase-title {
+  @apply text-[40px] font-bold uppercase leading-[48px] tracking-[-0.8px] text-white;
+  font-family: var(--font-heading);
+}
+
+.auth-showcase-desc {
+  @apply text-sm leading-5 text-white/50;
+}
