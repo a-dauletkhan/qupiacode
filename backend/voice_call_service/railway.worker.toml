@@ -1,0 +1,6 @@
+[build]
+builder = "RAILPACK"
+watchPatterns = ["/backend/voice_call_service/**"]
+
+[deploy]
+startCommand = "sh -c '.venv/bin/python voice_agent_worker.py start'"

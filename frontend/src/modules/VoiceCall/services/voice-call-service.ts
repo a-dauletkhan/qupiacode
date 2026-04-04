@@ -5,11 +5,22 @@ export type VoiceTokenRequest = {
   apiBaseUrl?: string
 }
 
+export type VoiceAgentMetadata = {
+  enabled: boolean
+  name: string
+  wake_phrases: string[]
+  transcription_mode: "livekit_inference" | "mock"
+  transcript_forwarding_enabled: boolean
+  transcript_partials_enabled: boolean
+  diarization_enabled: boolean
+}
+
 export type VoiceTokenResponse = {
   server_url: string
   room_name: string
   participant_identity: string
   participant_name: string | null
+  agent: VoiceAgentMetadata | null
   token: string
 }
 

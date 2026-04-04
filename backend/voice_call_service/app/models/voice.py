@@ -9,6 +9,18 @@ DisplayName = Annotated[
 ]
 
 
+class VoiceAgentMetadata(BaseModel):
+    """Agent metadata returned alongside the human participant token."""
+
+    enabled: bool
+    name: str
+    wake_phrases: list[str]
+    transcription_mode: str
+    transcript_forwarding_enabled: bool
+    transcript_partials_enabled: bool
+    diarization_enabled: bool
+
+
 class VoiceTokenRequest(BaseModel):
     """Input payload for requesting a canvas voice token."""
 
@@ -41,6 +53,15 @@ class VoiceTokenResponse(BaseModel):
                 "room_name": "canvas:canvas-123",
                 "participant_identity": "user:user-456",
                 "participant_name": "Ava",
+                "agent": {
+                    "enabled": True,
+                    "name": "Qupia Agent",
+                    "wake_phrases": ["agent", "hey agent", "ai agent"],
+                    "transcription_mode": "mock",
+                    "transcript_forwarding_enabled": False,
+                    "transcript_partials_enabled": True,
+                    "diarization_enabled": False,
+                },
                 "token": "<livekit-jwt>",
             }
         }
@@ -50,4 +71,5 @@ class VoiceTokenResponse(BaseModel):
     room_name: str
     participant_identity: str
     participant_name: str | None
+    agent: VoiceAgentMetadata | None = None
     token: str
