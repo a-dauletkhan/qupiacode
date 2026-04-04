@@ -6,12 +6,12 @@ export function createOpenAIProvider(apiKey: string, model: string): LLMProvider
 
   return {
     async chat(messages: Message[], tools: Tool[]): Promise<LLMResponse> {
-      const openaiTools: OpenAI.ChatCompletionTool[] = tools.map((t) => ({
+      const openaiTools = tools.map((t) => ({
         type: "function" as const,
         function: {
           name: t.name,
           description: t.description,
-          parameters: t.parameters,
+          parameters: t.parameters as Record<string, unknown>,
         },
       }));
 
@@ -26,12 +26,12 @@ export function createOpenAIProvider(apiKey: string, model: string): LLMProvider
 
       const choice = response.choices[0];
       const text = choice.message.content;
-      const toolCalls: ToolCall[] = (choice.message.tool_calls ?? []).map(
-        (tc) => ({
+      const toolCalls: ToolCall[] = (choice.message.tool_calls ?? [])
+        .filter((tc): tc is OpenAI.ChatCompletionMessageToolCall & { type: "function" } => tc.type === "function")
+        .map((tc) => ({
           name: tc.function.name,
           arguments: JSON.parse(tc.function.arguments),
-        })
-      );
+        }));
 
       return { text, toolCalls };
     },

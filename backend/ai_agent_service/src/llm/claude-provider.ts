@@ -12,7 +12,7 @@ export function createClaudeProvider(apiKey: string, model: string): LLMProvider
       const anthropicTools: Anthropic.Tool[] = tools.map((t) => ({
         name: t.name,
         description: t.description,
-        input_schema: t.parameters as Anthropic.Tool.InputSchema,
+        input_schema: t.parameters as unknown as Anthropic.Tool.InputSchema,
       }));
 
       const response = await client.messages.create({

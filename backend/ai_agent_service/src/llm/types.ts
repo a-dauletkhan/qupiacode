@@ -5,11 +5,12 @@ export interface Message {
 
 export interface ToolParameter {
   type: string;
-  description: string;
+  description?: string;
   properties?: Record<string, ToolParameter>;
   required?: string[];
   items?: ToolParameter;
   enum?: string[];
+  [key: string]: unknown;
 }
 
 export interface Tool {

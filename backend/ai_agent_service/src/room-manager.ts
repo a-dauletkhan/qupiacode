@@ -137,11 +137,11 @@ export class RoomManager {
       session.accumulator.updateCanvasSnapshot(
         nodes.map((n) => ({
           id: n.id as string,
-          type: (n.data as Record<string, unknown>)?.type as string ?? "shape",
+          type: ((n.data as Record<string, unknown>)?.type as string ?? "shape") as import("./types.js").CanvasObjectType,
           position: n.position as { x: number; y: number },
           width: n.width as number | undefined,
           height: n.height as number | undefined,
-          data: n.data as any,
+          data: n.data as import("./types.js").CanvasNodeData,
         })),
         edges.map((e) => ({
           id: e.id as string,
@@ -283,11 +283,11 @@ export class RoomManager {
               data: {
                 userId: "ai-agent",
                 body: {
-                  version: 1,
-                  content: [{ type: "paragraph", children: [{ text }] }],
+                  version: 1 as const,
+                  content: [{ type: "paragraph" as const, children: [{ text }] }],
                 },
               },
-            });
+            } as any);
           } catch {
             try {
               await liveblocks.createThread({
@@ -295,12 +295,12 @@ export class RoomManager {
                 data: {
                   userId: "ai-agent",
                   body: {
-                    version: 1,
-                    content: [{ type: "paragraph", children: [{ text }] }],
+                    version: 1 as const,
+                    content: [{ type: "paragraph" as const, children: [{ text }] }],
                   },
                   metadata: {},
                 },
-              });
+              } as any);
             } catch (err) {
               console.error("Failed to send agent message:", err);
             }
