@@ -10,6 +10,7 @@ from canvas_service.modules.auth.router import router as auth_router
 from canvas_service.modules.boards.router import router as boards_router
 from canvas_service.modules.canvas_objects.router import router as canvas_router
 from canvas_service.modules.collaboration.router import router as collaboration_router
+from canvas_service.modules.liveblocks.router import router as liveblocks_router
 from voice_call_service.app.api.routes import dev, health, voice, webhooks
 from voice_call_service.app.core.config import get_settings as get_voice_settings
 from voice_call_service.app.core.logging import configure_logging
@@ -60,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(boards_router)
     app.include_router(canvas_router)
     app.include_router(collaboration_router)
+    app.include_router(liveblocks_router)
 
     if voice_settings.app_env != "production":
         app.include_router(dev.router)

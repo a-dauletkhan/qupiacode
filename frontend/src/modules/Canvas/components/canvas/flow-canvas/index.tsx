@@ -46,6 +46,7 @@ import {
   type ToolId,
 } from "@/modules/Canvas/components/canvas/primitives/schema"
 import "@/modules/Canvas/components/canvas/flow-canvas/styles.css"
+import { AgentPresence } from "@/modules/Agent/components/agent-presence"
 import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -633,6 +634,7 @@ function FlowCanvasInner({
                 <span>{nodes.filter((node) => !node.data.draft).length} objects</span>
                 <span>{activeTool}</span>
                 <span>{selectedObjectIds.length} selected</span>
+                <AgentPresence />
               </div>
             </Panel>
 

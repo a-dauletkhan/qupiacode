@@ -1,15 +1,18 @@
 import * as React from "react"
+import { useCreateThread, useThreads } from "@liveblocks/react/suspense"
+import { Thread } from "@liveblocks/react-ui"
 import {
   ArrowDown,
   BotIcon,
   MicIcon,
-  SendHorizonalIcon,
+  Send,
   UserIcon,
 } from "lucide-react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
+import "@liveblocks/react-ui/styles.css"
+
 import { Button } from "@/modules/Canvas/components/ui/button"
-import { Input } from "@/modules/Canvas/components/ui/input"
 import { cn } from "@/lib/utils"
 import { useVoiceCallContext } from "@/modules/VoiceCall/context/voice-call-context"
 import { type VoiceCallChatMessageView } from "@/modules/VoiceCall/hooks/use-voice-call"
@@ -134,7 +137,11 @@ function EmptyState({
 
 export function Chat() {
   const virtuosoRef = React.useRef<VirtuosoHandle>(null)
+  const bottomRef = React.useRef<HTMLDivElement>(null)
   const [isAtBottom, setIsAtBottom] = React.useState(true)
+  const [input, setInput] = React.useState("")
+  const { threads } = useThreads()
+  const createThread = useCreateThread()
   const { chatMessages, errorMessage, inCall, roomName } = useVoiceCallContext()
 
   const initialMessageIndex = Math.max(chatMessages.length - 1, 0)
@@ -151,60 +158,107 @@ export function Chat() {
     })
   }
 
+  function handleSubmit(event: React.FormEvent) {
+    event.preventDefault()
+
+    const text = input.trim()
+    if (!text) {
+      return
+    }
+
+    createThread({
+      body: {
+        version: 1,
+        content: [{ type: "paragraph", children: [{ text }] }],
+      },
+      metadata: {},
+    })
+
+    setInput("")
+    window.setTimeout(
+      () => bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
+      100
+    )
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-b border-border px-4 py-3">
-        <p className="text-sm font-semibold text-foreground">Live Chat</p>
+        <p className="text-sm font-semibold text-foreground">Chat</p>
         <p className="mt-1 text-xs text-muted-foreground">
           {roomName || "No active call"}
         </p>
       </div>
 
-      <div className="relative min-h-0 flex-1">
-        {chatMessages.length > 0 ? (
-          <>
-            <Virtuoso
-              ref={virtuosoRef}
-              data={chatMessages}
-              atBottomStateChange={setIsAtBottom}
-              followOutput={(atBottom) => (atBottom ? "smooth" : false)}
-              initialTopMostItemIndex={initialMessageIndex}
-              components={VIRTUOSO_COMPONENTS}
-              itemContent={(_, message) => <ChatMessageRow message={message} />}
-              style={{ height: "100%" }}
-              increaseViewportBy={{ top: 200, bottom: 400 }}
-            />
+      <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1.15fr)_auto_minmax(0,1fr)_auto]">
+        <div className="relative min-h-0">
+          {chatMessages.length > 0 ? (
+            <>
+              <Virtuoso
+                ref={virtuosoRef}
+                data={chatMessages}
+                atBottomStateChange={setIsAtBottom}
+                followOutput={(atBottom) => (atBottom ? "smooth" : false)}
+                initialTopMostItemIndex={initialMessageIndex}
+                components={VIRTUOSO_COMPONENTS}
+                itemContent={(_, message) => <ChatMessageRow message={message} />}
+                style={{ height: "100%" }}
+                increaseViewportBy={{ top: 200, bottom: 400 }}
+              />
 
-            {!isAtBottom ? (
-              <Button
-                type="button"
-                variant="secondary"
-                size="icon"
-                onClick={scrollToLatestMessage}
-                aria-label="Scroll to latest message"
-                className="bg absolute right-4 bottom-4 z-10 rounded-full shadow-sm"
-              >
-                <ArrowDown className="size-4" />
-              </Button>
-            ) : null}
-          </>
-        ) : (
-          <EmptyState inCall={inCall} errorMessage={errorMessage} />
-        )}
+              {!isAtBottom ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  onClick={scrollToLatestMessage}
+                  aria-label="Scroll to latest message"
+                  className="absolute right-4 bottom-4 z-10 rounded-full shadow-sm"
+                >
+                  <ArrowDown className="size-4" />
+                </Button>
+              ) : null}
+            </>
+          ) : (
+            <EmptyState inCall={inCall} errorMessage={errorMessage} />
+          )}
+        </div>
+
+        <div className="border-y border-border px-4 py-2">
+          <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+            Team Chat
+          </p>
+        </div>
+
+        <div className="min-h-0 overflow-y-auto px-2 py-2">
+          {threads.length === 0 ? (
+            <div className="flex h-full items-center justify-center px-4 text-center text-xs text-muted-foreground">
+              Threaded messages will appear here after someone sends one.
+            </div>
+          ) : (
+            threads.map((thread) => (
+              <Thread key={thread.id} thread={thread} className="mb-2" />
+            ))
+          )}
+          <div ref={bottomRef} />
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 border-t border-border p-3">
-        <Input
-          value=""
-          readOnly
-          disabled
-          placeholder="Text input for the agent is disabled in this version."
-          className="h-9"
+      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-border p-2">
+        <input
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder="Type a message..."
+          className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-lime-500"
         />
-        <Button type="button" size="icon-lg" disabled aria-label="Send message">
-          <SendHorizonalIcon className="size-4" />
-        </Button>
-      </div>
+        <button
+          type="submit"
+          disabled={!input.trim()}
+          className="rounded-md bg-lime-500 px-3 py-1.5 text-sm text-black disabled:opacity-50"
+        >
+          <Send className="size-4" />
+        </button>
+      </form>
     </div>
   )
 }
