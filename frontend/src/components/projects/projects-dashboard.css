@@ -1,0 +1,173 @@
+@reference "../../index.css";
+
+.dashboard-root {
+  @apply flex h-svh flex-col bg-background;
+}
+
+.dashboard-header {
+  @apply flex items-center justify-between border-b border-border/60 px-6 py-5;
+}
+
+.dashboard-title {
+  @apply text-lg font-semibold tracking-tight text-foreground;
+}
+
+.dashboard-create-btn {
+  @apply gap-1.5;
+}
+
+.dashboard-empty {
+  @apply flex flex-1 flex-col items-center justify-center gap-4;
+}
+
+/* ---- view toggle ---- */
+
+.dashboard-view-toggle {
+  @apply flex items-center overflow-hidden rounded-md border border-border/60;
+}
+
+.dashboard-view-toggle-btn {
+  @apply flex size-8 items-center justify-center text-muted-foreground transition-colors hover:bg-accent hover:text-foreground;
+}
+
+.dashboard-view-toggle-btn-active {
+  @apply bg-accent text-foreground;
+}
+
+/* ---- table layout ---- */
+
+.dashboard-table-wrap {
+  @apply flex flex-1 flex-col overflow-y-auto;
+}
+
+.dashboard-table-header {
+  @apply sticky top-0 z-10 flex min-h-8 border-b border-border/60 bg-background px-6;
+}
+
+.dashboard-table-header > div {
+  @apply flex h-10 items-center text-xs font-medium text-muted-foreground;
+}
+
+.dashboard-table-header > div > span {
+  @apply block min-w-5 max-w-full truncate;
+}
+
+.dashboard-table-body {
+  @apply flex flex-col;
+}
+
+/* ---- table row ---- */
+
+.dashboard-row {
+  @apply flex items-center border-b border-border/30 px-6 transition-colors hover:bg-accent/40;
+}
+
+.dashboard-row-cell {
+  @apply flex h-11 items-center gap-2 overflow-hidden text-sm;
+}
+
+/* ---- columns (shared between header and body) ---- */
+
+.dashboard-col-name {
+  @apply min-w-8 flex-[3_1_0%] cursor-pointer pr-3 text-left text-foreground;
+}
+
+.dashboard-col-name:focus-visible {
+  @apply outline-none;
+}
+
+.dashboard-col-online {
+  @apply flex-[1.5_1_0%] px-3;
+}
+
+.dashboard-col-opened {
+  @apply flex-[1.5_1_0%] px-3 text-muted-foreground;
+}
+
+.dashboard-col-owner {
+  @apply flex-[1_1_0%] px-3 text-muted-foreground;
+}
+
+.dashboard-col-options {
+  @apply w-[84px] min-w-[84px] max-w-[84px] justify-end pl-3;
+}
+
+/* ---- card grid layout ---- */
+
+.dashboard-grid {
+  @apply grid flex-1 content-start gap-5 overflow-y-auto p-6;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.dashboard-card {
+  @apply relative flex flex-col overflow-hidden rounded-lg border border-border/60 bg-card transition-colors;
+}
+
+.dashboard-card:hover {
+  @apply border-border;
+}
+
+.dashboard-card-new {
+  @apply cursor-pointer items-center justify-center gap-2 border-dashed py-12 hover:bg-accent/40;
+}
+
+.dashboard-card-body {
+  @apply flex cursor-pointer items-center justify-center bg-muted/30 py-10 transition-colors hover:bg-muted/50;
+}
+
+.dashboard-card-footer {
+  @apply grid grid-cols-[1fr_auto] grid-rows-[auto_auto] items-center gap-x-2 border-t border-border/40 px-3 py-2.5;
+}
+
+.dashboard-card-name {
+  @apply col-span-1 truncate text-sm font-medium text-foreground;
+}
+
+.dashboard-card-meta {
+  @apply col-start-1 flex items-center gap-2;
+}
+
+.dashboard-card-date {
+  @apply text-[11px] text-muted-foreground;
+}
+
+.dashboard-card-actions {
+  @apply row-span-2 flex items-center;
+}
+
+/* ---- shared row/card actions ---- */
+
+.dashboard-row-menu {
+  @apply flex size-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover:opacity-100;
+}
+
+/* ---- online user avatars ---- */
+
+.dashboard-online-empty {
+  @apply text-xs text-muted-foreground/50;
+}
+
+.dashboard-avatar-stack {
+  @apply flex -space-x-1.5;
+}
+
+.dashboard-avatar {
+  @apply flex size-6 items-center justify-center rounded-full border border-background bg-primary/20 text-[10px] font-medium text-primary;
+}
+
+.dashboard-avatar-overflow {
+  @apply flex h-6 items-center pl-2 text-[10px] text-muted-foreground;
+}
+
+/* ---- responsive ---- */
+
+@media (max-width: 768px) {
+  .dashboard-col-online,
+  .dashboard-col-owner {
+    @apply hidden;
+  }
+
+  .dashboard-col-opened {
+    @apply flex-[1_1_0%];
+  }
+}
