@@ -143,7 +143,7 @@ function FlowCanvasInner({
                   ...node.data,
                   _ai: { ...aiField, status: "approved" },
                 },
-              } as CanvasObjectNode,
+              } as unknown as CanvasObjectNode,
             },
           ])
         }

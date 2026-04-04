@@ -7,7 +7,7 @@
  */
 
 import * as React from "react"
-import type { NodeProps } from "@xyflow/react"
+import type { Node, NodeProps } from "@xyflow/react"
 import type {
   ShapeNode,
   TextNode,
@@ -25,12 +25,12 @@ import type { AiMetadata } from "../types"
 // Generic wrapper factory
 // ---------------------------------------------------------------------------
 
-function withAiOverlay<N extends { id: string; data: Record<string, unknown> }>(
+function withAiOverlay<N extends Node<Record<string, unknown>>>(
   OriginalComponent: React.ComponentType<NodeProps<N>>,
   displayName: string,
 ) {
   const Wrapped = React.memo(function AiAwareNode(props: NodeProps<N>) {
-    const aiMeta = getAiMeta(props as unknown as { id: string; data: Record<string, unknown> }) as AiMetadata | null
+    const aiMeta = getAiMeta({ id: props.id, data: props.data as Record<string, unknown> }) as AiMetadata | null
     const agent = useAiAgentOptional()
 
     if (!aiMeta) {

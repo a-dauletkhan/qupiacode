@@ -80,6 +80,14 @@ export function CanvasWorkspace() {
     () => new URL(`/invite/${projectId ?? ""}`, SELF_URL).toString(),
     [projectId]
   )
+  const voiceDisplayName = React.useMemo(() => {
+    const email = user?.email?.trim()
+    if (!email) {
+      return "Guest"
+    }
+
+    return email.split("@")[0] || email
+  }, [user?.email])
 
   const sidebarPanelRef = usePanelRef()
   const [activeTool, setActiveTool] = React.useState<ToolId>("selection")
@@ -208,9 +216,15 @@ export function CanvasWorkspace() {
               side="right"
               collapsible="none"
               className="w-full"
+<<<<<<< Updated upstream
               canvasId={project.id}
               userId={user?.id}
               displayName={displayName}
+=======
+              projectId={project.id}
+              userId={user?.id}
+              displayName={voiceDisplayName}
+>>>>>>> Stashed changes
             />
           </ResizablePanel>
         </ResizablePanelGroup>
