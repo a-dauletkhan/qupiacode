@@ -1,8 +1,11 @@
+import logging
 import asyncio
-
 import httpx
-
+from fastapi import HTTPException
 from canvas_service.core.config import settings
+
+logger = logging.getLogger(__name__)
+
 
 _LIVEBLOCKS_HEADERS = {
     "Authorization": f"Bearer {settings.liveblocks_secret_key}",
@@ -16,11 +19,21 @@ _SUPABASE_HEADERS = {
 }
 
 
+def _liveblocks_headers() -> dict[str, str]:
+    key = settings.liveblocks_secret_key
+    if not key:
+        raise HTTPException(status_code=503, detail="LIVEBLOCKS_SECRET_KEY is not configured")
+    return {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+
+
 async def _ensure_room(client: httpx.AsyncClient, room_id: str) -> None:
     """Create the Liveblocks room if it doesn't already exist."""
     resp = await client.post(
         "https://api.liveblocks.io/v2/rooms",
-        headers=_LIVEBLOCKS_HEADERS,
+        headers=_liveblocks_headers(),
         json={
             "id": room_id,
             "defaultAccesses": ["room:write"],
@@ -48,10 +61,21 @@ async def create_liveblocks_session(user_id: str, user_name: str, room_id: str |
 
         response = await client.post(
             "https://api.liveblocks.io/v2/identify-user",
-            headers=_LIVEBLOCKS_HEADERS,
+            headers=_liveblocks_headers(),
             json=payload,
         )
         response.raise_for_status()
+
+        # Fire-and-forget: notify AI agent service to join this room
+        if room_id:
+            try:
+                await client.post(
+                    f"{settings.ai_agent_service_url}/api/rooms/{room_id}/join",
+                    timeout=2.0,
+                )
+            except Exception as exc:
+                logger.warning("Failed to notify AI agent service for room %s: %s", room_id, exc)
+
         return response.json()
 
 

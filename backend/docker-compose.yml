@@ -44,6 +44,16 @@ services:
       db-init:
         condition: service_completed_successfully
 
+  ai-agent:
+    build:
+      context: ./ai_agent_service
+      dockerfile: Dockerfile
+    env_file:
+      - ${BACKEND_ENV_FILE:-.env}
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
   redis:
     image: redis:7-alpine
     ports:

@@ -1,5 +1,6 @@
 import type { ToolCall } from "./llm/types.js";
 import { randomUUID } from "node:crypto";
+import { logger } from "./logger.js";
 
 export interface StorageAdapter {
   setNode: (id: string, data: Record<string, unknown>) => void;
@@ -50,7 +51,7 @@ export class ActionExecutor {
         this.handleRearrange(call.arguments);
         break;
       default:
-        console.warn(`Unknown tool call: ${call.name}`);
+        logger.warn({ toolCall: call.name }, "Unknown tool call");
     }
   }
 

@@ -1,5 +1,6 @@
 import express from "express";
 import { config } from "./config.js";
+import { logger } from "./logger.js";
 import { WebhookTranscriptSource } from "./transcript/webhook-source.js";
 import { RoomManager } from "./room-manager.js";
 
@@ -48,5 +49,5 @@ app.post("/api/liveblocks/webhook", async (req, res) => {
 });
 
 app.listen(config.server.port, () => {
-  console.log(`AI Agent Service running on port ${config.server.port}`);
+  logger.info({ port: config.server.port }, "AI Agent Service started");
 });

@@ -1,6 +1,7 @@
 import { Liveblocks } from "@liveblocks/node";
 import { createClient, type Room as LbRoom } from "@liveblocks/client";
 import { config } from "./config.js";
+import { roomLogger } from "./logger.js";
 import { ContextAccumulator } from "./context-accumulator.js";
 import { DecisionEngine } from "./decision-engine.js";
 import { ActionExecutor, type StorageAdapter } from "./action-executor.js";
@@ -66,7 +67,12 @@ export class RoomManager {
   }
 
   async joinRoom(roomId: string): Promise<void> {
-    if (this.sessions.has(roomId)) return;
+    const log = roomLogger(roomId);
+
+    if (this.sessions.has(roomId)) {
+      log.debug("Already in room, skipping join");
+      return;
+    }
 
     // Enter room via client SDK to maintain WebSocket presence
     const { room: presenceRoom } = this.lbClient.enterRoom(roomId, {
@@ -87,6 +93,7 @@ export class RoomManager {
 
     // Subscribe to transcript events for this room
     this.transcriptSource.subscribe(roomId, (event) => {
+      log.debug({ speaker: event.speaker_name, text: event.text }, "Transcript event received");
       session.accumulator.addTranscriptSegment({
         speakerId: event.speaker_id,
         speakerName: event.speaker_name,
@@ -100,17 +107,18 @@ export class RoomManager {
     // Start periodic evaluation loop
     session.evaluationTimer = setInterval(() => {
       this.evaluate(roomId).catch((err) =>
-        console.error(`Evaluation error in room ${roomId}:`, err)
+        log.error({ err }, "Evaluation error")
       );
     }, 3000);
 
     // Load initial canvas state
     await this.syncCanvasState(roomId);
 
-    console.log(`Joined room: ${roomId}`);
+    log.info("Joined room");
   }
 
   async leaveRoom(roomId: string): Promise<void> {
+    const log = roomLogger(roomId);
     const session = this.sessions.get(roomId);
     if (!session) return;
 
@@ -121,13 +129,15 @@ export class RoomManager {
     }
     this.sessions.delete(roomId);
 
-    console.log(`Left room: ${roomId}`);
+    log.info("Left room");
   }
 
   async handleStorageChange(roomId: string, description: string, userId: string): Promise<void> {
+    const log = roomLogger(roomId);
     const session = this.sessions.get(roomId);
     if (!session) return;
 
+    log.debug({ userId, description }, "Storage change received");
     session.accumulator.addChange(userId, description);
     session.lastChangeTime = Date.now();
     session.changeCount++;
@@ -178,30 +188,39 @@ export class RoomManager {
         session.decisionEngine.setIntensity(intensity);
       }
     } catch (err) {
-      console.error(`Failed to sync canvas state for room ${roomId}:`, err);
+      roomLogger(roomId).error({ err }, "Failed to sync canvas state");
     }
   }
 
   private async evaluate(roomId: string): Promise<void> {
+    const log = roomLogger(roomId);
     const session = this.sessions.get(roomId);
     if (!session) return;
 
     const now = Date.now();
-    const shouldAct = session.decisionEngine.shouldAct({
+    const evalInput = {
       hasDirectMention: false,
       timeSinceLastChange: now - session.lastChangeTime,
       timeSinceLastAction: now - session.lastActionTime,
       changeCount: session.changeCount,
       hasTranscriptActivity: session.accumulator.buildContext().includes("## Recent Conversation"),
-    });
+    };
+    const shouldAct = session.decisionEngine.shouldAct(evalInput);
+
+    log.debug({ shouldAct, ...evalInput, intensity: session.decisionEngine.getIntensity() }, "Evaluation tick");
 
     if (shouldAct) {
+      log.info("Decision: acting");
       await this.act(roomId, session, false);
     }
   }
 
   private async act(roomId: string, session: RoomSession, isDirect: boolean): Promise<void> {
+    const log = roomLogger(roomId);
     const context = session.accumulator.buildContext();
+
+    log.debug({ isDirect, contextLength: context.length }, "Building LLM request");
+    log.trace({ context }, "Full context sent to LLM");
 
     const messages: Message[] = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -217,13 +236,17 @@ export class RoomManager {
     session.presenceRoom?.updatePresence({ status: "acting" });
 
     try {
+      log.debug("Calling LLM...");
       const response = await this.llm.chat(messages, canvasTools);
+      log.info({ toolCalls: response.toolCalls.length, hasText: !!response.text }, "LLM response received");
+      log.debug({ toolCalls: response.toolCalls, text: response.text }, "LLM response details");
 
       if (response.toolCalls.length > 0) {
         const adapter = this.createStorageAdapter(roomId);
         const executor = new ActionExecutor(adapter);
         await executor.execute(response.toolCalls);
         await adapter.flush();
+        log.info({ actions: response.toolCalls.map((tc) => tc.name) }, "Actions executed");
       }
 
       if (response.text && !response.toolCalls.some((tc) => tc.name === "sendMessage")) {
@@ -231,12 +254,13 @@ export class RoomManager {
         const adapter = this.createStorageAdapter(roomId);
         adapter.sendMessage(response.text);
         await adapter.flush();
+        log.debug("Sent LLM text as chat message");
       }
 
       session.lastActionTime = Date.now();
       session.changeCount = 0;
     } catch (err) {
-      console.error(`Action error in room ${roomId}:`, err);
+      log.error({ err }, "Action error");
     } finally {
       // Return to "watching"
       session.presenceRoom?.updatePresence({ status: "watching" });
@@ -293,12 +317,12 @@ export class RoomManager {
         const edgeDeletes = (globalThis as any).__pendingEdgeDeletes as string[];
 
         if (nodeSets.length > 0 || nodeDeletes.length > 0 || edgeSets.length > 0 || edgeDeletes.length > 0) {
-          console.log(`Flushing mutations for room ${roomId}:`, {
+          roomLogger(roomId).debug({
             nodeSets: nodeSets.length,
             nodeDeletes: nodeDeletes.length,
             edgeSets: edgeSets.length,
             edgeDeletes: edgeDeletes.length,
-          });
+          }, "Flushing mutations");
         }
 
         // Send chat messages via Liveblocks Comments API
@@ -329,7 +353,7 @@ export class RoomManager {
                 },
               } as any);
             } catch (err) {
-              console.error("Failed to send agent message:", err);
+              roomLogger(roomId).error({ err }, "Failed to send agent message");
             }
           }
         }

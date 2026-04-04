@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str
     supabase_storage_bucket: str = "canvas-media"
     liveblocks_secret_key: str = ""
+    ai_agent_service_url: str = "http://ai-agent:3001"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
