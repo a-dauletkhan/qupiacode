@@ -27,9 +27,7 @@ import { CanvasObjectInspector } from "@/modules/Canvas/components/canvas/flow-c
 import {
   CanvasEditorProvider,
 } from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
-import { ShapeNodeCard } from "@/modules/Canvas/components/canvas/flow-canvas/primitive-node"
-import { StickyNoteNodeCard } from "@/modules/Canvas/components/canvas/flow-canvas/sticky-note-node"
-import { TextNodeCard } from "@/modules/Canvas/components/canvas/flow-canvas/text-node"
+// Node type components are now wrapped by AI-aware nodes in Agent module
 import { initialEdges, initialNodes } from "@/modules/Canvas/components/canvas/primitives/mock-data"
 import {
   DRAFT_CANVAS_OBJECT_ID,
@@ -47,6 +45,12 @@ import {
 } from "@/modules/Canvas/components/canvas/primitives/schema"
 import "@/modules/Canvas/components/canvas/flow-canvas/styles.css"
 import { AgentPresence } from "@/modules/Agent/components/agent-presence"
+import { aiAwareNodeTypes } from "@/modules/Agent/components/ai-aware-nodes"
+import { AiAskButton } from "@/modules/Agent/components/ai-ask-button"
+import { AiPromptInput } from "@/modules/Agent/components/ai-prompt-input"
+import { AiQueueStatus } from "@/modules/Agent/components/ai-queue-status"
+import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
+// import { useAiMockBridge } from "@/modules/Agent/hooks/use-ai-mock-bridge"
 import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
 import { AvatarStack } from "@liveblocks/react-ui"
@@ -66,11 +70,7 @@ type DraftCreation = {
   tool: CanvasCreationTool
 }
 
-const nodeTypes = {
-  shape: ShapeNodeCard,
-  text: TextNodeCard,
-  sticky_note: StickyNoteNodeCard,
-}
+const nodeTypes = aiAwareNodeTypes
 
 const MINIMAP_ACTIVITY_HIDE_DELAY_MS = 1200
 
@@ -122,8 +122,49 @@ function FlowCanvasInner({
   const [inspectedObjectId, setInspectedObjectId] = React.useState<string | null>(
     null
   )
+  const [aiPromptOpen, setAiPromptOpen] = React.useState(false)
+  const [aiPromptPosition, setAiPromptPosition] = React.useState<{ x: number; y: number } | null>(null)
   const [isMiniMapActivityVisible, setIsMiniMapActivityVisible] =
     React.useState(false)
+  const aiAgent = useAiAgentOptional()
+  // useAiMockBridge({ onNodesChange })  // Mock bridge disabled — Liveblocks handles AI node sync
+
+  // Listen for approve/reject actions from AI-aware nodes
+  React.useEffect(() => {
+    if (!aiAgent) return
+    return aiAgent.registerCanvasAction((action) => {
+      if (action.type === "reject") {
+        // Remove rejected nodes from canvas
+        const removeChanges: NodeChange<CanvasObjectNode>[] = action.nodeIds.map(
+          (id) => ({ type: "remove", id }),
+        )
+        onNodesChange(removeChanges)
+      } else if (action.type === "approve") {
+        // Update node data to mark as approved
+        for (const nodeId of action.nodeIds) {
+          const node = nodes.find((n) => n.id === nodeId)
+          if (!node) continue
+          const data = node.data as Record<string, unknown>
+          const aiField = data._ai as Record<string, unknown> | undefined
+          if (!aiField) continue
+          onNodesChange([
+            {
+              type: "replace",
+              id: nodeId,
+              item: {
+                ...node,
+                data: {
+                  ...node.data,
+                  _ai: { ...aiField, status: "approved" },
+                },
+              } as CanvasObjectNode,
+            },
+          ])
+        }
+      }
+    })
+  }, [aiAgent, nodes, onNodesChange])
+
   const reactFlow = useReactFlow<CanvasObjectNode, Edge>()
   const viewport = useViewport()
 
@@ -278,11 +319,25 @@ function FlowCanvasInner({
         setInspectorOpen(false)
       }
 
+      // Push selection events to AI event batcher
+      if (aiAgent) {
+        if (nextIds.length > 0) {
+          aiAgent.pushEvent({ type: "node:selected", data: { nodeIds: nextIds } })
+        } else {
+          aiAgent.pushEvent({ type: "node:deselected", data: {} })
+        }
+      }
+
+      // Close AI prompt only when selection is fully cleared
+      if (nextIds.length === 0) {
+        setAiPromptOpen(false)
+      }
+
       setSelectedObjectIds((currentIds) =>
         areStringArraysEqual(currentIds, nextIds) ? currentIds : nextIds
       )
     },
-    [inspectedObjectId]
+    [inspectedObjectId, aiAgent]
   )
 
   React.useEffect(() => {
@@ -343,6 +398,30 @@ function FlowCanvasInner({
       setInspectorOpen(true)
     },
     [finishEditing]
+  )
+
+  const handleAskAiClick = React.useCallback(() => {
+    if (selectedObjectIds.length === 0 || !aiAgent) return
+    const bounds = sectionRef.current?.getBoundingClientRect()
+    if (!bounds) return
+    // Position the prompt near the center of the canvas viewport
+    setAiPromptPosition({
+      x: bounds.width / 2 - 144,
+      y: bounds.height / 2 - 60,
+    })
+    setAiPromptOpen(true)
+  }, [selectedObjectIds, aiAgent])
+
+  const handleAiPromptSubmit = React.useCallback(
+    (message: string) => {
+      if (!aiAgent) return
+      aiAgent.sendCommand(message, {
+        selectedNodeIds: selectedObjectIds,
+        viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
+        source: "canvas_context_menu",
+      })
+    },
+    [aiAgent, selectedObjectIds, viewport],
   )
 
   const handleNodeDoubleClick = React.useCallback<
@@ -597,6 +676,7 @@ function FlowCanvasInner({
               finishEditing()
               setInspectedObjectId(null)
               setInspectorOpen(false)
+              setAiPromptOpen(false)
             }}
             onMoveStart={(event) => {
               if (event) {
@@ -635,7 +715,15 @@ function FlowCanvasInner({
                 <span>{nodes.filter((node) => !node.data.draft).length} objects</span>
                 <span>{activeTool}</span>
                 <span>{selectedObjectIds.length} selected</span>
-                <AgentPresence />
+                {aiAgent ? (
+                  <AiQueueStatus
+                    agentStatus={aiAgent.queue.agentStatus}
+                    queueLength={aiAgent.queue.queue.length}
+                    currentUserName={aiAgent.queue.currentCommand?.userName}
+                  />
+                ) : (
+                  <AgentPresence />
+                )}
               </div>
             </Panel>
 
@@ -693,6 +781,21 @@ function FlowCanvasInner({
           </ReactFlow>
         </div>
 
+        {aiPromptOpen && aiPromptPosition && selectedObjectIds.length > 0 && aiAgent ? (
+          <div
+            className="absolute z-40"
+            style={{ left: aiPromptPosition.x, top: aiPromptPosition.y }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <AiPromptInput
+              selectedCount={selectedObjectIds.length}
+              onSubmit={handleAiPromptSubmit}
+              onClose={() => setAiPromptOpen(false)}
+            />
+          </div>
+        ) : null}
+
         {inspectorOpen && inspectorAnchor && selectedObject && selectedObject.id === inspectedObjectId ? (
           <CanvasObjectInspector
             anchor={inspectorAnchor}
@@ -713,6 +816,16 @@ function FlowCanvasInner({
             </div>
           </div>
         ) : null}
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-16 z-20 flex justify-center">
+          <div className="pointer-events-auto">
+            <AiAskButton
+              visible={selectedObjectIds.length > 0 && aiAgent != null && !aiPromptOpen}
+              selectedCount={selectedObjectIds.length}
+              onClick={handleAskAiClick}
+            />
+          </div>
+        </div>
       </section>
     </CanvasEditorProvider>
   )

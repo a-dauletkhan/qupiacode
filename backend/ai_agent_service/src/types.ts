@@ -70,3 +70,71 @@ export interface TranscriptSegment {
   text: string;
   timestamp: number;
 }
+
+// --- AI metadata attached to nodes/edges created by the agent ---
+
+export type AiActionStatus = "pending" | "approved" | "rejected";
+
+export interface AiMetadata {
+  actionId: string;
+  commandId: string | null;
+  requestedBy: string | null;
+  status: AiActionStatus;
+  createdAt: number;
+}
+
+// --- Command (explicit user request) ---
+
+export interface AiCommandRequest {
+  userId: string;
+  userName: string;
+  message: string;
+  context: {
+    selectedNodeIds: string[];
+    selectedEdgeIds: string[];
+    viewport: { x: number; y: number; zoom: number };
+    source: "chat" | "canvas_context_menu";
+  };
+}
+
+export interface AiCommandResponse {
+  commandId: string;
+  status: "queued";
+  position: number;
+  estimatedWaitMs: number;
+}
+
+// --- Activity events (passive frontend tracking) ---
+
+export interface AiActivityEvent {
+  type: string;
+  timestamp: number;
+  data: Record<string, unknown>;
+}
+
+export interface AiEventsRequest {
+  userId: string;
+  events: AiActivityEvent[];
+}
+
+// --- Feedback (approve/reject) ---
+
+export interface AiFeedbackRequest {
+  userId: string;
+  actionId: string;
+  nodeIds: string[];
+  edgeIds: string[];
+  status: "approved" | "rejected";
+  reason?: string;
+}
+
+// --- Queue item ---
+
+export interface QueuedCommand {
+  commandId: string;
+  userId: string;
+  userName: string;
+  message: string;
+  context: AiCommandRequest["context"];
+  queuedAt: number;
+}

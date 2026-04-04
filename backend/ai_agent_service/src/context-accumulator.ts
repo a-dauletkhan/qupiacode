@@ -1,5 +1,20 @@
 import type { CanvasNode, CanvasEdge, TranscriptSegment } from "./types.js";
 
+interface FeedbackEntry {
+  actionId: string;
+  status: "approved" | "rejected";
+  reason?: string;
+  userId: string;
+  timestamp: number;
+}
+
+interface UserActivityEntry {
+  userId: string;
+  type: string;
+  timestamp: number;
+  data: Record<string, unknown>;
+}
+
 interface AccumulatorConfig {
   maxTranscriptSegments: number;
   maxRecentChanges: number;
@@ -16,6 +31,8 @@ export class ContextAccumulator {
   private edges: CanvasEdge[] = [];
   private transcript: TranscriptSegment[] = [];
   private recentChanges: ChangeEntry[] = [];
+  private feedback: FeedbackEntry[] = [];
+  private userEvents: UserActivityEntry[] = [];
   private config: AccumulatorConfig;
 
   constructor(config: AccumulatorConfig) {
@@ -38,6 +55,22 @@ export class ContextAccumulator {
     this.recentChanges.push({ userId, description, timestamp: Date.now() });
     if (this.recentChanges.length > this.config.maxRecentChanges) {
       this.recentChanges = this.recentChanges.slice(-this.config.maxRecentChanges);
+    }
+  }
+
+  addFeedback(entry: Omit<FeedbackEntry, "timestamp">): void {
+    this.feedback.push({ ...entry, timestamp: Date.now() });
+    if (this.feedback.length > 20) {
+      this.feedback = this.feedback.slice(-20);
+    }
+  }
+
+  addUserEvents(userId: string, events: Array<{ type: string; timestamp: number; data: Record<string, unknown> }>): void {
+    for (const event of events) {
+      this.userEvents.push({ userId, ...event });
+    }
+    if (this.userEvents.length > 50) {
+      this.userEvents = this.userEvents.slice(-50);
     }
   }
 
@@ -74,6 +107,22 @@ export class ContextAccumulator {
         (t) => `  [${t.speakerName}]: ${t.text}`
       );
       sections.push(`## Recent Conversation\n${transcriptLines.join("\n")}`);
+    }
+
+    // User activity
+    if (this.userEvents.length > 0) {
+      const eventLines = this.userEvents.slice(-10).map(
+        (e) => `  - ${e.userId}: ${e.type} ${JSON.stringify(e.data)}`
+      );
+      sections.push(`## Recent User Activity\n${eventLines.join("\n")}`);
+    }
+
+    // Feedback history
+    if (this.feedback.length > 0) {
+      const feedbackLines = this.feedback.map(
+        (f) => `  - ${f.actionId}: ${f.status}${f.reason ? ` (reason: ${f.reason})` : ""}`
+      );
+      sections.push(`## Feedback on AI Actions\n${feedbackLines.join("\n")}`);
     }
 
     return sections.join("\n\n");

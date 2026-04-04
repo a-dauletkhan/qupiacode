@@ -86,4 +86,62 @@ describe("ActionExecutor", () => {
 
     expect(storage.nodes.size).toBe(0);
   });
+
+  it("injects _ai metadata into created nodes", async () => {
+    const storage = createMockStorage();
+    const executor = new ActionExecutor(storage, {
+      actionId: "act-001",
+      commandId: "cmd-001",
+      requestedBy: "user-1",
+    });
+
+    await executor.execute([{
+      name: "createNode",
+      arguments: { nodeType: "sticky_note", position: { x: 0, y: 0 }, text: "test" },
+    }]);
+
+    expect(storage.nodes.size).toBe(1);
+    const node = Array.from(storage.nodes.values())[0];
+    const data = node.data as Record<string, unknown>;
+    const ai = data._ai as Record<string, unknown>;
+    expect(ai.actionId).toBe("act-001");
+    expect(ai.commandId).toBe("cmd-001");
+    expect(ai.requestedBy).toBe("user-1");
+    expect(ai.status).toBe("pending");
+    expect(ai.createdAt).toBeTypeOf("number");
+  });
+
+  it("injects _ai metadata into created edges", async () => {
+    const storage = createMockStorage();
+    const executor = new ActionExecutor(storage, {
+      actionId: "act-002",
+      commandId: null,
+      requestedBy: null,
+    });
+
+    await executor.execute([{
+      name: "createEdge",
+      arguments: { source: "n1", target: "n2", label: "test" },
+    }]);
+
+    expect(storage.edges.size).toBe(1);
+    const edge = Array.from(storage.edges.values())[0];
+    const ai = edge._ai as Record<string, unknown>;
+    expect(ai.actionId).toBe("act-002");
+    expect(ai.status).toBe("pending");
+  });
+
+  it("does not inject _ai metadata when no context provided", async () => {
+    const storage = createMockStorage();
+    const executor = new ActionExecutor(storage);
+
+    await executor.execute([{
+      name: "createNode",
+      arguments: { nodeType: "shape", position: { x: 0, y: 0 } },
+    }]);
+
+    const node = Array.from(storage.nodes.values())[0];
+    const data = node.data as Record<string, unknown>;
+    expect(data._ai).toBeUndefined();
+  });
 });
