@@ -20,7 +20,29 @@ export function VolumeSlider({
   className,
 }: VolumeSliderProps) {
   const [volume, setVolume] = React.useState(defaultValue)
+  const [lastNonZeroVolume, setLastNonZeroVolume] = React.useState(
+    defaultValue > 0 ? defaultValue : 75
+  )
   const VolumeIcon = volume === 0 ? VolumeOffIcon : Volume2Icon
+
+  const handleToggleMute = React.useCallback(() => {
+    if (volume === 0) {
+      setVolume(lastNonZeroVolume)
+      return
+    }
+
+    setLastNonZeroVolume(volume)
+    setVolume(0)
+  }, [lastNonZeroVolume, volume])
+
+  const handleSliderChange = React.useCallback(([nextVolume]: number[]) => {
+    const safeVolume = nextVolume ?? 0
+    setVolume(safeVolume)
+
+    if (safeVolume > 0) {
+      setLastNonZeroVolume(safeVolume)
+    }
+  }, [])
 
   return (
     <DropdownMenu>
@@ -38,13 +60,22 @@ export function VolumeSlider({
 
       <DropdownMenuContent align="end" className="w-40 p-3">
         <div className="flex items-center gap-2">
-          <VolumeIcon className="size-4 shrink-0 text-muted-foreground" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            className="size-6 shrink-0 text-muted-foreground"
+            onClick={handleToggleMute}
+          >
+            <VolumeIcon className="size-4" />
+            <span className="sr-only">Toggle mute</span>
+          </Button>
           <Slider
             min={0}
             max={100}
             step={1}
             value={[volume]}
-            onValueChange={([nextVolume]) => setVolume(nextVolume ?? 0)}
+            onValueChange={handleSliderChange}
           />
         </div>
       </DropdownMenuContent>
