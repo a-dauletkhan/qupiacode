@@ -1,249 +1,605 @@
-import { useCallback, useState, type ReactNode } from "react"
+import * as React from "react"
 import {
-  addEdge,
   Background,
   BackgroundVariant,
   Controls,
-  Handle,
   MiniMap,
   Panel,
-  Position,
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
   useNodesState,
+  useReactFlow,
+  useViewport,
   type Edge,
-  type Node,
-  type NodeProps,
-  type OnConnect,
+  type NodeChange,
+  type NodeMouseHandler,
+  type OnSelectionChangeFunc,
 } from "@xyflow/react"
 import { Eye, EyeOff } from "lucide-react"
 
 import "@xyflow/react/dist/style.css"
 
+import { CanvasObjectInspector } from "@/components/canvas/flow-canvas/canvas-object-inspector"
+import {
+  CanvasEditorProvider,
+} from "@/components/canvas/flow-canvas/editor-context"
+import { ShapeNodeCard } from "@/components/canvas/flow-canvas/primitive-node"
+import { StickyNoteNodeCard } from "@/components/canvas/flow-canvas/sticky-note-node"
+import { TextNodeCard } from "@/components/canvas/flow-canvas/text-node"
+import { initialEdges, initialNodes } from "@/components/canvas/primitives/mock-data"
+import {
+  DRAFT_CANVAS_OBJECT_ID,
+  createShapeNode,
+  createStickyNoteNode,
+  createTextNode,
+  expandCanvasRect,
+  getCanvasObjectSize,
+  isCanvasCreationTool,
+  isStickyNoteNode,
+  isTextNode,
+  normalizeCanvasRect,
+  type CanvasCreationTool,
+  type CanvasEditorDefaults,
+  type CanvasObjectNode,
+  type ToolId,
+} from "@/components/canvas/primitives/schema"
 import "@/components/canvas/flow-canvas/styles.css"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 type FlowCanvasProps = {
   className?: string
-  overlay?: ReactNode
+  overlay?: React.ReactNode
+  activeTool: ToolId
+  toolLocked: boolean
+  editorDefaults: CanvasEditorDefaults
+  onActiveToolChange: (tool: ToolId) => void
 }
 
-type FlowNodeData = {
-  label: string
-  kind: string
-  note: string
+type DraftCreation = {
+  pointerId: number
+  start: { x: number; y: number }
+  tool: CanvasCreationTool
 }
-
-const initialNodes: Node<FlowNodeData>[] = [
-  {
-    id: "brief",
-    type: "canvas-node",
-    position: { x: 40, y: 90 },
-    data: {
-      label: "Project brief",
-      kind: "Input",
-      note: "Scope, references, and constraints land here first.",
-    },
-  },
-  {
-    id: "canvas",
-    type: "canvas-node",
-    position: { x: 360, y: 40 },
-    data: {
-      label: "Canvas graph",
-      kind: "Workspace",
-      note: "Drag nodes, reconnect edges, and grow the editor surface.",
-    },
-  },
-  {
-    id: "review",
-    type: "canvas-node",
-    position: { x: 700, y: 180 },
-    data: {
-      label: "Review lane",
-      kind: "Output",
-      note: "A side rail for handoff states and validation checkpoints.",
-    },
-  },
-]
-
-const initialEdges: Edge[] = [
-  {
-    id: "brief-canvas",
-    source: "brief",
-    target: "canvas",
-    animated: true,
-  },
-  {
-    id: "canvas-review",
-    source: "canvas",
-    target: "review",
-  },
-]
 
 const nodeTypes = {
-  "canvas-node": CanvasNode,
+  shape: ShapeNodeCard,
+  text: TextNodeCard,
+  sticky_note: StickyNoteNodeCard,
 }
 
-export function FlowCanvas({ className, overlay }: FlowCanvasProps) {
+export function FlowCanvas(props: FlowCanvasProps) {
   return (
     <ReactFlowProvider>
-      <FlowCanvasInner className={className} overlay={overlay} />
+      <FlowCanvasInner {...props} />
     </ReactFlowProvider>
   )
 }
 
-function FlowCanvasInner({ className, overlay }: FlowCanvasProps) {
-  const [nodes, , onNodesChange] = useNodesState<Node<FlowNodeData>>(initialNodes)
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
-  const [isMiniMapVisible, setIsMiniMapVisible] = useState(true)
+function FlowCanvasInner({
+  className,
+  overlay,
+  activeTool,
+  toolLocked,
+  editorDefaults,
+  onActiveToolChange,
+}: FlowCanvasProps) {
+  const sectionRef = React.useRef<HTMLElement | null>(null)
+  const [nodes, setNodes, onNodesChange] = useNodesState<CanvasObjectNode>(initialNodes)
+  const [edges, , onEdgesChange] = useEdgesState(initialEdges)
+  const [isMiniMapVisible, setIsMiniMapVisible] = React.useState(true)
+  const [draftCreation, setDraftCreation] = React.useState<DraftCreation | null>(
+    null
+  )
+  const [selectedObjectIds, setSelectedObjectIds] = React.useState<string[]>([])
+  const [editingObjectId, setEditingObjectId] = React.useState<string | null>(null)
+  const [inspectorOpen, setInspectorOpen] = React.useState(false)
+  const [inspectedObjectId, setInspectedObjectId] = React.useState<string | null>(
+    null
+  )
+  const reactFlow = useReactFlow<CanvasObjectNode, Edge>()
+  const viewport = useViewport()
 
-  const onConnect: OnConnect = useCallback(
-    (connection) =>
-      setEdges((currentEdges) =>
-        addEdge(
-          {
-            ...connection,
-            animated: false,
-          },
-          currentEdges
+  const updateCanvasObject = React.useCallback(
+    (
+      id: string,
+      updater: (node: CanvasObjectNode) => CanvasObjectNode
+    ) => {
+      setNodes((currentNodes) =>
+        currentNodes.map((node) =>
+          node.id === id ? updater(node as CanvasObjectNode) : node
         )
-      ),
-    [setEdges]
+      )
+    },
+    [setNodes]
   )
 
-  return (
-    <section
-      className={cn(
-        "relative flex h-full w-full overflow-hidden border-l border-border/60 bg-background",
-        className
-      )}
-      aria-label="Canvas flow workspace"
-    >
-      <div className="canvas-grid-backdrop" aria-hidden="true" />
+  const finishEditing = React.useCallback(() => {
+    setEditingObjectId(null)
+  }, [])
 
-      <div className="relative h-full w-full">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          fitView
-          fitViewOptions={{ padding: 0.18 }}
-          minZoom={0.5}
-          maxZoom={1.6}
-          defaultEdgeOptions={{
-            type: "smoothstep",
-            style: {
-              stroke: "var(--color-primary)",
-              strokeOpacity: 0.55,
-              strokeWidth: 1.5,
+  const startEditing = React.useCallback((id: string) => {
+    setEditingObjectId(id)
+  }, [])
+
+  const handleNodesChange = React.useCallback(
+    (changes: NodeChange<CanvasObjectNode>[]) => {
+      onNodesChange(changes)
+
+      if (
+        changes.some(
+          (change) =>
+            change.type === "remove" && change.id === editingObjectId
+        )
+      ) {
+        finishEditing()
+      }
+    },
+    [editingObjectId, finishEditing, onNodesChange]
+  )
+
+  const selectedObject = React.useMemo(() => {
+    if (selectedObjectIds.length !== 1) {
+      return null
+    }
+
+    return (
+      nodes.find(
+        (node) =>
+          node.id === selectedObjectIds[0] &&
+          node.id !== DRAFT_CANVAS_OBJECT_ID &&
+          !node.data.draft
+      ) ?? null
+    )
+  }, [nodes, selectedObjectIds])
+
+  const handleSelectionChange = React.useCallback<
+    OnSelectionChangeFunc<CanvasObjectNode, Edge>
+  >(
+    ({ nodes: selectedNodes }) => {
+      const nextIds = selectedNodes
+        .filter((node) => node.id !== DRAFT_CANVAS_OBJECT_ID)
+        .map((node) => node.id)
+
+      if (nextIds.length !== 1 || nextIds[0] !== inspectedObjectId) {
+        setInspectorOpen(false)
+      }
+
+      setSelectedObjectIds((currentIds) =>
+        areStringArraysEqual(currentIds, nextIds) ? currentIds : nextIds
+      )
+    },
+    [inspectedObjectId]
+  )
+
+  React.useEffect(() => {
+    if (!selectedObjectIds.includes(editingObjectId ?? "")) {
+      setEditingObjectId((currentEditingObjectId) =>
+        selectedObjectIds.includes(currentEditingObjectId ?? "")
+          ? currentEditingObjectId
+          : null
+      )
+    }
+  }, [editingObjectId, selectedObjectIds])
+
+  React.useEffect(() => {
+    if (selectedObjectIds.length !== 1) {
+      setInspectorOpen(false)
+    }
+  }, [selectedObjectIds])
+
+  const inspectorAnchor = React.useMemo(() => {
+    if (!selectedObject || !sectionRef.current) {
+      return null
+    }
+
+    const { width, height } = getCanvasObjectSize(selectedObject)
+    const leftScreenPosition = reactFlow.flowToScreenPosition({
+      x: selectedObject.position.x,
+      y: selectedObject.position.y,
+    })
+    const rightScreenPosition = reactFlow.flowToScreenPosition({
+      x: selectedObject.position.x + width,
+      y: selectedObject.position.y,
+    })
+    const bounds = sectionRef.current.getBoundingClientRect()
+    const leftSpace = leftScreenPosition.x - bounds.left
+    const rightSpace = bounds.right - rightScreenPosition.x
+    const side: "left" | "right" = rightSpace >= leftSpace ? "right" : "left"
+
+    return {
+      left:
+        side === "right"
+          ? clamp(rightScreenPosition.x - bounds.left + 12, 24, bounds.width - 24)
+          : clamp(leftScreenPosition.x - bounds.left - 12, 24, bounds.width - 24),
+      top: clamp(leftScreenPosition.y - bounds.top, 24, bounds.height - 24),
+      side,
+      width,
+      height,
+    }
+  }, [reactFlow, selectedObject, viewport.x, viewport.y, viewport.zoom])
+
+  const handleNodeContextMenu = React.useCallback<
+    NodeMouseHandler<CanvasObjectNode>
+  >(
+    (event, node) => {
+      event.preventDefault()
+      finishEditing()
+      setSelectedObjectIds([node.id])
+      setInspectedObjectId(node.id)
+      setInspectorOpen(true)
+    },
+    [finishEditing]
+  )
+
+  const buildNodeFromTool = React.useCallback(
+    (
+      tool: CanvasCreationTool,
+      rect: { x: number; y: number; width: number; height: number },
+      options?: {
+        draft?: boolean
+        id?: string
+        selected?: boolean
+      }
+    ) => {
+      if (tool === "text") {
+        return createTextNode({
+          id: options?.id ?? createCanvasObjectId("text"),
+          rect,
+          draft: options?.draft,
+          selected: options?.selected,
+          preset: editorDefaults.text,
+        })
+      }
+
+      if (tool === "sticky_note") {
+        return createStickyNoteNode({
+          id: options?.id ?? createCanvasObjectId("sticky-note"),
+          rect,
+          draft: options?.draft,
+          selected: options?.selected,
+          preset: editorDefaults.stickyNote,
+        })
+      }
+
+      return createShapeNode({
+        id: options?.id ?? createCanvasObjectId(tool),
+        shapeKind: tool,
+        rect,
+        draft: options?.draft,
+        selected: options?.selected,
+        preset: editorDefaults.shape,
+      })
+    },
+    [editorDefaults]
+  )
+
+  const syncDraftNode = React.useCallback(
+    (endPoint: { x: number; y: number }) => {
+      if (!draftCreation) {
+        return
+      }
+
+      const rect = normalizeCanvasRect(draftCreation.start, endPoint)
+
+      setNodes((currentNodes) => {
+        const nextNodes = currentNodes.filter(
+          (node) => node.id !== DRAFT_CANVAS_OBJECT_ID
+        )
+
+        return [
+          ...nextNodes,
+          buildNodeFromTool(
+            draftCreation.tool,
+            {
+              ...getCommittedRect(draftCreation.tool, rect, draftCreation.start),
+              width: Math.max(rect.width, 1),
+              height: Math.max(rect.height, 1),
             },
-          }}
-          className="canvas-flow"
-          proOptions={{ hideAttribution: true }}
-        >
-          <Panel position="bottom-left" className="canvas-panel">
-            <div className="flex items-center gap-6 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              <span>{nodes.length} nodes</span>
-              <span>{edges.length} edges</span>
-              <span>fit view enabled</span>
-            </div>
-          </Panel>
+            {
+              draft: true,
+              id: DRAFT_CANVAS_OBJECT_ID,
+            }
+          ),
+        ]
+      })
+    },
+    [buildNodeFromTool, draftCreation, setNodes]
+  )
 
-          <Panel
-            position="bottom-right"
+  const clearDraftNode = React.useCallback(() => {
+    setDraftCreation(null)
+    setNodes((currentNodes) =>
+      currentNodes.filter((node) => node.id !== DRAFT_CANVAS_OBJECT_ID)
+    )
+  }, [setNodes])
+
+  const commitDraftNode = React.useCallback(
+    (endPoint: { x: number; y: number }) => {
+      if (!draftCreation) {
+        return
+      }
+
+      const nextRect = normalizeCanvasRect(draftCreation.start, endPoint)
+      const committedRect = getCommittedRect(
+        draftCreation.tool,
+        nextRect,
+        draftCreation.start
+      )
+      const createdNode = buildNodeFromTool(draftCreation.tool, committedRect, {
+        selected: true,
+      })
+
+      setNodes((currentNodes) => {
+        const nextNodes = currentNodes
+          .filter((node) => node.id !== DRAFT_CANVAS_OBJECT_ID)
+          .map((node) => ({
+            ...node,
+            selected: false,
+          }))
+
+        return [...nextNodes, createdNode]
+      })
+
+      setSelectedObjectIds([createdNode.id])
+      setDraftCreation(null)
+
+      if (isTextNode(createdNode) || isStickyNoteNode(createdNode)) {
+        setEditingObjectId(createdNode.id)
+      }
+
+      if (!toolLocked) {
+        onActiveToolChange("selection")
+      }
+    },
+    [buildNodeFromTool, draftCreation, onActiveToolChange, setNodes, toolLocked]
+  )
+
+  const handleCanvasPointerDown = React.useCallback(
+    (event: React.PointerEvent<HTMLElement>) => {
+      if (!isCanvasCreationTool(activeTool) || event.button !== 0) {
+        return
+      }
+
+      if (!isPaneTarget(event.target)) {
+        return
+      }
+
+      event.preventDefault()
+
+      const start = reactFlow.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      })
+
+      setDraftCreation({
+        pointerId: event.pointerId,
+        start,
+        tool: activeTool,
+      })
+      setSelectedObjectIds([])
+      finishEditing()
+    },
+    [activeTool, finishEditing, reactFlow]
+  )
+
+  React.useEffect(() => {
+    if (!draftCreation) {
+      return
+    }
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== draftCreation.pointerId) {
+        return
+      }
+
+      syncDraftNode(
+        reactFlow.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        })
+      )
+    }
+
+    const handlePointerUp = (event: PointerEvent) => {
+      if (event.pointerId !== draftCreation.pointerId) {
+        return
+      }
+
+      commitDraftNode(
+        reactFlow.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        })
+      )
+    }
+
+    window.addEventListener("pointermove", handlePointerMove)
+    window.addEventListener("pointerup", handlePointerUp)
+
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove)
+      window.removeEventListener("pointerup", handlePointerUp)
+    }
+  }, [commitDraftNode, draftCreation, reactFlow, syncDraftNode])
+
+  React.useEffect(() => {
+    if (!isCanvasCreationTool(activeTool)) {
+      clearDraftNode()
+    }
+  }, [activeTool, clearDraftNode])
+
+  return (
+    <CanvasEditorProvider
+      value={{
+        editingObjectId,
+        startEditing,
+        finishEditing,
+        updateCanvasObject,
+      }}
+    >
+      <section
+        ref={sectionRef}
+        className={cn(
+          "relative flex h-full w-full overflow-hidden border-l border-border/60 bg-background",
+          className
+        )}
+        aria-label="Canvas flow workspace"
+        onPointerDownCapture={handleCanvasPointerDown}
+      >
+        <div className="canvas-grid-backdrop" aria-hidden="true" />
+
+        <div className="relative h-full w-full">
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            nodeTypes={nodeTypes}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={onEdgesChange}
+            onPaneClick={() => {
+              finishEditing()
+              setInspectedObjectId(null)
+              setInspectorOpen(false)
+            }}
+            onNodeContextMenu={handleNodeContextMenu}
+            onSelectionChange={handleSelectionChange}
+            fitView
+            fitViewOptions={{ padding: 0.18 }}
+            minZoom={0.5}
+            maxZoom={1.6}
+            panOnDrag={activeTool === "hand"}
+            nodesDraggable={activeTool === "selection" && !editingObjectId}
+            selectionOnDrag={activeTool === "selection"}
+            selectNodesOnDrag={activeTool === "selection"}
+            elementsSelectable={activeTool === "selection" || Boolean(editingObjectId)}
             className={cn(
-              "canvas-minimap-toggle-panel",
-              isMiniMapVisible && "canvas-minimap-toggle-panel-visible"
+              "canvas-flow",
+              isCanvasCreationTool(activeTool) && "canvas-flow-drawing",
+              activeTool === "hand" && "canvas-flow-panning"
             )}
+            proOptions={{ hideAttribution: true }}
           >
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              className="canvas-minimap-toggle"
-              onClick={() => setIsMiniMapVisible((current) => !current)}
-              aria-label={
-                isMiniMapVisible ? "Hide minimap" : "Show minimap"
-              }
-              title={isMiniMapVisible ? "Hide minimap" : "Show minimap"}
-            >
-              {isMiniMapVisible ? (
-                <EyeOff className="size-4" />
-              ) : (
-                <Eye className="size-4" />
+            <Panel position="bottom-left" className="canvas-panel">
+              <div className="flex items-center gap-6 text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                <span>{nodes.filter((node) => !node.data.draft).length} objects</span>
+                <span>{activeTool}</span>
+                <span>{selectedObjectIds.length} selected</span>
+              </div>
+            </Panel>
+
+            <Panel
+              position="bottom-right"
+              className={cn(
+                "canvas-minimap-toggle-panel",
+                isMiniMapVisible && "canvas-minimap-toggle-panel-visible"
               )}
-            </Button>
-          </Panel>
+            >
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                className="canvas-minimap-toggle"
+                onClick={() => setIsMiniMapVisible((current) => !current)}
+                aria-label={isMiniMapVisible ? "Hide minimap" : "Show minimap"}
+                title={isMiniMapVisible ? "Hide minimap" : "Show minimap"}
+              >
+                {isMiniMapVisible ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
+              </Button>
+            </Panel>
 
-          {isMiniMapVisible ? (
-            <MiniMap
-              pannable
-              zoomable
-              className="canvas-minimap"
-              bgColor="oklch(0.145 0 0)"
-              nodeStrokeColor="oklch(0.768 0.233 130.85)"
-              nodeColor="oklch(0.145 0 0)"
-              nodeStrokeWidth={2}
-              maskColor="color(srgb 0.0393766 0.039393 0.0393945 / 0.72)"
+            {isMiniMapVisible ? (
+              <MiniMap
+                pannable
+                zoomable
+                className="canvas-minimap"
+                bgColor="oklch(0.145 0 0)"
+                nodeStrokeColor="oklch(0.768 0.233 130.85)"
+                nodeColor="oklch(0.145 0 0)"
+                nodeStrokeWidth={2}
+                maskColor="color(srgb 0.0393766 0.039393 0.0393945 / 0.72)"
+              />
+            ) : null}
+
+            <Controls className="canvas-controls" showInteractive={false} />
+            <Background
+              id="canvas-grid"
+              variant={BackgroundVariant.Dots}
+              gap={24}
+              size={1.4}
+              color="color-mix(in srgb, var(--color-border) 88%, transparent)"
             />
-          ) : null}
-          <Controls className="canvas-controls" showInteractive={false} />
-          <Background
-            id="canvas-grid"
-            variant={BackgroundVariant.Dots}
-            gap={24}
-            size={1.4}
-            color="color-mix(in srgb, var(--color-border) 88%, transparent)"
-          />
-        </ReactFlow>
-      </div>
-
-      {overlay ? (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center">
-          <div className="pointer-events-auto w-full">{overlay}</div>
+          </ReactFlow>
         </div>
-      ) : null}
-    </section>
+
+        {inspectorOpen && inspectorAnchor && selectedObject && selectedObject.id === inspectedObjectId ? (
+          <CanvasObjectInspector
+            anchor={inspectorAnchor}
+            side={inspectorAnchor.side}
+            object={selectedObject}
+            onClose={() => {
+              setInspectedObjectId(null)
+              setInspectorOpen(false)
+            }}
+            onUpdateCanvasObject={updateCanvasObject}
+          />
+        ) : null}
+
+        {overlay ? (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center">
+            <div className="pointer-events-auto flex justify-center">
+              {overlay}
+            </div>
+          </div>
+        ) : null}
+      </section>
+    </CanvasEditorProvider>
   )
 }
 
-function CanvasNode({ data, selected }: NodeProps<Node<FlowNodeData>>) {
-  return (
-    <article
-      className={cn("canvas-node", selected && "canvas-node-selected")}
-      aria-label={`${data.label} node`}
-    >
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="canvas-node-handle"
-      />
+function getCommittedRect(
+  tool: CanvasCreationTool,
+  rect: { x: number; y: number; width: number; height: number },
+  start: { x: number; y: number }
+) {
+  const defaults =
+    tool === "text"
+      ? { width: 220, height: 72, minWidth: 140, minHeight: 52 }
+      : tool === "sticky_note"
+        ? { width: 220, height: 180, minWidth: 180, minHeight: 140 }
+        : { width: 168, height: 112, minWidth: 72, minHeight: 72 }
 
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="canvas-node-kind">{data.kind}</p>
-          <h3 className="mt-2 font-heading text-base font-semibold tracking-tight text-foreground">
-            {data.label}
-          </h3>
-        </div>
-        <span className="canvas-node-dot" aria-hidden="true" />
-      </div>
+  if (rect.width < 8 || rect.height < 8) {
+    return expandCanvasRect(start, defaults.width, defaults.height)
+  }
 
-      <p className="mt-3 max-w-56 text-sm leading-5 text-muted-foreground">
-        {data.note}
-      </p>
+  return {
+    ...rect,
+    width: Math.max(rect.width, defaults.minWidth),
+    height: Math.max(rect.height, defaults.minHeight),
+  }
+}
 
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="canvas-node-handle"
-      />
-    </article>
-  )
+function createCanvasObjectId(prefix: string) {
+  return `${prefix}-${Date.now()}-${Math.round(Math.random() * 1000)}`
+}
+
+function isPaneTarget(target: EventTarget | null) {
+  return target instanceof HTMLElement && Boolean(target.closest(".react-flow__pane"))
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function areStringArraysEqual(left: string[], right: string[]) {
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((value, index) => value === right[index])
 }

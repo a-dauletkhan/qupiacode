@@ -1,100 +1,51 @@
-import { useEffect, useId, useState } from "react"
-import {
-  ArrowRight,
-  Circle,
-  Diamond,
-  Eraser,
-  Hand,
-  Image as ImageIcon,
-  Lock,
-  LockOpen,
-  Minus,
-  MousePointer2,
-  Pencil,
-  Shapes,
-  Square,
-  Type,
-} from "lucide-react"
+import { useEffect, useId, useMemo, useState } from "react"
+import { Lock, LockOpen, Settings2 } from "lucide-react"
 
+import {
+  PAINT_STYLE_OPTIONS,
+  TOOL_CONFIGS,
+  clampFontSize,
+  clampStrokeWidth,
+  isCanvasCreationTool,
+  isShapeTool,
+  type CanvasEditorDefaults,
+  type ToolId,
+} from "@/components/canvas/primitives/schema"
 import "@/components/canvas/shapes-toolbar/styles.css"
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Slider } from "@/components/ui/slider"
 import { cn } from "@/lib/utils"
-
-type ToolId =
-  | "hand"
-  | "selection"
-  | "rectangle"
-  | "diamond"
-  | "ellipse"
-  | "arrow"
-  | "line"
-  | "draw"
-  | "text"
-  | "image"
-  | "eraser"
-
-type ToolConfig = {
-  id: ToolId
-  label: string
-  shortcut: string
-  icon: typeof Hand
-  fillable?: boolean
-}
 
 type ShapesToolbarProps = {
   className?: string
+  activeTool: ToolId
+  toolLocked: boolean
+  editorDefaults: CanvasEditorDefaults
+  onActiveToolChange: (tool: ToolId) => void
+  onToolLockedChange: (locked: boolean) => void
+  onEditorDefaultsChange: (
+    updater: (defaults: CanvasEditorDefaults) => CanvasEditorDefaults
+  ) => void
 }
 
-const TOOL_HINT =
-  "Click to start multiple points, drag for single line"
-
-const primaryTools: ToolConfig[] = [
-  { id: "hand", label: "Hand", shortcut: "H", icon: Hand },
-  {
-    id: "selection",
-    label: "Selection",
-    shortcut: "1",
-    icon: MousePointer2,
-    fillable: true,
-  },
-  {
-    id: "rectangle",
-    label: "Rectangle",
-    shortcut: "2",
-    icon: Square,
-    fillable: true,
-  },
-  {
-    id: "diamond",
-    label: "Diamond",
-    shortcut: "3",
-    icon: Diamond,
-    fillable: true,
-  },
-  {
-    id: "ellipse",
-    label: "Ellipse",
-    shortcut: "4",
-    icon: Circle,
-    fillable: true,
-  },
-  {
-    id: "arrow",
-    label: "Arrow",
-    shortcut: "5",
-    icon: ArrowRight,
-    fillable: true,
-  },
-  { id: "line", label: "Line", shortcut: "6", icon: Minus, fillable: true },
-  { id: "draw", label: "Draw", shortcut: "7", icon: Pencil },
-  { id: "text", label: "Text", shortcut: "8", icon: Type },
-  { id: "image", label: "Insert image", shortcut: "9", icon: ImageIcon },
-  { id: "eraser", label: "Eraser", shortcut: "0", icon: Eraser },
-] as const
-
-export function ShapesToolbar({ className }: ShapesToolbarProps) {
-  const [activeTool, setActiveTool] = useState<ToolId>("selection")
-  const [toolLocked, setToolLocked] = useState(false)
+export function ShapesToolbar({
+  className,
+  activeTool,
+  toolLocked,
+  editorDefaults,
+  onActiveToolChange,
+  onToolLockedChange,
+  onEditorDefaultsChange,
+}: ShapesToolbarProps) {
   const [isHintVisible, setIsHintVisible] = useState(true)
   const headingId = useId()
 
@@ -118,11 +69,39 @@ export function ShapesToolbar({ className }: ShapesToolbarProps) {
     }
   }, [isHintVisible])
 
+  const hint = useMemo(() => {
+    if (activeTool === "selection") {
+      return "Select one object to move, resize, or edit its properties"
+    }
+
+    if (activeTool === "hand") {
+      return "Drag on the canvas to pan the workspace"
+    }
+
+    if (activeTool === "text") {
+      return "Drag to preview a text box, then type inline after release"
+    }
+
+    if (activeTool === "sticky_note") {
+      return "Drag to preview a sticky note, then type directly into it"
+    }
+
+    if (isShapeTool(activeTool)) {
+      return "Drag on the canvas to preview and place a shape"
+    }
+
+    if (isCanvasCreationTool(activeTool)) {
+      return "Drag on the canvas to preview and place a new object"
+    }
+
+    return "Shape, text, and sticky-note creation are active in this canvas"
+  }, [activeTool])
+
   return (
     <section
       aria-labelledby={headingId}
       className={cn(
-        "relative flex w-full max-w-[46rem] justify-center px-4 pt-4 sm:px-6",
+        "relative mx-auto flex w-full max-w-[62rem] justify-center px-4 pt-4 sm:px-6",
         className
       )}
     >
@@ -131,16 +110,16 @@ export function ShapesToolbar({ className }: ShapesToolbarProps) {
           className={cn("shape-hint-viewer", !isHintVisible && "shape-hint-hidden")}
           aria-live="polite"
         >
-          <span>{TOOL_HINT}</span>
+          <span>{hint}</span>
         </div>
 
         <h2 id={headingId} className="sr-only">
-          Shapes
+          Canvas objects
         </h2>
 
         <div
           role="toolbar"
-          aria-label="Shapes toolbar"
+          aria-label="Canvas object toolbar"
           className="flex flex-wrap items-center justify-center gap-1"
         >
           <Button
@@ -149,12 +128,12 @@ export function ShapesToolbar({ className }: ShapesToolbarProps) {
             size="icon"
             aria-pressed={toolLocked}
             aria-label="Keep selected tool active after drawing"
-            title="Keep selected tool active after drawing — Q"
+            title="Keep selected tool active after drawing"
             className={cn(
               "shape-tool size-10 rounded-xl border border-transparent p-0 text-foreground/80",
               toolLocked && "shape-tool-active"
             )}
-            onClick={() => setToolLocked((value) => !value)}
+            onClick={() => onToolLockedChange(!toolLocked)}
             onPointerDown={dismissHint}
           >
             {renderIcon(toolLocked ? Lock : LockOpen)}
@@ -162,7 +141,7 @@ export function ShapesToolbar({ className }: ShapesToolbarProps) {
 
           <div className="shape-divider" aria-hidden="true" />
 
-          {primaryTools.map((tool) => {
+          {TOOL_CONFIGS.map((tool) => {
             const isActive = activeTool === tool.id
 
             return (
@@ -177,10 +156,12 @@ export function ShapesToolbar({ className }: ShapesToolbarProps) {
                 className={cn(
                   "shape-tool relative size-10 rounded-xl border border-transparent p-0 text-foreground/80",
                   isActive && "shape-tool-active",
-                  tool.fillable && "shape-tool-fillable"
+                  tool.fillable && "shape-tool-fillable",
+                  !tool.implemented && "shape-tool-disabled"
                 )}
+                disabled={!tool.implemented}
                 onClick={() => {
-                  setActiveTool(tool.id)
+                  onActiveToolChange(tool.id)
                   dismissHint()
                 }}
                 onPointerDown={dismissHint}
@@ -193,23 +174,194 @@ export function ShapesToolbar({ className }: ShapesToolbarProps) {
 
           <div className="shape-divider" aria-hidden="true" />
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="More tools"
-            title="More tools"
-            className="shape-tool size-10 rounded-xl border border-transparent p-0 text-foreground/80"
-            onPointerDown={dismissHint}
-          >
-            {renderIcon(Shapes)}
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Default object settings"
+                title="Default object settings"
+                className="shape-tool size-10 rounded-xl border border-transparent p-0 text-foreground/80"
+                onPointerDown={dismissHint}
+              >
+                {renderIcon(Settings2)}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              className="shape-style-menu w-72 border border-border/70 bg-card/95 p-0"
+              align="center"
+            >
+              <ToolbarDefaultsPanel
+                activeTool={activeTool}
+                editorDefaults={editorDefaults}
+                onEditorDefaultsChange={onEditorDefaultsChange}
+              />
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
     </section>
   )
 }
 
-function renderIcon(Icon: typeof Hand) {
+function ToolbarDefaultsPanel({
+  activeTool,
+  editorDefaults,
+  onEditorDefaultsChange,
+}: Pick<ShapesToolbarProps, "activeTool" | "editorDefaults" | "onEditorDefaultsChange">) {
+  if (isShapeTool(activeTool)) {
+    return (
+      <div className="space-y-3 p-3">
+        <div>
+          <DropdownMenuLabel className="px-0 py-0 text-[11px] uppercase tracking-[0.18em] text-primary">
+            Shape Paint
+          </DropdownMenuLabel>
+          <DropdownMenuRadioGroup
+            value={editorDefaults.shape.paintStyle}
+            onValueChange={(value) =>
+              onEditorDefaultsChange((currentDefaults) => ({
+                ...currentDefaults,
+                shape: {
+                  ...currentDefaults.shape,
+                  paintStyle: value as typeof currentDefaults.shape.paintStyle,
+                },
+              }))
+            }
+          >
+            {PAINT_STYLE_OPTIONS.map((option) => (
+              <DropdownMenuRadioItem
+                key={option.id}
+                value={option.id}
+                className="mt-2 items-start rounded-none border border-transparent px-0 py-0 data-[state=checked]:border-primary/25"
+              >
+                <div className="pr-7">
+                  <p className="text-xs font-medium text-foreground">
+                    {option.label}
+                  </p>
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
+                    {option.description}
+                  </p>
+                </div>
+              </DropdownMenuRadioItem>
+            ))}
+          </DropdownMenuRadioGroup>
+        </div>
+
+        <DropdownMenuSeparator />
+
+        <div>
+          <DropdownMenuLabel className="px-0 py-0 text-[11px] uppercase tracking-[0.18em] text-primary">
+            Shape Stroke
+          </DropdownMenuLabel>
+          <div className="mt-3 flex items-center gap-3">
+            <Slider
+              min={1}
+              max={8}
+              step={1}
+              value={[editorDefaults.shape.strokeWidth]}
+              onValueChange={(values) =>
+                onEditorDefaultsChange((currentDefaults) => ({
+                  ...currentDefaults,
+                  shape: {
+                    ...currentDefaults.shape,
+                    strokeWidth: clampStrokeWidth(
+                      values[0] ?? currentDefaults.shape.strokeWidth
+                    ),
+                  },
+                }))
+              }
+            />
+            <span className="w-8 text-right text-xs font-medium text-foreground">
+              {editorDefaults.shape.strokeWidth}
+            </span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (activeTool === "text") {
+    return (
+      <div className="space-y-3 p-3">
+        <DropdownMenuLabel className="px-0 py-0 text-[11px] uppercase tracking-[0.18em] text-primary">
+          Text Defaults
+        </DropdownMenuLabel>
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+            Font Size
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <Slider
+              min={12}
+              max={72}
+              step={1}
+              value={[editorDefaults.text.fontSize]}
+              onValueChange={(values) =>
+                onEditorDefaultsChange((currentDefaults) => ({
+                  ...currentDefaults,
+                  text: {
+                    ...currentDefaults.text,
+                    fontSize: clampFontSize(
+                      values[0] ?? currentDefaults.text.fontSize
+                    ),
+                  },
+                }))
+              }
+            />
+            <span className="w-8 text-right text-xs font-medium text-foreground">
+              {editorDefaults.text.fontSize}
+            </span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (activeTool === "sticky_note") {
+    return (
+      <div className="space-y-3 p-3">
+        <DropdownMenuLabel className="px-0 py-0 text-[11px] uppercase tracking-[0.18em] text-primary">
+          Sticky Defaults
+        </DropdownMenuLabel>
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+            Font Size
+          </p>
+          <div className="mt-3 flex items-center gap-3">
+            <Slider
+              min={12}
+              max={48}
+              step={1}
+              value={[editorDefaults.stickyNote.fontSize]}
+              onValueChange={(values) =>
+                onEditorDefaultsChange((currentDefaults) => ({
+                  ...currentDefaults,
+                  stickyNote: {
+                    ...currentDefaults.stickyNote,
+                    fontSize: clampFontSize(
+                      values[0] ?? currentDefaults.stickyNote.fontSize
+                    ),
+                  },
+                }))
+              }
+            />
+            <span className="w-8 text-right text-xs font-medium text-foreground">
+              {editorDefaults.stickyNote.fontSize}
+            </span>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-3 text-[11px] leading-5 text-muted-foreground">
+      Select a creation tool to adjust its default properties.
+    </div>
+  )
+}
+
+function renderIcon(Icon: (typeof TOOL_CONFIGS)[number]["icon"]) {
   return <Icon className="size-[18px] stroke-[1.7]" />
 }
