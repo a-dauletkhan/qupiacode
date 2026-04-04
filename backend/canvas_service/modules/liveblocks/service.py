@@ -1,4 +1,5 @@
 import httpx
+
 from canvas_service.core.config import settings
 
 _LIVEBLOCKS_HEADERS = {

@@ -1,7 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
 
-import fakeredis.aioredis
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
@@ -16,7 +15,6 @@ os.environ.setdefault(
     "DATABASE_URL",
     "postgresql+asyncpg://postgres:postgres@localhost:5432/qupia_test",
 )
-os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("SUPABASE_URL", "https://example.supabase.co")
 os.environ.setdefault("SUPABASE_KEY", "test-supabase-key")
 os.environ.setdefault("SUPABASE_JWT_SECRET", "test-supabase-jwt-secret")
@@ -24,7 +22,6 @@ os.environ.setdefault("SUPABASE_STORAGE_BUCKET", "canvas-media")
 
 from canvas_service.core.config import settings
 from canvas_service.core.database import Base, get_db
-from canvas_service.core.redis import get_redis
 
 TEST_USER_ID = "00000000-0000-0000-0000-000000000001"
 TEST_USER_ID_2 = "00000000-0000-0000-0000-000000000002"
@@ -62,7 +59,6 @@ async def _setup_db():
     """Create all tables before each test, drop after."""
     # Import models so they register with Base.metadata
     import canvas_service.modules.boards.models  # noqa: F401
-    import canvas_service.modules.canvas_objects.models  # noqa: F401
 
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
@@ -74,10 +70,6 @@ async def _setup_db():
 async def _override_get_db():
     async with TestSessionLocal() as session:
         yield session
-
-
-async def _override_get_redis():
-    return fakeredis.aioredis.FakeRedis(decode_responses=True)
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +104,6 @@ async def client(_setup_db):
     from canvas_service.main import app
 
     app.dependency_overrides[get_db] = _override_get_db
-    app.dependency_overrides[get_redis] = _override_get_redis
 
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"

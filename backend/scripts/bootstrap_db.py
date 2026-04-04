@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 
 import canvas_service.modules.boards.models  # noqa: F401
-import canvas_service.modules.canvas_objects.models  # noqa: F401
 from canvas_service.core.database import Base, engine
 
 
