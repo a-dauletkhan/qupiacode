@@ -1,0 +1,133 @@
+@reference "../../../index.css";
+
+.canvas-grid-backdrop {
+  @apply absolute inset-0;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--color-card) 72%, transparent), transparent 38%);
+}
+
+.canvas-flow {
+  @apply h-full w-full bg-transparent;
+}
+
+.canvas-flow .react-flow__renderer,
+.canvas-flow .react-flow__pane {
+  @apply bg-transparent;
+}
+
+.canvas-flow .react-flow__controls {
+  @apply overflow-hidden rounded-none border border-border/70 bg-card/95 shadow-none backdrop-blur-md;
+}
+
+.canvas-flow .react-flow__controls-button {
+  @apply h-9 w-9 border-b border-border/70 bg-transparent text-foreground transition-colors hover:bg-accent;
+}
+
+.canvas-flow .react-flow__controls-button:last-child {
+  @apply border-b-0;
+}
+
+.canvas-flow .react-flow__minimap {
+  @apply rounded-none shadow-none;
+}
+
+.canvas-flow .react-flow__minimap-svg {
+  @apply block align-middle;
+  color: oklch(0.985 0 0);
+  font-family: "Geist Variable", sans-serif;
+  line-height: 24px;
+}
+
+.canvas-flow .react-flow__minimap-svg rect.react-flow__minimap-node,
+.canvas-flow .react-flow__minimap-svg rect.react-flow__minimap-node.selected {
+  fill: oklch(0.145 0 0);
+  stroke: oklch(0.768 0.233 130.85);
+  stroke-width: 2px;
+}
+
+.canvas-flow .react-flow__minimap-svg path.react-flow__minimap-mask {
+  fill: color(srgb 0.0393766 0.039393 0.0393945 / 0.72);
+}
+
+.canvas-flow .react-flow__attribution {
+  @apply hidden;
+}
+
+.canvas-minimap {
+  @apply !mr-12 !rounded-none !border !border-primary/70 shadow-none;
+  --xy-minimap-background-color-props: oklch(0.145 0 0);
+  --xy-minimap-node-background-color-props: oklch(0.145 0 0);
+  --xy-minimap-node-stroke-color-props: oklch(0.768 0.233 130.85);
+  --xy-minimap-node-stroke-width-props: 2;
+  --xy-minimap-mask-background-color-props: color(
+    srgb 0.0393766 0.039393 0.0393945 / 0.72
+  );
+  background: oklch(0.145 0 0);
+}
+
+.canvas-minimap .react-flow__minimap-svg {
+  background: oklch(0.145 0 0);
+}
+
+.canvas-minimap-toggle-panel {
+  @apply m-0;
+}
+
+.canvas-minimap-toggle-panel-visible {
+  @apply bottom-[10.5rem];
+}
+
+.canvas-minimap-toggle {
+  @apply rounded-none border-border/70 bg-card/95 backdrop-blur-md hover:bg-accent;
+}
+
+.canvas-panel {
+  @apply rounded-none border border-border/70 bg-card/90 px-4 py-3 text-card-foreground shadow-none backdrop-blur-md;
+}
+
+.canvas-panel-label {
+  @apply text-[11px] font-semibold uppercase tracking-[0.18em] text-primary;
+}
+
+.canvas-node {
+  @apply min-w-64 rounded-none border border-border/80 bg-card/95 px-4 py-4 text-card-foreground shadow-none transition-colors;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 8%, transparent),
+    12px 12px 0 color-mix(in srgb, var(--color-background) 76%, var(--color-border));
+}
+
+.canvas-node-selected {
+  @apply border-primary/65;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 28%, transparent),
+    12px 12px 0 color-mix(in srgb, var(--color-background) 72%, var(--color-primary));
+}
+
+.canvas-node-kind {
+  @apply text-[11px] font-semibold uppercase tracking-[0.16em] text-primary;
+}
+
+.canvas-node-dot {
+  @apply mt-0.5 block size-3 rounded-full border border-primary/50 bg-primary/20;
+}
+
+.canvas-node-handle {
+  @apply !size-3 !border-2 !border-card !bg-primary;
+}
+
+@media (max-width: 768px) {
+  .canvas-minimap-toggle-panel-visible {
+    @apply bottom-[8.5rem];
+  }
+
+  .canvas-panel {
+    @apply max-w-[calc(100vw-2rem)];
+  }
+
+  .canvas-node {
+    @apply min-w-56;
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-primary) 8%, transparent),
+      8px 8px 0 color-mix(in srgb, var(--color-background) 76%, var(--color-border));
+  }
+}
