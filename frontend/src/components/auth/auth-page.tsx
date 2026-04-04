@@ -45,7 +45,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
         await signup(email.trim(), password)
       }
       navigate("/")
-    } catch (err) {
+    } catch (err: unknown) {
       if (err instanceof AuthError) {
         setError(err.message)
       } else {
