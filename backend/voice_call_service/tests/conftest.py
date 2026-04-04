@@ -28,6 +28,21 @@ def _configure_test_environment(monkeypatch: pytest.MonkeyPatch) -> Generator[No
     monkeypatch.setenv("VOICE_TOKEN_TTL_SECONDS", "3600")
     monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "")
     monkeypatch.setenv("CORS_ALLOWED_ORIGIN_REGEX", "")
+    monkeypatch.setenv("VOICE_AGENT_ENABLED", "false")
+    monkeypatch.setenv("VOICE_AGENT_NAME", "Qupia Agent")
+    monkeypatch.setenv("VOICE_AGENT_WAKE_PHRASES", "agent,hey agent,ai agent")
+    monkeypatch.setenv("VOICE_AGENT_TRANSCRIPTION_MODE", "mock")
+    monkeypatch.setenv("VOICE_AGENT_STT_MODEL", "assemblyai/universal-streaming")
+    monkeypatch.setenv("VOICE_AGENT_STT_LANGUAGE", "en")
+    monkeypatch.setenv("VOICE_AGENT_TRANSCRIPT_FORWARD_URL", "")
+    monkeypatch.setenv("VOICE_AGENT_TRANSCRIPT_FORWARD_AUTH_TOKEN", "")
+    monkeypatch.setenv("VOICE_AGENT_TRANSCRIPT_FORWARD_PARTIALS_ENABLED", "false")
+    monkeypatch.setenv(
+        "VOICE_AGENT_MOCK_TRANSCRIPT_TEMPLATE",
+        "[mock] {participant_name} shared a prototype update.",
+    )
+    monkeypatch.setenv("VOICE_AGENT_TRANSCRIPT_PARTIALS_ENABLED", "true")
+    monkeypatch.setenv("VOICE_AGENT_DIARIZATION_ENABLED", "false")
     get_settings = _get_settings()
     get_settings.cache_clear()
     yield

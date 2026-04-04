@@ -6,6 +6,9 @@ React + TypeScript + Vite frontend for the collaborative canvas UI.
 
 The sidebar voice UI now connects to the FastAPI backend and LiveKit.
 
+If the backend `.env` uses LiveKit Cloud credentials, you do not need to run `livekit-server --dev` locally.
+For cheap prototyping, set `VOICE_AGENT_TRANSCRIPTION_MODE=mock` in the backend so the worker emits placeholder transcripts instead of consuming inference credits.
+
 Run the backend first:
 
 ```bash
@@ -13,11 +16,20 @@ cd ../backend/voice_call_service
 uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
+Run the text-only agent worker in a second backend terminal:
+
+```bash
+cd ../backend/voice_call_service
+uv run python voice_agent_worker.py dev
+```
+
 Run LiveKit locally:
 
 ```bash
 livekit-server --dev
 ```
+
+Skip that command if your backend already points at LiveKit Cloud.
 
 Run the frontend:
 
@@ -43,6 +55,15 @@ http://localhost:5173/?canvas_id=demo-canvas&user_id=alice&display_name=Alice
 ```text
 http://localhost:5173/?canvas_id=demo-canvas&user_id=bob&display_name=Bob
 ```
+
+To force the current worker implementation into that room during local testing:
+
+```bash
+cd ../backend/voice_call_service
+uv run python voice_agent_worker.py connect --room canvas:demo-canvas
+```
+
+In `mock` mode, joining the room is enough to see placeholder transcript items in Chat.
 
 Vite proxies `/api/*` to `http://127.0.0.1:8000` by default for local development. If needed, override the backend URL with:
 

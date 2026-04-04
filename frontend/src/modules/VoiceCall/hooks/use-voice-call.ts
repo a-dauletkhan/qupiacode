@@ -4,8 +4,11 @@ import {
   Room,
   RoomEvent,
   Track,
+  type ChatMessage as LiveKitChatMessage,
   type Participant,
   type RemoteAudioTrack,
+  type TrackPublication,
+  type TranscriptionSegment,
 } from "livekit-client"
 
 import { requestVoiceToken } from "@/modules/VoiceCall/services/voice-call-service"
@@ -14,6 +17,9 @@ const DEFAULT_CANVAS_ID = "demo-canvas"
 const DEFAULT_AGENT_NAME = "AI Agent"
 const DEFAULT_AGENT_VOLUME = 100
 const DEFAULT_REMOTE_VOLUME = 100
+
+type MessageType = "user" | "person" | "agent"
+type TranscriptAttributionSource = "participant" | "diarization" | "ambiguous"
 
 type VoiceBootstrap = {
   canvasId: string
@@ -42,6 +48,41 @@ export type VoiceCallAgentView = {
   status: string
   volume: number
   volumeDisabled: boolean
+}
+
+export type VoiceCallAgentMetadata = {
+  enabled: boolean
+  name: string
+  wakePhrases: string[]
+  transcriptionMode: "livekit_inference" | "mock"
+  transcriptForwardingEnabled: boolean
+  transcriptPartialsEnabled: boolean
+  diarizationEnabled: boolean
+}
+
+export type VoiceCallTranscriptItem = {
+  id: string
+  segmentId: string
+  participantIdentity: string | null
+  participantName: string
+  trackId: string | null
+  text: string
+  isFinal: boolean
+  speakerId?: string
+  attributionSource: TranscriptAttributionSource
+  timestamp: number
+  updatedAt: number
+}
+
+export type VoiceCallChatMessageView = {
+  id: string
+  type: MessageType
+  author: string
+  time: string
+  text: string
+  timestamp: number
+  source: "transcript" | "chat"
+  pending?: boolean
 }
 
 export type UseVoiceCallOptions = {
@@ -103,10 +144,52 @@ function formatParticipantStatus(
   return "Connected"
 }
 
+function formatAgentStatus(participant: Participant) {
+  const agentState = participant.attributes?.["lk.agent.state"]
+  if (agentState === "initializing") {
+    return "Initializing"
+  }
+  if (agentState === "idle") {
+    return "Ready"
+  }
+  if (agentState === "listening") {
+    return "Listening"
+  }
+  if (agentState === "thinking") {
+    return "Thinking"
+  }
+  if (agentState === "speaking") {
+    return "Speaking"
+  }
+
+  if (participant.isSpeaking) {
+    return "Speaking"
+  }
+
+  if (!participant.isActive) {
+    return "Connecting"
+  }
+
+  return "Connected"
+}
+
+function buildDefaultAgentMetadata(): VoiceCallAgentMetadata {
+  return {
+    enabled: false,
+    name: DEFAULT_AGENT_NAME,
+    wakePhrases: [],
+    transcriptionMode: "mock",
+    transcriptForwardingEnabled: false,
+    transcriptPartialsEnabled: true,
+    diarizationEnabled: false,
+  }
+}
+
 function buildParticipantViews(
   room: Room,
   participantVolumes: Record<string, number>,
-  listenOnly: boolean
+  listenOnly: boolean,
+  agentMetadata: VoiceCallAgentMetadata
 ): {
   agent: VoiceCallAgentView
   users: VoiceCallParticipantView[]
@@ -129,9 +212,12 @@ function buildParticipantViews(
   ]
 
   let agent: VoiceCallAgentView = {
-    name: DEFAULT_AGENT_NAME,
-    status:
-      room.state === ConnectionState.Connected ? "Not connected yet" : "Offline",
+    name: agentMetadata.name,
+    status: agentMetadata.enabled
+      ? room.state === ConnectionState.Connected
+        ? "Awaiting worker"
+        : "Offline"
+      : "Disabled",
     volume: DEFAULT_AGENT_VOLUME,
     volumeDisabled: true,
   }
@@ -155,8 +241,8 @@ function buildParticipantViews(
 
     if (participant.isAgent) {
       agent = {
-        name: view.name,
-        status: view.status,
+        name: participant.name || agentMetadata.name,
+        status: formatAgentStatus(participant),
         volume: view.volume,
         volumeDisabled: false,
       }
@@ -211,6 +297,133 @@ function getAgentParticipant(activeRoom: Room | null) {
   return null
 }
 
+function resolveMessageType(participant?: Participant): MessageType {
+  if (participant?.isAgent) {
+    return "agent"
+  }
+
+  if (participant?.isLocal) {
+    return "user"
+  }
+
+  return "person"
+}
+
+function resolveParticipantName(participant?: Participant) {
+  if (!participant) {
+    return "Unknown participant"
+  }
+
+  return (
+    participant.name?.trim() || participant.identity || "Unknown participant"
+  )
+}
+
+function formatMessageTime(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function buildTranscriptEntryId(
+  participantIdentity: string | null,
+  trackId: string | null,
+  segmentId: string
+) {
+  return `${participantIdentity ?? "unknown"}:${trackId ?? "unknown"}:${segmentId}`
+}
+
+function upsertTranscriptItems(
+  currentItems: VoiceCallTranscriptItem[],
+  segments: TranscriptionSegment[],
+  participant?: Participant,
+  publication?: TrackPublication,
+  includePartials = true
+) {
+  if (!includePartials) {
+    segments = segments.filter((segment) => segment.final)
+  }
+  if (segments.length === 0) {
+    return currentItems
+  }
+
+  const nextItems = [...currentItems]
+  const participantIdentity = participant?.identity ?? null
+  const participantName = resolveParticipantName(participant)
+  const trackId = publication?.trackSid ?? null
+  const attributionSource: TranscriptAttributionSource = participantIdentity
+    ? "participant"
+    : "ambiguous"
+
+  for (const segment of segments) {
+    const itemId = buildTranscriptEntryId(
+      participantIdentity,
+      trackId,
+      segment.id
+    )
+    const item: VoiceCallTranscriptItem = {
+      id: itemId,
+      segmentId: segment.id,
+      participantIdentity,
+      participantName,
+      trackId,
+      text: segment.text,
+      isFinal: segment.final,
+      attributionSource,
+      timestamp: segment.firstReceivedTime || Date.now(),
+      updatedAt: segment.lastReceivedTime || Date.now(),
+    }
+
+    const existingIndex = nextItems.findIndex(
+      (currentItem) => currentItem.id === itemId
+    )
+    if (existingIndex === -1) {
+      nextItems.push(item)
+      continue
+    }
+
+    nextItems[existingIndex] = {
+      ...nextItems[existingIndex],
+      ...item,
+    }
+  }
+
+  nextItems.sort((left, right) => {
+    if (left.timestamp !== right.timestamp) {
+      return left.timestamp - right.timestamp
+    }
+    return left.id.localeCompare(right.id)
+  })
+
+  return nextItems
+}
+
+function upsertChatFeedMessage(
+  currentMessages: VoiceCallChatMessageView[],
+  message: VoiceCallChatMessageView
+) {
+  const nextMessages = [...currentMessages]
+  const existingIndex = nextMessages.findIndex(
+    (currentMessage) => currentMessage.id === message.id
+  )
+
+  if (existingIndex === -1) {
+    nextMessages.push(message)
+  } else {
+    nextMessages[existingIndex] = message
+  }
+
+  nextMessages.sort((left, right) => {
+    if (left.timestamp !== right.timestamp) {
+      return left.timestamp - right.timestamp
+    }
+    return left.id.localeCompare(right.id)
+  })
+
+  return nextMessages
+}
+
 export function useVoiceCall({
   canvasId,
   userId,
@@ -229,16 +442,27 @@ export function useVoiceCall({
   )
   const participantVolumesRef = React.useRef<Record<string, number>>({})
   const isLeavingRef = React.useRef(false)
-
-  const [participants, setParticipants] = React.useState<VoiceCallParticipantView[]>(
-    []
+  const agentMetadataRef = React.useRef<VoiceCallAgentMetadata>(
+    buildDefaultAgentMetadata()
   )
+
+  const [participants, setParticipants] = React.useState<
+    VoiceCallParticipantView[]
+  >([])
   const [agent, setAgent] = React.useState<VoiceCallAgentView>({
     name: DEFAULT_AGENT_NAME,
     status: "Offline",
     volume: DEFAULT_AGENT_VOLUME,
     volumeDisabled: true,
   })
+  const [agentMetadata, setAgentMetadata] =
+    React.useState<VoiceCallAgentMetadata>(buildDefaultAgentMetadata())
+  const [transcripts, setTranscripts] = React.useState<
+    VoiceCallTranscriptItem[]
+  >([])
+  const [chatMessages, setChatMessages] = React.useState<
+    VoiceCallChatMessageView[]
+  >([])
   const [connectionState, setConnectionState] = React.useState(
     ConnectionState.Disconnected
   )
@@ -261,8 +485,8 @@ export function useVoiceCall({
         React.startTransition(() => {
           setParticipants([])
           setAgent({
-            name: DEFAULT_AGENT_NAME,
-            status: "Offline",
+            name: agentMetadataRef.current.name,
+            status: agentMetadataRef.current.enabled ? "Offline" : "Disabled",
             volume: DEFAULT_AGENT_VOLUME,
             volumeDisabled: true,
           })
@@ -273,7 +497,8 @@ export function useVoiceCall({
       const nextViews = buildParticipantViews(
         activeRoom,
         participantVolumesRef.current,
-        !microphoneAvailable
+        !microphoneAvailable,
+        agentMetadataRef.current
       )
 
       React.startTransition(() => {
@@ -332,7 +557,9 @@ export function useVoiceCall({
   const attachExistingRemoteAudioTracks = React.useCallback(
     (activeRoom: Room) => {
       for (const participant of activeRoom.remoteParticipants.values()) {
-        const publication = participant.getTrackPublication(Track.Source.Microphone)
+        const publication = participant.getTrackPublication(
+          Track.Source.Microphone
+        )
         if (publication?.track?.kind === Track.Kind.Audio) {
           attachRemoteAudioTrack(
             participant.identity,
@@ -347,6 +574,7 @@ export function useVoiceCall({
   const resetVoiceState = React.useCallback(() => {
     detachAllAudioTracks()
     roomRef.current = null
+    agentMetadataRef.current = buildDefaultAgentMetadata()
     setConnectionState(ConnectionState.Disconnected)
     setParticipants([])
     setAgent({
@@ -355,6 +583,9 @@ export function useVoiceCall({
       volume: DEFAULT_AGENT_VOLUME,
       volumeDisabled: true,
     })
+    setAgentMetadata(buildDefaultAgentMetadata())
+    setTranscripts([])
+    setChatMessages([])
     setIsMicrophoneEnabled(false)
     setNeedsAudioResume(false)
     setRoomName(null)
@@ -380,7 +611,8 @@ export function useVoiceCall({
   const setParticipantVolumeByIdentity = React.useCallback(
     (participantIdentity: string, nextVolume: number) => {
       const activeRoom = roomRef.current
-      const participant = activeRoom?.remoteParticipants.get(participantIdentity)
+      const participant =
+        activeRoom?.remoteParticipants.get(participantIdentity)
       if (!participant) {
         return
       }
@@ -476,6 +708,9 @@ export function useVoiceCall({
     activeRoom.on(RoomEvent.ParticipantDisconnected, () => {
       syncParticipants(activeRoom)
     })
+    activeRoom.on(RoomEvent.ParticipantAttributesChanged, () => {
+      syncParticipants(activeRoom)
+    })
     activeRoom.on(RoomEvent.ActiveSpeakersChanged, () => {
       syncParticipants(activeRoom)
     })
@@ -485,17 +720,54 @@ export function useVoiceCall({
     activeRoom.on(RoomEvent.TrackUnmuted, () => {
       syncParticipants(activeRoom)
     })
-    activeRoom.on(RoomEvent.TrackSubscribed, (track, _publication, participant) => {
-      if (track.kind === Track.Kind.Audio && participant.identity) {
-        attachRemoteAudioTrack(participant.identity, track as RemoteAudioTrack)
+    activeRoom.on(
+      RoomEvent.TrackSubscribed,
+      (track, _publication, participant) => {
+        if (track.kind === Track.Kind.Audio && participant.identity) {
+          attachRemoteAudioTrack(
+            participant.identity,
+            track as RemoteAudioTrack
+          )
+        }
+        syncParticipants(activeRoom)
       }
-      syncParticipants(activeRoom)
-    })
-    activeRoom.on(RoomEvent.TrackUnsubscribed, (track, _publication, participant) => {
-      if (participant?.identity && track.sid) {
-        detachRemoteAudioTrack(participant.identity, track.sid)
+    )
+    activeRoom.on(
+      RoomEvent.TrackUnsubscribed,
+      (track, _publication, participant) => {
+        if (participant?.identity && track.sid) {
+          detachRemoteAudioTrack(participant.identity, track.sid)
+        }
+        syncParticipants(activeRoom)
       }
-      syncParticipants(activeRoom)
+    )
+    activeRoom.on(
+      RoomEvent.TranscriptionReceived,
+      (segments, participant, publication) => {
+        setTranscripts((currentTranscripts) =>
+          upsertTranscriptItems(
+            currentTranscripts,
+            segments,
+            participant,
+            publication,
+            agentMetadataRef.current.transcriptPartialsEnabled
+          )
+        )
+      }
+    )
+    activeRoom.on(RoomEvent.ChatMessage, (message, participant) => {
+      const nextMessage: VoiceCallChatMessageView = {
+        id: message.id,
+        type: resolveMessageType(participant),
+        author: resolveParticipantName(participant),
+        time: formatMessageTime(message.timestamp),
+        text: message.message,
+        timestamp: message.timestamp,
+        source: "chat",
+      }
+      setChatMessages((currentMessages) =>
+        upsertChatFeedMessage(currentMessages, nextMessage)
+      )
     })
     activeRoom.on(RoomEvent.AudioPlaybackStatusChanged, () => {
       setNeedsAudioResume(!activeRoom.canPlaybackAudio)
@@ -519,6 +791,19 @@ export function useVoiceCall({
         displayName: resolvedDisplayName,
         apiBaseUrl,
       })
+      const nextAgentMetadata: VoiceCallAgentMetadata = {
+        enabled: tokenResponse.agent?.enabled ?? false,
+        name: tokenResponse.agent?.name ?? DEFAULT_AGENT_NAME,
+        wakePhrases: tokenResponse.agent?.wake_phrases ?? [],
+        transcriptionMode: tokenResponse.agent?.transcription_mode ?? "mock",
+        transcriptForwardingEnabled:
+          tokenResponse.agent?.transcript_forwarding_enabled ?? false,
+        transcriptPartialsEnabled:
+          tokenResponse.agent?.transcript_partials_enabled ?? true,
+        diarizationEnabled: tokenResponse.agent?.diarization_enabled ?? false,
+      }
+      agentMetadataRef.current = nextAgentMetadata
+      setAgentMetadata(nextAgentMetadata)
       setRoomName(tokenResponse.room_name)
       setParticipantIdentity(tokenResponse.participant_identity)
 
@@ -582,9 +867,36 @@ export function useVoiceCall({
     connectionState !== ConnectionState.Disconnected ||
     roomRef.current !== null
 
+  const timelineMessages = [
+    ...transcripts.map((transcript) => ({
+      id: transcript.id,
+      type:
+        transcript.participantIdentity === participantIdentity
+          ? ("user" as const)
+          : ("person" as const),
+      author:
+        transcript.participantIdentity === participantIdentity
+          ? "You"
+          : transcript.participantName,
+      time: formatMessageTime(transcript.timestamp),
+      text: transcript.text,
+      timestamp: transcript.timestamp,
+      source: "transcript" as const,
+      pending: !transcript.isFinal,
+    })),
+    ...chatMessages,
+  ].sort((left, right) => {
+    if (left.timestamp !== right.timestamp) {
+      return left.timestamp - right.timestamp
+    }
+    return left.id.localeCompare(right.id)
+  })
+
   return {
     agent,
+    agentMetadata,
     audioContainerRef,
+    chatMessages: timelineMessages,
     enableSpeakerAudio,
     errorMessage,
     inCall,
@@ -603,5 +915,8 @@ export function useVoiceCall({
     setParticipantVolumeByIdentity,
     statusMessage,
     toggleMicrophone,
+    transcripts,
   }
 }
+
+export type UseVoiceCallResult = ReturnType<typeof useVoiceCall>
