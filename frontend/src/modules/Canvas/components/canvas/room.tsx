@@ -43,6 +43,7 @@ export function Room({ id, children }: RoomProps) {
           return fallbackUsers
         }
 
+
         return resp.json()
       }}
       authEndpoint={async (room) => {
