@@ -7,7 +7,7 @@
  */
 
 import * as React from "react"
-import type { NodeChange, Edge } from "@xyflow/react"
+import type { NodeChange } from "@xyflow/react"
 import type { CanvasObjectNode } from "@/modules/Canvas/components/canvas/primitives/schema"
 import { aiChatStore } from "./use-ai-chat-messages"
 

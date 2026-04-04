@@ -24,7 +24,7 @@ export function isAiEdge(edge: Edge): boolean {
 }
 
 /** Get AI metadata from a node, or null if it's a user node. */
-export function getAiMeta(node: Node): AiMetadata | null {
+export function getAiMeta(node: Node | { data: Record<string, unknown> }): AiMetadata | null {
   const data = node.data as NodeData | undefined
   return data?._ai ?? null
 }
