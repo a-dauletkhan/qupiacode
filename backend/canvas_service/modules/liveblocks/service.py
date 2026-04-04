@@ -1,7 +1,9 @@
-import logging
 import asyncio
+import logging
+
 import httpx
 from fastapi import HTTPException
+
 from canvas_service.core.config import settings
 
 logger = logging.getLogger(__name__)
