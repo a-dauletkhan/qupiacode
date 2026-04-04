@@ -51,8 +51,12 @@ function withAiOverlay<N extends { id: string; data: Record<string, unknown> }>(
 
     function handleApprove() {
       if (!agent || !aiMeta) return
+      console.info("[ai-agent] approve clicked", {
+        actionId: aiMeta.actionId,
+        nodeId: props.id,
+        commandId: aiMeta.commandId,
+      })
       agent.approve(aiMeta.actionId, [props.id], [])
-      // Notify canvas to update the node's _ai.status to "approved"
       agent._notifyCanvasAction({
         type: "approve",
         actionId: aiMeta.actionId,
@@ -63,8 +67,12 @@ function withAiOverlay<N extends { id: string; data: Record<string, unknown> }>(
 
     function handleReject() {
       if (!agent || !aiMeta) return
+      console.info("[ai-agent] reject clicked", {
+        actionId: aiMeta.actionId,
+        nodeId: props.id,
+        commandId: aiMeta.commandId,
+      })
       agent.reject(aiMeta.actionId, [props.id], [])
-      // Notify canvas to remove the node
       agent._notifyCanvasAction({
         type: "reject",
         actionId: aiMeta.actionId,

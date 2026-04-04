@@ -34,8 +34,12 @@ export function createEventBatcher(
     const events = buffer
     buffer = []
 
+    console.info("[ai-agent] event batcher flushing", {
+      count: events.length,
+      types: events.map((e) => e.type),
+    })
     aiAgent.sendEvents(roomId, { userId, events }).catch((err) => {
-      console.error("[event-batcher] flush failed:", err)
+      console.info("[ai-agent] event batcher flush failed:", err)
     })
   }
 

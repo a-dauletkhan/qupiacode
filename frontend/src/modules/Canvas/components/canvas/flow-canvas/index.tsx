@@ -400,9 +400,12 @@ function FlowCanvasInner({
 
   const handleAskAiClick = React.useCallback(() => {
     if (selectedObjectIds.length === 0 || !aiAgent) return
+    console.info("[ai-agent] Ask AI button clicked", {
+      selectedNodeIds: selectedObjectIds,
+      nodeCount: selectedObjectIds.length,
+    })
     const bounds = sectionRef.current?.getBoundingClientRect()
     if (!bounds) return
-    // Position the prompt near the center of the canvas viewport
     setAiPromptPosition({
       x: bounds.width / 2 - 144,
       y: bounds.height / 2 - 60,
@@ -413,6 +416,12 @@ function FlowCanvasInner({
   const handleAiPromptSubmit = React.useCallback(
     (message: string) => {
       if (!aiAgent) return
+      console.info("[ai-agent] canvas prompt submitted", {
+        message,
+        selectedNodeIds: selectedObjectIds,
+        viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
+        source: "canvas_context_menu",
+      })
       aiAgent.sendCommand(message, {
         selectedNodeIds: selectedObjectIds,
         viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
