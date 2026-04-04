@@ -68,6 +68,16 @@ export function CanvasWorkspace() {
   const { getProject } = useProjects()
   const { user } = useAuth()
   const project = projectId ? getProject(projectId) : null
+  const displayName = React.useMemo(() => {
+    const email = user?.email?.trim()
+
+    if (!email) {
+      return "Anonymous"
+    }
+
+    const [localPart] = email.split("@")
+    return localPart || email
+  }, [user?.email])
   const shareLink = React.useMemo(
     () => new URL(`/invite/${projectId ?? ""}`, SELF_URL).toString(),
     [projectId]
@@ -241,7 +251,14 @@ export function CanvasWorkspace() {
             onResize={handleSidebarResize}
             panelRef={sidebarPanelRef}
           >
-            <AppSidebar side="right" collapsible="none" className="w-full" />
+            <AppSidebar
+              side="right"
+              collapsible="none"
+              className="w-full"
+              canvasId={project.id}
+              userId={user?.id}
+              displayName={displayName}
+            />
           </ResizablePanel>
         </ResizablePanelGroup>
       </SidebarProvider>

@@ -197,7 +197,7 @@ function buildParticipantViews(
   const users: VoiceCallParticipantView[] = [
     {
       id: localParticipant.identity,
-      name: localParticipant.name || localParticipant.identity,
+      name: resolveParticipantName(localParticipant),
       status: formatParticipantStatus(localParticipant, {
         isLocal: true,
         listenOnly,
@@ -226,7 +226,7 @@ function buildParticipantViews(
       participantVolumes[participant.identity] ?? DEFAULT_REMOTE_VOLUME
     const view = {
       id: participant.identity,
-      name: participant.name || participant.identity,
+      name: resolveParticipantName(participant),
       status: formatParticipantStatus(participant, {
         isLocal: false,
         listenOnly: false,
@@ -240,7 +240,7 @@ function buildParticipantViews(
 
     if (participant.isAgent) {
       agent = {
-        name: participant.name || agentMetadata.name,
+        name: resolveParticipantName(participant) || agentMetadata.name,
         status: formatAgentStatus(participant),
         volume: view.volume,
         volumeDisabled: false,
