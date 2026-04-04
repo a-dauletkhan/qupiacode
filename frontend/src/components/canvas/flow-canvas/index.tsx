@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Cursors, useLiveblocksFlow } from "@liveblocks/react-flow"
 import {
   Background,
   BackgroundVariant,
@@ -7,8 +8,6 @@ import {
   Panel,
   ReactFlow,
   ReactFlowProvider,
-  useEdgesState,
-  useNodesState,
   useReactFlow,
   useViewport,
   type Edge,
@@ -19,6 +18,8 @@ import {
 import { Eye, EyeOff } from "lucide-react"
 
 import "@xyflow/react/dist/style.css"
+import "@liveblocks/react-ui/styles.css"
+import "@liveblocks/react-flow/styles.css"
 
 import { CanvasObjectInspector } from "@/components/canvas/flow-canvas/canvas-object-inspector"
 import {
@@ -86,12 +87,27 @@ function FlowCanvasInner({
   onActiveToolChange,
 }: FlowCanvasProps) {
   const sectionRef = React.useRef<HTMLElement | null>(null)
-  const [nodes, setNodes, onNodesChange] = useNodesState<CanvasObjectNode>(initialNodes)
-  const [edges, , onEdgesChange] = useEdgesState(initialEdges)
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    onDelete,
+  } = useLiveblocksFlow<CanvasObjectNode, Edge>({
+    suspense: true,
+    nodes: {
+      initial: initialNodes,
+    },
+    edges: {
+      initial: initialEdges,
+    },
+  })
   const [isMiniMapVisible, setIsMiniMapVisible] = React.useState(true)
   const [draftCreation, setDraftCreation] = React.useState<DraftCreation | null>(
     null
   )
+  const [draftNode, setDraftNode] = React.useState<CanvasObjectNode | null>(null)
   const [selectedObjectIds, setSelectedObjectIds] = React.useState<string[]>([])
   const [editingObjectId, setEditingObjectId] = React.useState<string | null>(null)
   const [inspectorOpen, setInspectorOpen] = React.useState(false)
@@ -101,18 +117,31 @@ function FlowCanvasInner({
   const reactFlow = useReactFlow<CanvasObjectNode, Edge>()
   const viewport = useViewport()
 
+  const renderedNodes = React.useMemo(
+    () => (draftNode ? [...nodes, draftNode] : nodes),
+    [draftNode, nodes]
+  )
+
   const updateCanvasObject = React.useCallback(
     (
       id: string,
       updater: (node: CanvasObjectNode) => CanvasObjectNode
     ) => {
-      setNodes((currentNodes) =>
-        currentNodes.map((node) =>
-          node.id === id ? updater(node as CanvasObjectNode) : node
-        )
-      )
+      const currentNode = nodes.find((node) => node.id === id)
+
+      if (!currentNode) {
+        return
+      }
+
+      onNodesChange([
+        {
+          id,
+          item: updater(currentNode),
+          type: "replace",
+        },
+      ])
     },
-    [setNodes]
+    [nodes, onNodesChange]
   )
 
   const finishEditing = React.useCallback(() => {
@@ -125,7 +154,15 @@ function FlowCanvasInner({
 
   const handleNodesChange = React.useCallback(
     (changes: NodeChange<CanvasObjectNode>[]) => {
-      onNodesChange(changes)
+      const syncedChanges = changes.filter((change) =>
+        change.type === "add"
+          ? change.item.id !== DRAFT_CANVAS_OBJECT_ID
+          : change.id !== DRAFT_CANVAS_OBJECT_ID
+      )
+
+      if (syncedChanges.length > 0) {
+        onNodesChange(syncedChanges)
+      }
 
       if (
         changes.some(
@@ -283,37 +320,28 @@ function FlowCanvasInner({
 
       const rect = normalizeCanvasRect(draftCreation.start, endPoint)
 
-      setNodes((currentNodes) => {
-        const nextNodes = currentNodes.filter(
-          (node) => node.id !== DRAFT_CANVAS_OBJECT_ID
+      setDraftNode(
+        buildNodeFromTool(
+          draftCreation.tool,
+          {
+            ...getCommittedRect(draftCreation.tool, rect, draftCreation.start),
+            width: Math.max(rect.width, 1),
+            height: Math.max(rect.height, 1),
+          },
+          {
+            draft: true,
+            id: DRAFT_CANVAS_OBJECT_ID,
+          }
         )
-
-        return [
-          ...nextNodes,
-          buildNodeFromTool(
-            draftCreation.tool,
-            {
-              ...getCommittedRect(draftCreation.tool, rect, draftCreation.start),
-              width: Math.max(rect.width, 1),
-              height: Math.max(rect.height, 1),
-            },
-            {
-              draft: true,
-              id: DRAFT_CANVAS_OBJECT_ID,
-            }
-          ),
-        ]
-      })
+      )
     },
-    [buildNodeFromTool, draftCreation, setNodes]
+    [buildNodeFromTool, draftCreation]
   )
 
   const clearDraftNode = React.useCallback(() => {
     setDraftCreation(null)
-    setNodes((currentNodes) =>
-      currentNodes.filter((node) => node.id !== DRAFT_CANVAS_OBJECT_ID)
-    )
-  }, [setNodes])
+    setDraftNode(null)
+  }, [])
 
   const commitDraftNode = React.useCallback(
     (endPoint: { x: number; y: number }) => {
@@ -331,18 +359,24 @@ function FlowCanvasInner({
         selected: true,
       })
 
-      setNodes((currentNodes) => {
-        const nextNodes = currentNodes
-          .filter((node) => node.id !== DRAFT_CANVAS_OBJECT_ID)
-          .map((node) => ({
-            ...node,
-            selected: false,
-          }))
+      const selectionChanges: NodeChange<CanvasObjectNode>[] = selectedObjectIds.map(
+        (id) => ({
+          id,
+          selected: false,
+          type: "select",
+        })
+      )
 
-        return [...nextNodes, createdNode]
-      })
+      onNodesChange([
+        ...selectionChanges,
+        {
+          item: createdNode,
+          type: "add",
+        },
+      ])
 
       setSelectedObjectIds([createdNode.id])
+      setDraftNode(null)
       setDraftCreation(null)
 
       if (isTextNode(createdNode) || isStickyNoteNode(createdNode)) {
@@ -353,7 +387,14 @@ function FlowCanvasInner({
         onActiveToolChange("selection")
       }
     },
-    [buildNodeFromTool, draftCreation, onActiveToolChange, setNodes, toolLocked]
+    [
+      buildNodeFromTool,
+      draftCreation,
+      onActiveToolChange,
+      onNodesChange,
+      selectedObjectIds,
+      toolLocked,
+    ]
   )
 
   const handleCanvasPointerDown = React.useCallback(
@@ -452,11 +493,13 @@ function FlowCanvasInner({
 
         <div className="relative h-full w-full">
           <ReactFlow
-            nodes={nodes}
+            nodes={renderedNodes}
             edges={edges}
             nodeTypes={nodeTypes}
             onNodesChange={handleNodesChange}
             onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            onDelete={onDelete}
             onPaneClick={() => {
               finishEditing()
               setInspectedObjectId(null)
@@ -533,6 +576,7 @@ function FlowCanvasInner({
               size={1.4}
               color="color-mix(in srgb, var(--color-border) 88%, transparent)"
             />
+            <Cursors />
           </ReactFlow>
         </div>
 

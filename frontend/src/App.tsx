@@ -9,6 +9,7 @@ import {
   type CanvasEditorDefaults,
   type ToolId,
 } from "@/components/canvas/primitives/schema"
+import { Room } from "@/components/canvas/room"
 import { ShapesToolbar } from "@/components/canvas/shapes-toolbar"
 import { Button } from "@/components/ui/button"
 import {
@@ -86,24 +87,28 @@ export function App() {
               )}
             </Button>
 
-            <FlowCanvas
-              activeTool={activeTool}
-              toolLocked={toolLocked}
-              editorDefaults={editorDefaults}
-              onActiveToolChange={setActiveTool}
-              overlay={
-                <ShapesToolbar
-                  activeTool={activeTool}
-                  toolLocked={toolLocked}
-                  editorDefaults={editorDefaults}
-                  onActiveToolChange={setActiveTool}
-                  onToolLockedChange={setToolLocked}
-                  onEditorDefaultsChange={(updater) =>
-                    setEditorDefaults((currentDefaults) => updater(currentDefaults))
-                  }
-                />
-              }
-            />
+            <Room>
+              <FlowCanvas
+                activeTool={activeTool}
+                toolLocked={toolLocked}
+                editorDefaults={editorDefaults}
+                onActiveToolChange={setActiveTool}
+                overlay={
+                  <ShapesToolbar
+                    activeTool={activeTool}
+                    toolLocked={toolLocked}
+                    editorDefaults={editorDefaults}
+                    onActiveToolChange={setActiveTool}
+                    onToolLockedChange={setToolLocked}
+                    onEditorDefaultsChange={(updater) =>
+                      setEditorDefaults((currentDefaults) =>
+                        updater(currentDefaults)
+                      )
+                    }
+                  />
+                }
+              />
+            </Room>
           </main>
         </ResizablePanel>
 
