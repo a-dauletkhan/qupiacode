@@ -51,4 +51,32 @@ describe("ContextAccumulator", () => {
     const context = acc.buildContext();
     expect(context).toContain("created node-1");
   });
+
+  it("tracks user activity events", () => {
+    const acc = new ContextAccumulator({ maxTranscriptSegments: 5, maxRecentChanges: 10 });
+
+    acc.addUserEvents("user-1", [
+      { type: "node:selected", timestamp: 1000, data: { nodeIds: ["n1"] } },
+      { type: "tool:switched", timestamp: 1001, data: { from: "selection", to: "rectangle" } },
+    ]);
+
+    const context = acc.buildContext();
+    expect(context).toContain("node:selected");
+    expect(context).toContain("tool:switched");
+  });
+
+  it("tracks feedback for LLM context", () => {
+    const acc = new ContextAccumulator({ maxTranscriptSegments: 5, maxRecentChanges: 10 });
+
+    acc.addFeedback({
+      actionId: "act-1",
+      status: "rejected",
+      reason: "not what I wanted",
+      userId: "user-1",
+    });
+
+    const context = acc.buildContext();
+    expect(context).toContain("rejected");
+    expect(context).toContain("not what I wanted");
+  });
 });

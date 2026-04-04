@@ -18,7 +18,7 @@ import { StickyNoteNodeCard } from "@/modules/Canvas/components/canvas/flow-canv
 import { TextNodeCard } from "@/modules/Canvas/components/canvas/flow-canvas/text-node"
 import { AiNodeOverlay } from "./ai-node-overlay"
 import { useAiAgentOptional } from "../context/ai-agent-context"
-import { getAiMeta, collectActionIds } from "../utils/ai-node-helpers"
+import { getAiMeta } from "../utils/ai-node-helpers"
 import type { AiMetadata } from "../types"
 
 // ---------------------------------------------------------------------------
@@ -33,30 +33,44 @@ function withAiOverlay<N extends { id: string; data: Record<string, unknown> }>(
     const aiMeta = getAiMeta(props as unknown as { id: string; data: Record<string, unknown> }) as AiMetadata | null
     const agent = useAiAgentOptional()
 
-    if (!aiMeta || aiMeta.status === "approved") {
-      // Approved nodes keep the badge via a lightweight wrapper, no action bar
-      if (aiMeta?.status === "approved") {
-        return (
-          <AiNodeOverlay
-            status="approved"
-            onApprove={() => {}}
-            onReject={() => {}}
-          >
-            <OriginalComponent {...props} />
-          </AiNodeOverlay>
-        )
-      }
+    if (!aiMeta) {
       return <OriginalComponent {...props} />
+    }
+
+    if (aiMeta.status === "approved") {
+      return (
+        <AiNodeOverlay
+          status="approved"
+          onApprove={() => {}}
+          onReject={() => {}}
+        >
+          <OriginalComponent {...props} />
+        </AiNodeOverlay>
+      )
     }
 
     function handleApprove() {
       if (!agent || !aiMeta) return
       agent.approve(aiMeta.actionId, [props.id], [])
+      // Notify canvas to update the node's _ai.status to "approved"
+      agent._notifyCanvasAction({
+        type: "approve",
+        actionId: aiMeta.actionId,
+        nodeIds: [props.id],
+        edgeIds: [],
+      })
     }
 
     function handleReject() {
       if (!agent || !aiMeta) return
       agent.reject(aiMeta.actionId, [props.id], [])
+      // Notify canvas to remove the node
+      agent._notifyCanvasAction({
+        type: "reject",
+        actionId: aiMeta.actionId,
+        nodeIds: [props.id],
+        edgeIds: [],
+      })
     }
 
     return (
@@ -84,7 +98,6 @@ export const AiAwareStickyNoteNode = withAiOverlay<StickyNoteNode>(StickyNoteNod
 
 /**
  * Drop-in replacement for the `nodeTypes` map in FlowCanvas.
- * Swap the import to enable AI overlays.
  */
 export const aiAwareNodeTypes = {
   shape: AiAwareShapeNode,

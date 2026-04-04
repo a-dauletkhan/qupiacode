@@ -10,7 +10,7 @@
  */
 
 import type { AiEvent, AiEventType } from "../types"
-import * as aiAgent from "./ai-agent-mock" // swap to ai-agent-service for prod
+import * as aiAgent from "./ai-agent-service"
 
 const DEFAULT_FLUSH_INTERVAL_MS = 3000
 

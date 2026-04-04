@@ -5,6 +5,13 @@ import { useAiEventBatcher } from "../hooks/use-ai-event-batcher"
 import { useAiQueue } from "../hooks/use-ai-queue"
 import type { AiEvent, AiQueueResponse, CommandSource } from "../types"
 
+type OnCanvasAction = (action: {
+  type: "approve" | "reject"
+  nodeIds: string[]
+  edgeIds: string[]
+  actionId: string
+}) => void
+
 type AiAgentContextValue = {
   roomId: string
   userId: string
@@ -16,6 +23,8 @@ type AiAgentContextValue = {
   feedbackPending: boolean
   pushEvent: (event: Pick<AiEvent, "type" | "data">) => void
   queue: AiQueueResponse
+  registerCanvasAction: (cb: OnCanvasAction) => () => void
+  _notifyCanvasAction: OnCanvasAction
 }
 
 const AiAgentContext = React.createContext<AiAgentContextValue | null>(null)
@@ -32,6 +41,16 @@ export function AiAgentProvider({ roomId, userId, userName, children }: AiAgentP
   const feedback = useAiFeedback({ roomId, userId })
   const batcher = useAiEventBatcher({ roomId, userId })
   const queue = useAiQueue({ roomId })
+  const canvasActionCallbacks = React.useRef(new Set<OnCanvasAction>())
+
+  const registerCanvasAction = React.useCallback((cb: OnCanvasAction) => {
+    canvasActionCallbacks.current.add(cb)
+    return () => { canvasActionCallbacks.current.delete(cb) }
+  }, [])
+
+  const notifyCanvasAction = React.useCallback<OnCanvasAction>((action) => {
+    canvasActionCallbacks.current.forEach((cb) => cb(action))
+  }, [])
 
   const value = React.useMemo<AiAgentContextValue>(
     () => ({
@@ -45,8 +64,10 @@ export function AiAgentProvider({ roomId, userId, userName, children }: AiAgentP
       feedbackPending: feedback.pending,
       pushEvent: batcher.push,
       queue,
+      registerCanvasAction,
+      _notifyCanvasAction: notifyCanvasAction,
     }),
-    [roomId, userId, userName, command, feedback, batcher, queue],
+    [roomId, userId, userName, command, feedback, batcher, queue, registerCanvasAction, notifyCanvasAction],
   )
 
   return (
