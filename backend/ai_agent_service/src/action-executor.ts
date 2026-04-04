@@ -3,12 +3,6 @@ import type { AiMetadata } from "./types.js";
 import { randomUUID } from "node:crypto";
 import { logger } from "./logger.js";
 
-export interface AiActionContext {
-  actionId: string;
-  commandId: string | null;
-  requestedBy: string | null;
-}
-
 export interface StorageAdapter {
   setNode: (id: string, data: Record<string, unknown>) => void;
   deleteNode: (id: string) => void;
@@ -18,30 +12,50 @@ export interface StorageAdapter {
   getNodes: () => Array<{ id: string; position?: { x: number; y: number }; width?: number; height?: number }>;
 }
 
+export interface ActionContext {
+  commandId: string | null;
+  requestedBy: string | null;
+}
+
 export class ActionExecutor {
   private storage: StorageAdapter;
-  private aiContext: AiActionContext | null;
+  private actionContext: ActionContext;
+  private _createdNodeIds: string[] = [];
+  private _createdEdgeIds: string[] = [];
+  private _actionId: string;
 
-  constructor(storage: StorageAdapter, aiContext?: AiActionContext) {
+  constructor(storage: StorageAdapter, actionContext?: ActionContext) {
     this.storage = storage;
-    this.aiContext = aiContext ?? null;
+    this.actionContext = actionContext ?? { commandId: null, requestedBy: null };
+    this._actionId = `act-${randomUUID().slice(0, 8)}`;
   }
 
-  private buildAiMeta(): AiMetadata | null {
-    if (!this.aiContext) return null;
-    return {
-      actionId: this.aiContext.actionId,
-      commandId: this.aiContext.commandId,
-      requestedBy: this.aiContext.requestedBy,
-      status: "pending",
-      createdAt: Date.now(),
-    };
+  get actionId(): string {
+    return this._actionId;
+  }
+
+  get createdNodeIds(): string[] {
+    return this._createdNodeIds;
+  }
+
+  get createdEdgeIds(): string[] {
+    return this._createdEdgeIds;
   }
 
   async execute(toolCalls: ToolCall[]): Promise<void> {
     for (const call of toolCalls) {
       this.executeOne(call);
     }
+  }
+
+  private makeAiMetadata(): AiMetadata {
+    return {
+      actionId: this._actionId,
+      commandId: this.actionContext.commandId,
+      requestedBy: this.actionContext.requestedBy,
+      status: "pending",
+      createdAt: Date.now(),
+    };
   }
 
   private executeOne(call: ToolCall): void {
@@ -76,7 +90,7 @@ export class ActionExecutor {
   }
 
   private handleCreateNode(args: Record<string, unknown>): void {
-    const id = `agent-${randomUUID().slice(0, 8)}`;
+    const id = `ai-${randomUUID().slice(0, 8)}`;
     const nodeType = args.nodeType as string;
     const position = args.position as { x: number; y: number };
     const width = (args.width as number) ?? 150;
@@ -103,11 +117,9 @@ export class ActionExecutor {
       data.fontSize = args.fontSize ?? 14;
     }
 
-    const aiMeta = this.buildAiMeta();
-    if (aiMeta) {
-      data._ai = aiMeta;
-    }
+    data._ai = this.makeAiMetadata();
 
+    this._createdNodeIds.push(id);
     this.storage.setNode(id, { type: nodeType, position, width, height, data });
   }
 
@@ -126,16 +138,14 @@ export class ActionExecutor {
   }
 
   private handleCreateEdge(args: Record<string, unknown>): void {
-    const id = `agent-edge-${randomUUID().slice(0, 8)}`;
+    const id = `ai-edge-${randomUUID().slice(0, 8)}`;
     const edgeData: Record<string, unknown> = {
       source: args.source,
       target: args.target,
       label: args.label ?? "",
+      data: { _ai: this.makeAiMetadata() },
     };
-    const aiMeta = this.buildAiMeta();
-    if (aiMeta) {
-      edgeData._ai = aiMeta;
-    }
+    this._createdEdgeIds.push(id);
     this.storage.setEdge(id, edgeData);
   }
 

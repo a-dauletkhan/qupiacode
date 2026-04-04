@@ -87,10 +87,9 @@ describe("ActionExecutor", () => {
     expect(storage.nodes.size).toBe(0);
   });
 
-  it("injects _ai metadata into created nodes", async () => {
+  it("injects _ai metadata into created nodes with context", async () => {
     const storage = createMockStorage();
     const executor = new ActionExecutor(storage, {
-      actionId: "act-001",
       commandId: "cmd-001",
       requestedBy: "user-1",
     });
@@ -104,17 +103,17 @@ describe("ActionExecutor", () => {
     const node = Array.from(storage.nodes.values())[0];
     const data = node.data as Record<string, unknown>;
     const ai = data._ai as Record<string, unknown>;
-    expect(ai.actionId).toBe("act-001");
+    expect(ai.actionId).toBe(executor.actionId);
     expect(ai.commandId).toBe("cmd-001");
     expect(ai.requestedBy).toBe("user-1");
     expect(ai.status).toBe("pending");
     expect(ai.createdAt).toBeTypeOf("number");
+    expect(executor.createdNodeIds).toHaveLength(1);
   });
 
   it("injects _ai metadata into created edges", async () => {
     const storage = createMockStorage();
     const executor = new ActionExecutor(storage, {
-      actionId: "act-002",
       commandId: null,
       requestedBy: null,
     });
@@ -126,12 +125,14 @@ describe("ActionExecutor", () => {
 
     expect(storage.edges.size).toBe(1);
     const edge = Array.from(storage.edges.values())[0];
-    const ai = edge._ai as Record<string, unknown>;
-    expect(ai.actionId).toBe("act-002");
+    const edgeData = edge.data as Record<string, unknown>;
+    const ai = edgeData._ai as Record<string, unknown>;
+    expect(ai.actionId).toBe(executor.actionId);
     expect(ai.status).toBe("pending");
+    expect(executor.createdEdgeIds).toHaveLength(1);
   });
 
-  it("does not inject _ai metadata when no context provided", async () => {
+  it("always injects _ai metadata (even without explicit context)", async () => {
     const storage = createMockStorage();
     const executor = new ActionExecutor(storage);
 
@@ -142,6 +143,9 @@ describe("ActionExecutor", () => {
 
     const node = Array.from(storage.nodes.values())[0];
     const data = node.data as Record<string, unknown>;
-    expect(data._ai).toBeUndefined();
+    const ai = data._ai as Record<string, unknown>;
+    expect(ai.actionId).toBe(executor.actionId);
+    expect(ai.commandId).toBeNull();
+    expect(ai.requestedBy).toBeNull();
   });
 });

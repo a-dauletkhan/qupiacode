@@ -1,11 +1,10 @@
 export type Intensity = "quiet" | "balanced" | "active";
 
-export type AgentStatus = "watching" | "acting";
+export type AgentStatus = "idle" | "processing" | "acting";
 
 export interface AgentPresence {
   type: "ai_agent";
-  status: AgentStatus;
-  intensity: Intensity;
+  status: "watching" | "acting";
   cursor: null;
 }
 
@@ -71,55 +70,74 @@ export interface TranscriptSegment {
   timestamp: number;
 }
 
-// --- AI metadata attached to nodes/edges created by the agent ---
-
-export type AiActionStatus = "pending" | "approved" | "rejected";
+// --- AI Metadata ---
 
 export interface AiMetadata {
   actionId: string;
   commandId: string | null;
   requestedBy: string | null;
-  status: AiActionStatus;
+  status: "pending" | "approved" | "rejected";
   createdAt: number;
 }
 
-// --- Command (explicit user request) ---
+// --- Command API ---
 
-export interface AiCommandRequest {
+export type CommandSource = "chat" | "canvas_context_menu";
+
+export interface CommandContext {
+  selectedNodeIds: string[];
+  selectedEdgeIds: string[];
+  viewport: { x: number; y: number; zoom: number };
+  source: CommandSource;
+}
+
+export interface CommandRequest {
   userId: string;
   userName: string;
   message: string;
-  context: {
-    selectedNodeIds: string[];
-    selectedEdgeIds: string[];
-    viewport: { x: number; y: number; zoom: number };
-    source: "chat" | "canvas_context_menu";
-  };
+  context: CommandContext;
 }
 
-export interface AiCommandResponse {
+export interface CommandResponse {
   commandId: string;
   status: "queued";
   position: number;
   estimatedWaitMs: number;
 }
 
-// --- Activity events (passive frontend tracking) ---
+// --- Activity Events API ---
 
-export interface AiActivityEvent {
-  type: string;
+export type ActivityEventType =
+  | "node:selected"
+  | "node:deselected"
+  | "node:drag:start"
+  | "node:drag:end"
+  | "text:edit:start"
+  | "text:edit:end"
+  | "tool:switched"
+  | "undo"
+  | "redo"
+  | "copy"
+  | "paste"
+  | "delete"
+  | "property:changed"
+  | "selection:changed"
+  | "edge:created";
+
+export interface ActivityEvent {
+  type: ActivityEventType;
   timestamp: number;
   data: Record<string, unknown>;
 }
 
-export interface AiEventsRequest {
+export interface EventsRequest {
   userId: string;
-  events: AiActivityEvent[];
+  events: ActivityEvent[];
 }
 
-// --- Feedback (approve/reject) ---
+// --- Feedback API ---
 
-export interface AiFeedbackRequest {
+export interface FeedbackRequest {
   userId: string;
   actionId: string;
   nodeIds: string[];
@@ -128,13 +146,49 @@ export interface AiFeedbackRequest {
   reason?: string;
 }
 
-// --- Queue item ---
+export interface FeedbackResponse {
+  ok: boolean;
+  actionId: string;
+  status: "approved" | "rejected";
+}
 
-export interface QueuedCommand {
+// --- Queue ---
+
+export interface QueueItem {
   commandId: string;
   userId: string;
   userName: string;
   message: string;
-  context: AiCommandRequest["context"];
+  context: CommandContext;
   queuedAt: number;
+}
+
+export interface AgentAction {
+  actionId: string;
+  commandId: string | null;
+  type: "canvas_mutation";
+  nodeIds: string[];
+  edgeIds: string[];
+  status: "pending" | "approved" | "rejected";
+  createdAt: number;
+}
+
+export interface QueueStatusResponse {
+  agentStatus: AgentStatus;
+  currentCommand: {
+    commandId: string;
+    userId: string;
+    userName: string;
+    message: string;
+    startedAt: number;
+  } | null;
+  queue: Array<{
+    commandId: string;
+    userId: string;
+    userName: string;
+    message: string;
+    queuedAt: number;
+    position: number;
+  }>;
+  recentActions: AgentAction[];
 }

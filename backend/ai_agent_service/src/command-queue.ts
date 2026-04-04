@@ -1,25 +1,25 @@
-import type { QueuedCommand } from "./types.js";
+import type { QueueItem } from "./types.js";
 
 export class CommandQueue {
-  private queue: QueuedCommand[] = [];
+  private queue: QueueItem[] = [];
   private maxSize: number;
 
   constructor(maxSize: number) {
     this.maxSize = maxSize;
   }
 
-  enqueue(command: QueuedCommand): void {
+  enqueue(command: QueueItem): void {
     if (this.queue.length >= this.maxSize) {
       throw new Error("Queue full");
     }
     this.queue.push(command);
   }
 
-  dequeue(): QueuedCommand | null {
+  dequeue(): QueueItem | null {
     return this.queue.shift() ?? null;
   }
 
-  peek(): QueuedCommand | null {
+  peek(): QueueItem | null {
     return this.queue[0] ?? null;
   }
 
@@ -31,7 +31,7 @@ export class CommandQueue {
     return this.queue.length >= this.maxSize;
   }
 
-  items(): QueuedCommand[] {
+  items(): QueueItem[] {
     return [...this.queue];
   }
 }
