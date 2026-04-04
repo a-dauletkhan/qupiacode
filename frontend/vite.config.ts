@@ -22,6 +22,10 @@ export default defineConfig(({ mode }) => {
           target: voiceApiProxyTarget,
           changeOrigin: true,
         },
+        "/auth": {
+          target: voiceApiProxyTarget,
+          changeOrigin: true,
+        },
       },
     },
   }
