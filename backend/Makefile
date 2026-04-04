@@ -1,6 +1,6 @@
 ROOM ?= canvas:demo-canvas
 
-.PHONY: sync dev dev-connect start db-bootstrap test lint typecheck compose-up
+.PHONY: sync dev dev-connect start test lint typecheck compose-up
 
 sync:
 	uv sync
@@ -13,9 +13,6 @@ dev-connect:
 
 start:
 	uv run python -m scripts.run_backend_stack --worker-mode start
-
-db-bootstrap:
-	uv run python -m scripts.bootstrap_db
 
 test:
 	uv run pytest
