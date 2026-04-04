@@ -551,7 +551,7 @@ function FlowCanvasInner({
 
         {overlay ? (
           <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center">
-            <div className="pointer-events-auto flex w-full justify-center">
+            <div className="pointer-events-auto flex justify-center">
               {overlay}
             </div>
           </div>

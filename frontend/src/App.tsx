@@ -18,9 +18,14 @@ import {
 } from "@/components/ui/resizable"
 import { SidebarProvider } from "@/components/ui/sidebar"
 
+const DEFAULT_SIDEBAR_WIDTH = 420
+const MIN_SIDEBAR_WIDTH = 360
+const MAX_SIDEBAR_WIDTH = 720
+
 export function App() {
   const sidebarPanelRef = usePanelRef()
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true)
+  const [lastSidebarSize, setLastSidebarSize] = React.useState(DEFAULT_SIDEBAR_WIDTH)
   const [activeTool, setActiveTool] = React.useState<ToolId>("selection")
   const [toolLocked, setToolLocked] = React.useState(false)
   const [editorDefaults, setEditorDefaults] = React.useState<CanvasEditorDefaults>(
@@ -28,26 +33,49 @@ export function App() {
   )
 
   const toggleSidebar = React.useCallback(() => {
-    if (sidebarPanelRef.current?.isCollapsed()) {
-      sidebarPanelRef.current.expand()
-      setIsSidebarOpen(true)
+    if (!sidebarPanelRef.current) {
       return
     }
 
-    sidebarPanelRef.current?.collapse()
-    setIsSidebarOpen(false)
-  }, [sidebarPanelRef])
+    if (isSidebarOpen) {
+      sidebarPanelRef.current.collapse()
+      setIsSidebarOpen(false)
+      return
+    }
+
+    sidebarPanelRef.current.expand()
+    sidebarPanelRef.current.resize(lastSidebarSize)
+    setIsSidebarOpen(true)
+  }, [isSidebarOpen, lastSidebarSize, sidebarPanelRef])
+
+  const handleSidebarResize = React.useCallback(
+    (panelSize: { asPercentage: number; inPixels: number }) => {
+      if (panelSize.asPercentage <= 0) {
+        setIsSidebarOpen(false)
+        return
+      }
+
+      setIsSidebarOpen(true)
+      setLastSidebarSize(
+        Math.min(
+          MAX_SIDEBAR_WIDTH,
+          Math.max(MIN_SIDEBAR_WIDTH, panelSize.inPixels)
+        )
+      )
+    },
+    []
+  )
 
   return (
     <SidebarProvider className="h-svh min-h-0 bg-background">
       <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
-        <ResizablePanel defaultSize={75} minSize={70}>
+        <ResizablePanel defaultSize="70%" minSize="45%">
           <main className="relative flex h-full min-w-0 bg-background">
             <Button
               type="button"
               variant="outline"
               size="icon"
-              className="absolute top-4 right-4 z-10 border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
+              className="absolute top-4 right-4 z-30 border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
               onClick={toggleSidebar}
               aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
             >
@@ -79,15 +107,15 @@ export function App() {
           </main>
         </ResizablePanel>
 
-        {isSidebarOpen ? <ResizableHandle withHandle /> : null}
+        <ResizableHandle withHandle />
 
         <ResizablePanel
           collapsible
           collapsedSize={0}
-          defaultSize="25%"
-          maxSize="30%"
-          minSize="20%"
-          onResize={(panelSize) => setIsSidebarOpen(panelSize.asPercentage > 0)}
+          defaultSize={`${DEFAULT_SIDEBAR_WIDTH}px`}
+          maxSize={`${MAX_SIDEBAR_WIDTH}px`}
+          minSize={`${MIN_SIDEBAR_WIDTH}px`}
+          onResize={handleSidebarResize}
           panelRef={sidebarPanelRef}
         >
           <AppSidebar side="right" collapsible="none" className="w-full" />
