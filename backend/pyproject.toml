@@ -1,0 +1,72 @@
+[project]
+name = "qupia-backend"
+version = "0.1.0"
+description = "Unified backend root for the canvas API and voice transcription worker."
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "asyncpg>=0.29.0",
+    "email-validator>=2.0.0",
+    "fastapi>=0.135.3",
+    "httpx>=0.28.1",
+    "livekit-agents>=1.4,<2",
+    "livekit-api>=1.1.0",
+    "pydantic-settings>=2.13.1",
+    "PyJWT[crypto]>=2.8.0",
+    "python-dotenv>=1.2.2",
+    "python-multipart>=0.0.9",
+    "redis>=5.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "supabase>=2.4.0",
+    "uvicorn[standard]>=0.43.0",
+    "websockets>=12.0",
+]
+
+[dependency-groups]
+dev = [
+    "aiosqlite>=0.21.0",
+    "basedpyright>=1.39.0",
+    "fakeredis>=2.32.0",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.2.0",
+    "python-jose[cryptography]>=3.5.0",
+    "ruff>=0.15.9",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+addopts = "-q"
+asyncio_mode = "auto"
+testpaths = [
+    "canvas_service/tests",
+    "voice_call_service/tests",
+]
+
+[tool.basedpyright]
+pythonVersion = "3.12"
+typeCheckingMode = "standard"
+venvPath = "."
+venv = ".venv"
+include = [
+    "main.py",
+    "voice_agent_worker.py",
+    "scripts",
+    "canvas_service",
+    "voice_call_service",
+]
+exclude = [
+    ".venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".ruff_cache",
+    "voice_call_service/.venv",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["B", "E", "F", "I", "UP"]
+ignore = ["B008", "B017", "E501", "UP017", "UP042", "UP045"]

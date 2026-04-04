@@ -1,5 +1,6 @@
 import pytest
-from tests.conftest import TEST_USER_ID
+
+from canvas_service.tests.conftest import TEST_USER_ID
 
 pytestmark = pytest.mark.asyncio
 
@@ -35,4 +36,4 @@ async def test_get_board_not_found(client, valid_token):
 
 async def test_requires_auth(client):
     response = await client.get("/boards")
-    assert response.status_code == 403
+    assert response.status_code == 401

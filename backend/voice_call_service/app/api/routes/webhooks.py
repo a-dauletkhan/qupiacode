@@ -2,8 +2,8 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Request, status
 
-from app.models.webhooks import LiveKitWebhookAck
-from app.services.livekit_webhooks import InvalidWebhookPayloadError, ingest_livekit_webhook
+from ...models.webhooks import LiveKitWebhookAck
+from ...services.livekit_webhooks import InvalidWebhookPayloadError, ingest_livekit_webhook
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["webhooks"])

@@ -5,8 +5,8 @@ from datetime import timedelta
 from livekit import api
 from pydantic import SecretStr
 
-from app.core.config import Settings
-from app.models.voice import VoiceTokenResponse
+from ..core.config import Settings
+from ..models.voice import VoiceAgentMetadata, VoiceTokenResponse
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,21 @@ def create_voice_token(
         room_name=room_name,
         participant_identity=participant_identity,
         participant_name=participant_name,
+        agent=build_voice_agent_metadata(settings),
         token=token,
+    )
+
+
+def build_voice_agent_metadata(settings: Settings) -> VoiceAgentMetadata:
+    """Build frontend-visible metadata for the text-only room agent."""
+    return VoiceAgentMetadata(
+        enabled=settings.voice_agent_enabled,
+        name=settings.voice_agent_name,
+        wake_phrases=settings.voice_agent_wake_phrases,
+        transcription_mode=settings.voice_agent_transcription_mode,
+        transcript_forwarding_enabled=bool(settings.voice_agent_transcript_forward_url),
+        transcript_partials_enabled=settings.voice_agent_transcript_partials_enabled,
+        diarization_enabled=settings.voice_agent_diarization_enabled,
     )
 
 

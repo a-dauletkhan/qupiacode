@@ -1,7 +1,7 @@
 import logging
 from logging.config import dictConfig
 
-from app.core.config import Settings
+from .config import Settings
 
 
 def configure_logging(settings: Settings) -> None:

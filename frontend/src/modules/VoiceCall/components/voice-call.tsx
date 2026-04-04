@@ -4,23 +4,11 @@ import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
 import { CallUserCard } from "@/modules/VoiceCall/components/call-user-card"
 import { VoiceCallControlPanel } from "@/modules/VoiceCall/components/voice-call-control-panel"
-import { useVoiceCall } from "@/modules/VoiceCall/hooks/use-voice-call"
+import { useVoiceCallContext } from "@/modules/VoiceCall/context/voice-call-context"
 
-type VoiceCallProps = React.ComponentProps<"section"> & {
-  canvasId?: string
-  userId?: string
-  displayName?: string
-  apiBaseUrl?: string
-}
+type VoiceCallProps = React.ComponentProps<"section">
 
-export function VoiceCall({
-  className,
-  canvasId,
-  userId,
-  displayName,
-  apiBaseUrl = import.meta.env.VITE_VOICE_API_BASE_URL,
-  ...props
-}: VoiceCallProps) {
+export function VoiceCall({ className, ...props }: VoiceCallProps) {
   const {
     audioContainerRef,
     enableSpeakerAudio,
@@ -36,12 +24,7 @@ export function VoiceCall({
     resolvedCanvasId,
     roomName,
     toggleMicrophone,
-  } = useVoiceCall({
-    canvasId,
-    userId,
-    displayName,
-    apiBaseUrl,
-  })
+  } = useVoiceCallContext()
 
   return (
     <section

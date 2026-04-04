@@ -4,8 +4,8 @@ from contextlib import contextmanager
 import pytest
 from fastapi.testclient import TestClient
 
-from app.core.config import get_settings
-from app.main import create_app
+from voice_call_service.app.core.config import get_settings
+from voice_call_service.app.main import create_app
 
 
 @contextmanager

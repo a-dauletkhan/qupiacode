@@ -1,11 +1,15 @@
-import pytest
-from unittest.mock import patch, AsyncMock
-from starlette.testclient import TestClient
-from tests.conftest import make_token, TEST_USER_ID, _override_get_db, _override_get_redis
+from unittest.mock import AsyncMock, patch
 
 import fakeredis.aioredis
-from core.database import get_db
-from core.redis import get_redis
+import pytest
+from starlette.testclient import TestClient
+
+from canvas_service.core.database import get_db
+from canvas_service.core.redis import get_redis
+from canvas_service.tests.conftest import (
+    _override_get_db,
+    _override_get_redis,
+)
 
 pytestmark = pytest.mark.asyncio
 
@@ -14,15 +18,15 @@ _fake_redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
 
 def _make_test_client():
     """Create a TestClient with lifespan disabled (no real Redis connection)."""
-    from main import app
+    from canvas_service.main import app
 
     app.dependency_overrides[get_db] = _override_get_db
     app.dependency_overrides[get_redis] = _override_get_redis
     # Patch the redis module so WebSocket handler (which calls get_redis()
     # directly, outside FastAPI DI) gets a fake instance.
-    with patch("core.redis._redis_client", _fake_redis), \
-         patch("core.redis.init_redis", new_callable=AsyncMock), \
-         patch("core.redis.close_redis", new_callable=AsyncMock):
+    with patch("canvas_service.core.redis._redis_client", _fake_redis), patch(
+        "canvas_service.core.redis.init_redis", new_callable=AsyncMock
+    ), patch("canvas_service.core.redis.close_redis", new_callable=AsyncMock):
         with TestClient(app) as c:
             yield c
     app.dependency_overrides.clear()

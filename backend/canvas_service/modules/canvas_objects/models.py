@@ -1,8 +1,10 @@
 import uuid
-from sqlalchemy import Column, Text, Float, Integer, Boolean, ForeignKey, DateTime
-from sqlalchemy.dialects.postgresql import UUID, JSONB
+
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.sql import func
-from core.database import Base
+
+from canvas_service.core.database import Base
 
 
 class CanvasNode(Base):

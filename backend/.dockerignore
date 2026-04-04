@@ -1,0 +1,16 @@
+.env
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+uv-cache
+.git
+.gitignore
+canvas_service/__pycache__
+canvas_service/.pytest_cache
+canvas_service/.ruff_cache
+voice_call_service/.venv
+voice_call_service/.pytest_cache
+voice_call_service/.ruff_cache
+**/__pycache__

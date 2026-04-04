@@ -1,17 +1,24 @@
 import json
 from uuid import UUID
+
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-import redis.asyncio as aioredis
-from core.database import get_db
-from core.auth import get_current_user
-from core.redis import get_redis
-from modules.canvas_objects import service
-from modules.canvas_objects.schemas import (
-    NodeCreate, NodeUpdate, NodeResponse,
-    EdgeCreate, EdgeUpdate, EdgeResponse, CanvasResponse,
+
+from canvas_service.core.auth import get_current_user
+from canvas_service.core.database import get_db
+from canvas_service.core.redis import get_redis
+from canvas_service.modules.canvas_objects import service
+from canvas_service.modules.canvas_objects.schemas import (
+    CanvasResponse,
+    EdgeCreate,
+    EdgeResponse,
+    EdgeUpdate,
+    NodeCreate,
+    NodeResponse,
+    NodeUpdate,
 )
-from modules.collaboration.events import EventType, make_event
+from canvas_service.modules.collaboration.events import EventType, make_event
 
 router = APIRouter(prefix="/boards/{board_id}", tags=["canvas"])
 

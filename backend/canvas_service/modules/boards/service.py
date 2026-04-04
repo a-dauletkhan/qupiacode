@@ -1,9 +1,11 @@
 from uuid import UUID
+
 from fastapi import HTTPException
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from modules.boards.models import Board, BoardMember
-from modules.boards.schemas import BoardCreate
+
+from canvas_service.modules.boards.models import Board, BoardMember
+from canvas_service.modules.boards.schemas import BoardCreate
 
 
 async def get_user_boards(db: AsyncSession, user_id: UUID) -> list[Board]:

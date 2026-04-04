@@ -1,0 +1,7 @@
+[build]
+builder = "DOCKERFILE"
+watchPatterns = ["/backend/**"]
+
+[deploy]
+healthcheckPath = "/healthz"
+healthcheckTimeout = 100

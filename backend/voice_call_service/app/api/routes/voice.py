@@ -3,10 +3,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.core.config import Settings, get_settings
-from app.models.voice import VoiceTokenRequest, VoiceTokenResponse
-from app.services.authz import authorize_canvas_voice_access
-from app.services.livekit_tokens import LiveKitConfigurationError, create_voice_token
+from ...core.config import Settings, get_settings
+from ...models.voice import VoiceTokenRequest, VoiceTokenResponse
+from ...services.authz import authorize_canvas_voice_access
+from ...services.livekit_tokens import LiveKitConfigurationError, create_voice_token
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/voice", tags=["voice"])

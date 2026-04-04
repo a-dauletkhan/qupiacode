@@ -1,10 +1,12 @@
 from uuid import UUID
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from core.database import get_db
-from core.auth import get_current_user
-from modules.boards import service
-from modules.boards.schemas import BoardCreate, BoardResponse, BoardMemberAdd
+
+from canvas_service.core.auth import get_current_user
+from canvas_service.core.database import get_db
+from canvas_service.modules.boards import service
+from canvas_service.modules.boards.schemas import BoardCreate, BoardMemberAdd, BoardResponse
 
 router = APIRouter(prefix="/boards", tags=["boards"])
 

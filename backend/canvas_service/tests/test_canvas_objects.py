@@ -1,7 +1,7 @@
+from datetime import datetime, timedelta, timezone
+
 import pytest
 import pytest_asyncio
-from datetime import datetime, timezone, timedelta
-from tests.conftest import TEST_USER_ID
 
 pytestmark = pytest.mark.asyncio
 

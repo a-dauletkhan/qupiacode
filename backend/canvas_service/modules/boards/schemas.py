@@ -1,7 +1,8 @@
-from pydantic import BaseModel, ConfigDict
-from uuid import UUID
 from datetime import datetime
 from typing import Literal
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict
 
 
 class BoardCreate(BaseModel):

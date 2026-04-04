@@ -1,6 +1,7 @@
 import pytest
-from core.auth import verify_token
-from tests.conftest import make_token, TEST_USER_ID
+
+from canvas_service.core.auth import verify_token
+from canvas_service.tests.conftest import TEST_USER_ID, make_token
 
 
 def test_verify_valid_token():
