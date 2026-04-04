@@ -4,7 +4,6 @@ import {
   Room,
   RoomEvent,
   Track,
-  type ChatMessage as LiveKitChatMessage,
   type Participant,
   type RemoteAudioTrack,
   type TrackPublication,
