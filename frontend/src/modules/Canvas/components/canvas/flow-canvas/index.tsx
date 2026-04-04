@@ -766,36 +766,19 @@ function areStringArraysEqual(left: string[], right: string[]) {
 }
 
 function CollaboratorCursor({ connectionId }: { connectionId: number }) {
-  const userEmail = useOther(
+  const userName = useOther(
     connectionId,
-    (otherUser) => otherUser.presence.userEmail
+    (otherUser) => otherUser.presence.userName
   )
 
   return (
     <LiveblocksCursor
       color={getCollaboratorCursorColor(connectionId)}
-      label={formatCollaboratorCursorLabel(userEmail)}
+      label={userName || "Anonymous"}
     />
   )
 }
 
 function getCollaboratorCursorColor(connectionId: number) {
   return CURSOR_COLORS[connectionId % CURSOR_COLORS.length]
-}
-
-function formatCollaboratorCursorLabel(userEmail: unknown) {
-  if (typeof userEmail !== "string" || !userEmail.trim()) {
-    return "Anonymous"
-  }
-
-  const [localPart] = userEmail.split("@")
-  const displayName = localPart
-    .replace(/[._-]+/g, " ")
-    .trim()
-    .split(" ")
-    .filter(Boolean)
-    .map((part) => part[0].toUpperCase() + part.slice(1))
-    .join(" ")
-
-  return displayName || userEmail
 }

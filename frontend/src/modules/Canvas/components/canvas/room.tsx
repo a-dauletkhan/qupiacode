@@ -30,7 +30,7 @@ export function Room({ id, children }: RoomProps) {
     >
       <RoomProvider
         id={id}
-        initialPresence={{ cursor: null, userEmail: null }}
+        initialPresence={{ cursor: null, userName: null }}
       >
         <ClientSideSuspense fallback={<RoomLoadingFallback />}>
           <RoomPresence>
@@ -49,7 +49,7 @@ function RoomPresence({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     updateMyPresence({
-      userEmail: user?.email ?? "Anonymous",
+      userName: formatPresenceUserName(user?.email),
     })
   }, [updateMyPresence, user?.email])
 
@@ -63,7 +63,7 @@ function RoomPresence({ children }: { children: ReactNode }) {
           <div className="mt-1 space-y-1 text-muted-foreground">
             {others.map((otherUser) => (
               <p key={otherUser.connectionId}>
-                {formatPresenceEmail(otherUser.presence.userEmail)}
+                {otherUser.presence.userName || "Anonymous"}
               </p>
             ))}
           </div>
@@ -75,10 +75,21 @@ function RoomPresence({ children }: { children: ReactNode }) {
   )
 }
 
-function formatPresenceEmail(userEmail: unknown) {
-  return typeof userEmail === "string" && userEmail.trim()
-    ? userEmail
-    : "Anonymous"
+function formatPresenceUserName(email: string | null | undefined) {
+  if (!email?.trim()) {
+    return "Anonymous"
+  }
+
+  const [localPart] = email.split("@")
+  const displayName = localPart
+    .replace(/[._-]+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part[0].toUpperCase() + part.slice(1))
+    .join(" ")
+
+  return displayName || email
 }
 
 function RoomLoadingFallback() {
