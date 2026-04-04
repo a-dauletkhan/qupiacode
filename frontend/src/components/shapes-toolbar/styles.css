@@ -1,0 +1,46 @@
+@reference "../../index.css";
+
+.shape-island {
+  @apply relative flex w-full justify-center rounded-2xl border border-border/70 bg-card/95 p-1 text-card-foreground backdrop-blur-xl;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 12%, transparent),
+    0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.shape-hint-viewer {
+  @apply pointer-events-none absolute left-0 top-14 flex w-full justify-center px-4;
+}
+
+.shape-hint-viewer span {
+  @apply rounded-full border border-primary/20 bg-background/90 px-3 py-1 text-[11px] font-medium tracking-[0.01em] text-muted-foreground shadow-sm backdrop-blur-sm;
+}
+
+.shape-tool {
+  @apply inline-flex items-center justify-center text-foreground/75 transition-colors duration-150 hover:bg-accent hover:text-foreground;
+}
+
+.shape-tool-active {
+  @apply border-primary/35 bg-primary/15 text-primary shadow-[0_0_0_1px_color-mix(in_srgb,var(--color-primary)_18%,transparent),inset_0_1px_0_rgba(255,255,255,0.04)];
+}
+
+.shape-tool-fillable .shape-keybinding {
+  @apply opacity-100;
+}
+
+.shape-keybinding {
+  @apply absolute bottom-0.5 right-1 text-[9px] font-semibold leading-none text-muted-foreground/75;
+}
+
+.shape-divider {
+  @apply mx-1 h-6 w-px shrink-0 rounded-full bg-border;
+}
+
+@media (max-width: 640px) {
+  .shape-island {
+    @apply rounded-[1.25rem];
+  }
+
+  .shape-hint-viewer {
+    @apply top-auto bottom-[-2.5rem];
+  }
+}
