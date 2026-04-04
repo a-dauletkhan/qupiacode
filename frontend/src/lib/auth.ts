@@ -30,7 +30,7 @@ export class AuthError extends Error {
 
 // ---- storage ----
 
-const STORAGE_KEY = "qupia_auth"
+const STORAGE_KEY = "higjam_auth"
 
 function readState(): AuthState {
   try {

@@ -17,7 +17,7 @@ export type Project = {
   updatedAt: string
 }
 
-const STORAGE_KEY = "qupia_projects"
+const STORAGE_KEY = "higjam_projects"
 
 // Placeholder current user — will come from auth in production
 const CURRENT_USER: ProjectUser = {
