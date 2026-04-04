@@ -21,6 +21,7 @@ export type PropertyControlType = "color" | "segmented" | "slider" | "textarea"
 
 export type EditablePropertyKey =
   | "shapeKind"
+  | "label"
   | "color"
   | "paintStyle"
   | "strokeWidth"
@@ -73,6 +74,13 @@ export function getObjectPropertySchema(
     return {
       title: "Shape",
       properties: [
+        {
+          key: "label",
+          label: "Content",
+          controlType: "textarea",
+          value: node.data.content.label,
+          placeholder: "Type something",
+        },
         {
           key: "shapeKind",
           label: "Type",
@@ -215,11 +223,26 @@ export function applyObjectProperty(
             content: {
               ...node.data.content,
               label:
-                value === "rectangle"
-                  ? "Rectangle"
-                  : value === "diamond"
-                    ? "Diamond"
-                    : "Ellipse",
+                !node.data.content.label ||
+                node.data.content.label === "Rectangle" ||
+                node.data.content.label === "Diamond" ||
+                node.data.content.label === "Ellipse"
+                  ? value === "rectangle"
+                    ? "Rectangle"
+                    : value === "diamond"
+                      ? "Diamond"
+                      : "Ellipse"
+                  : node.data.content.label,
+            },
+          },
+        }
+      case "label":
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            content: {
+              label: value as string,
             },
           },
         }

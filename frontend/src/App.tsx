@@ -6,6 +6,7 @@ import { AppSidebar } from "@/modules/Canvas/components/app-sidebar"
 import { FlowCanvas } from "@/modules/Canvas/components/canvas/flow-canvas"
 import {
   DEFAULT_EDITOR_DEFAULTS,
+  TOOL_CONFIGS,
   type CanvasEditorDefaults,
   type ToolId,
 } from "@/modules/Canvas/components/canvas/primitives/schema"
@@ -22,6 +23,12 @@ import { SidebarProvider } from "@/modules/Canvas/components/ui/sidebar"
 const DEFAULT_SIDEBAR_WIDTH = 420
 const MIN_SIDEBAR_WIDTH = 360
 const MAX_SIDEBAR_WIDTH = 720
+const TOOL_SHORTCUTS = new Map(
+  TOOL_CONFIGS.filter((tool) => tool.implemented).map((tool) => [
+    tool.shortcut.toLowerCase(),
+    tool.id,
+  ])
+)
 
 export function App() {
   const sidebarPanelRef = usePanelRef()
@@ -66,6 +73,34 @@ export function App() {
     },
     []
   )
+
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        isEditableShortcutTarget(event.target)
+      ) {
+        return
+      }
+
+      const nextTool = TOOL_SHORTCUTS.get(event.key.toLowerCase())
+
+      if (!nextTool) {
+        return
+      }
+
+      event.preventDefault()
+      setActiveTool(nextTool)
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [])
 
   return (
     <SidebarProvider className="h-svh min-h-0 bg-background">
@@ -127,6 +162,16 @@ export function App() {
         </ResizablePanel>
       </ResizablePanelGroup>
     </SidebarProvider>
+  )
+}
+
+function isEditableShortcutTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  return Boolean(
+    target.closest("input, textarea, select, [contenteditable='true']")
   )
 }
 

@@ -1,14 +1,10 @@
 import type { Edge, Node } from "@xyflow/react"
 import {
-  ArrowRight,
   Circle,
   Diamond,
-  Eraser,
   Hand,
   Image as ImageIcon,
-  Minus,
   MousePointer2,
-  Pencil,
   Square,
   StickyNote,
   Type,
@@ -206,23 +202,6 @@ export const TOOL_CONFIGS: ToolConfig[] = [
     fillable: true,
     implemented: true,
   },
-  {
-    id: "arrow",
-    label: "Arrow",
-    shortcut: "6",
-    icon: ArrowRight,
-    fillable: true,
-    implemented: false,
-  },
-  {
-    id: "line",
-    label: "Line",
-    shortcut: "7",
-    icon: Minus,
-    fillable: true,
-    implemented: false,
-  },
-  { id: "draw", label: "Draw", shortcut: "8", icon: Pencil, implemented: false },
   { id: "text", label: "Text", shortcut: "9", icon: Type, implemented: true },
   {
     id: "image",
@@ -231,7 +210,6 @@ export const TOOL_CONFIGS: ToolConfig[] = [
     icon: ImageIcon,
     implemented: false,
   },
-  { id: "eraser", label: "Eraser", shortcut: "E", icon: Eraser, implemented: false },
 ]
 
 export const PAINT_STYLE_OPTIONS: PaintStyleOption[] = [

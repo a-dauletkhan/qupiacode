@@ -186,7 +186,7 @@
 }
 
 .primitive-node-surface {
-  @apply absolute inset-0;
+  @apply absolute inset-0 flex items-center justify-center;
   border-width: var(--primitive-stroke-width);
   border-color: var(--primitive-color);
   background: var(--primitive-fill);
@@ -195,6 +195,19 @@
     background-color 150ms ease,
     opacity 150ms ease,
     box-shadow 150ms ease;
+}
+
+.primitive-node-content {
+  @apply h-full w-full overflow-hidden whitespace-pre-wrap break-words px-4 py-3 text-center text-xs font-medium leading-[1.15] text-foreground;
+}
+
+.primitive-node-content-placeholder {
+  @apply text-muted-foreground/70;
+}
+
+.primitive-node-editor {
+  @apply h-full min-h-0 resize-none border-none bg-transparent px-4 py-3 text-center text-xs font-medium leading-[1.15] text-foreground shadow-none outline-none focus-visible:border-none focus-visible:ring-0;
+  cursor: text;
 }
 
 .primitive-node-surface-draft {

@@ -1,11 +1,14 @@
-import { memo, type CSSProperties } from "react"
+import * as React from "react"
 import { NodeResizer, type NodeProps } from "@xyflow/react"
 
+import { useCanvasEditor } from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
 import { NodeConnectionHandles } from "@/modules/Canvas/components/canvas/flow-canvas/node-connection-handles"
 import {
+  isShapeNode,
   type PrimitivePaintStyle,
   type ShapeNode,
 } from "@/modules/Canvas/components/canvas/primitives/schema"
+import { Textarea } from "@/modules/Canvas/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 const paintStyleBadges: Record<PrimitivePaintStyle, string> = {
@@ -15,7 +18,7 @@ const paintStyleBadges: Record<PrimitivePaintStyle, string> = {
   hatch: "Hatch",
 }
 
-export const ShapeNodeCard = memo(function ShapeNodeCard({
+export const ShapeNodeCard = React.memo(function ShapeNodeCard({
   id,
   data,
   isConnectable,
@@ -23,7 +26,23 @@ export const ShapeNodeCard = memo(function ShapeNodeCard({
   width,
   height,
 }: NodeProps<ShapeNode>) {
+  const { editingObjectId, finishEditing, updateCanvasObject } =
+    useCanvasEditor()
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
+  const isEditing = editingObjectId === id && !data.draft
   const dimensions = `${Math.round(width ?? 0)} × ${Math.round(height ?? 0)}`
+
+  React.useEffect(() => {
+    if (!isEditing) {
+      return
+    }
+
+    textareaRef.current?.focus()
+    textareaRef.current?.setSelectionRange(
+      textareaRef.current.value.length,
+      textareaRef.current.value.length
+    )
+  }, [isEditing])
 
   return (
     <div className="primitive-node-shell">
@@ -58,7 +77,46 @@ export const ShapeNodeCard = memo(function ShapeNodeCard({
             data.draft && "primitive-node-surface-draft"
           )}
           style={getPrimitiveCssVars(data.style.color, data.style.strokeWidth)}
-        />
+        >
+          {isEditing ? (
+            <Textarea
+              ref={textareaRef}
+              value={data.content.label}
+              placeholder="Type something"
+              onChange={(event) =>
+                updateCanvasObject(id, (node) =>
+                  isShapeNode(node)
+                    ? {
+                        ...node,
+                        data: {
+                          ...node.data,
+                          content: {
+                            label: event.target.value,
+                          },
+                        },
+                      }
+                    : node
+                )
+              }
+              onBlur={finishEditing}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") {
+                  event.currentTarget.blur()
+                }
+              }}
+              className="primitive-node-editor nodrag nopan nowheel"
+            />
+          ) : (
+            <div
+              className={cn(
+                "primitive-node-content",
+                !data.content.label && "primitive-node-content-placeholder"
+              )}
+            >
+              {data.content.label || "Type something"}
+            </div>
+          )}
+        </div>
 
         {(selected || data.draft) && (
           <div className="primitive-node-badge">
@@ -72,7 +130,10 @@ export const ShapeNodeCard = memo(function ShapeNodeCard({
   )
 })
 
-function getPrimitiveCssVars(color: string, strokeWidth: number): CSSProperties {
+function getPrimitiveCssVars(
+  color: string,
+  strokeWidth: number
+): React.CSSProperties {
   return {
     "--primitive-color": color,
     "--primitive-fill": `color-mix(in srgb, ${color} 20%, transparent)`,

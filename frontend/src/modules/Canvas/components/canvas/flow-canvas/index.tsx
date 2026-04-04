@@ -39,8 +39,6 @@ import {
   expandCanvasRect,
   getCanvasObjectSize,
   isCanvasCreationTool,
-  isStickyNoteNode,
-  isTextNode,
   normalizeCanvasRect,
   type CanvasCreationTool,
   type CanvasEditorDefaults,
@@ -345,6 +343,26 @@ function FlowCanvasInner({
     [finishEditing]
   )
 
+  const handleNodeDoubleClick = React.useCallback<
+    NodeMouseHandler<CanvasObjectNode>
+  >(
+    (event, node) => {
+      if (
+        (activeTool !== "selection" && activeTool !== "hand") ||
+        node.data.draft
+      ) {
+        return
+      }
+
+      event.preventDefault()
+      setSelectedObjectIds([node.id])
+      setInspectedObjectId(null)
+      setInspectorOpen(false)
+      startEditing(node.id)
+    },
+    [activeTool, startEditing]
+  )
+
   const buildNodeFromTool = React.useCallback(
     (
       tool: CanvasCreationTool,
@@ -454,9 +472,7 @@ function FlowCanvasInner({
       setDraftNode(null)
       setDraftCreation(null)
 
-      if (isTextNode(createdNode) || isStickyNoteNode(createdNode)) {
-        setEditingObjectId(createdNode.id)
-      }
+      setEditingObjectId(createdNode.id)
 
       if (!toolLocked) {
         onActiveToolChange("selection")
@@ -591,6 +607,7 @@ function FlowCanvasInner({
               }
             }}
             onNodeContextMenu={handleNodeContextMenu}
+            onNodeDoubleClick={handleNodeDoubleClick}
             onSelectionChange={handleSelectionChange}
             connectionMode={ConnectionMode.Loose}
             nodesConnectable={activeTool === "selection" && !editingObjectId}
