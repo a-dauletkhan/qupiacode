@@ -1,5 +1,7 @@
 import { useCallback, useSyncExternalStore } from "react"
 
+import { buildApiUrl } from "@/lib/api"
+
 // ---- types ----
 
 export type AuthUser = {
@@ -67,7 +69,7 @@ function getSnapshot() {
 // ---- API calls ----
 
 async function apiLogin(email: string, password: string): Promise<AuthSession> {
-  const resp = await fetch("/auth/login", {
+  const resp = await fetch(buildApiUrl("/auth/login"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -87,7 +89,7 @@ async function apiLogin(email: string, password: string): Promise<AuthSession> {
 }
 
 async function apiSignup(email: string, password: string, name: string): Promise<AuthSession> {
-  const resp = await fetch("/auth/signup", {
+  const resp = await fetch(buildApiUrl("/auth/signup"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password, name }),

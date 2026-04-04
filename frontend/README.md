@@ -68,21 +68,27 @@ http://localhost:5173/?canvas_id=demo-canvas&user_id=bob&display_name=Bob
 
 In `mock` mode, joining the room is enough to see placeholder transcript items in Chat.
 
-Vite proxies `/api/*` to `http://127.0.0.1:8000` by default for local development. If needed, override the backend URL with:
+Vite proxies `/api/*`, `/auth/*`, and `/boards/*` to `http://127.0.0.1:8000` by default for local development. If needed, override the dev proxy with:
 
 ```bash
 VITE_VOICE_API_PROXY_TARGET=http://127.0.0.1:8000 npm run dev
 ```
 
-For direct backend calls outside the Vite proxy, set `VITE_VOICE_API_BASE_URL`.
+For direct backend calls outside the Vite proxy, set `VITE_API_BASE_URL`.
 
 ## Production Deploy
 
 When the frontend is deployed to Vercel and the backend is deployed to Railway, set:
 
 ```bash
-VITE_VOICE_API_BASE_URL=https://<your-railway-backend-domain>
+VITE_API_BASE_URL=https://<your-railway-backend-domain>
 ```
 
-Set that variable in both Vercel Preview and Production so deployed voice calls use the
-Railway backend directly.
+Set that variable in both Vercel Preview and Production so deployed auth, boards,
+Liveblocks, and voice calls use the Railway backend directly.
+
+If voice ever moves to a different backend, you can override just those calls with:
+
+```bash
+VITE_VOICE_API_BASE_URL=https://<your-voice-backend-domain>
+```

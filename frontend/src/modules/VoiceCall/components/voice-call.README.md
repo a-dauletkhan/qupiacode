@@ -15,7 +15,7 @@ presentational props into the leaf UI components.
 - `canvasId` - optional explicit canvas identifier; falls back to `?canvas_id=` or `demo-canvas`
 - `userId` - optional explicit user identifier; falls back to `?user_id=` or a generated local id
 - `displayName` - optional participant name; falls back to `?display_name=` or a generated guest label
-- `apiBaseUrl` - optional backend base URL; defaults to `VITE_VOICE_API_BASE_URL` or same-origin `/api`
+- `apiBaseUrl` - optional backend base URL; defaults to `VITE_VOICE_API_BASE_URL`, then `VITE_API_BASE_URL`, then same-origin `/api`
 - `className` and native `section` props are forwarded
 
 ## Dependencies

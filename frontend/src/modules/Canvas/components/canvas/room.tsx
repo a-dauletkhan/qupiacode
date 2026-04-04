@@ -8,13 +8,14 @@ import {
 } from "@liveblocks/react/suspense"
 import { LoaderCircle } from "lucide-react"
 import { getAccessToken } from "@/lib/auth"
+import { buildApiUrl } from "@/lib/api"
 
 type RoomProps = {
   id: string
   children: ReactNode
 }
 
-const AUTH_URL = `${import.meta.env.VITE_API_BASE_URL ?? ""}/api/liveblocks/auth`
+const AUTH_URL = buildApiUrl("/api/liveblocks/auth")
 
 export function Room({ id, children }: RoomProps) {
   return (

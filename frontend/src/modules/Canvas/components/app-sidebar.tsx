@@ -1,5 +1,6 @@
 import * as React from "react"
 
+import { getVoiceApiBaseUrl } from "@/lib/api"
 import {
   ResizableHandle,
   ResizablePanel,
@@ -15,7 +16,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar {...props}>
       <SidebarContent className="overflow-hidden">
-        <VoiceCallProvider apiBaseUrl={import.meta.env.VITE_VOICE_API_BASE_URL}>
+        <VoiceCallProvider apiBaseUrl={getVoiceApiBaseUrl()}>
           <ResizablePanelGroup
             orientation="vertical"
             className="min-h-0 flex-1"

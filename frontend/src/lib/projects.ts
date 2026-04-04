@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react"
 
+import { buildApiUrl } from "@/lib/api"
 import { getAccessToken, useAuth } from "@/lib/auth"
 
 export type ProjectUser = {
@@ -94,7 +95,7 @@ async function requestBoards(
     throw new Error("Missing access token")
   }
 
-  return fetch(path, {
+  return fetch(buildApiUrl(path), {
     ...options,
     headers: {
       Authorization: `Bearer ${accessToken}`,

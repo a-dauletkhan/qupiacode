@@ -1,3 +1,5 @@
+import { buildVoiceApiUrl } from "@/lib/api"
+
 export type VoiceTokenRequest = {
   canvasId: string
   userId: string
@@ -38,12 +40,7 @@ function getErrorDetail(payload: unknown) {
 }
 
 export function buildVoiceTokenUrl(configuredBaseUrl?: string) {
-  const trimmedBaseUrl = configuredBaseUrl?.trim()
-  if (!trimmedBaseUrl) {
-    return "/api/voice/token"
-  }
-
-  return `${trimmedBaseUrl.replace(/\/+$/, "")}/api/voice/token`
+  return buildVoiceApiUrl("/api/voice/token", configuredBaseUrl)
 }
 
 export async function requestVoiceToken({
