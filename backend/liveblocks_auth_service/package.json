@@ -1,0 +1,16 @@
+{
+  "name": "liveblocks-auth-service",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "@liveblocks/node": "^3.17.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "jose": "^5.10.0"
+  }
+}

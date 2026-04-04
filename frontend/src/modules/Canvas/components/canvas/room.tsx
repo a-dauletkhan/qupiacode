@@ -10,10 +10,7 @@ import {
 } from "@liveblocks/react/suspense"
 import { LoaderCircle } from "lucide-react"
 
-import { useAuth } from "@/lib/auth"
-
-const DEFAULT_LIVEBLOCKS_PUBLIC_KEY =
-  "pk_dev_QFb5pt_0sDb3LVyB6vICx5N3k2q1o5QG-MwHURHnRK3aYYJPrcJSshC7zbucmT8c"
+import { getAccessToken, useAuth } from "@/lib/auth"
 
 type RoomProps = {
   id: string
@@ -22,12 +19,7 @@ type RoomProps = {
 
 export function Room({ id, children }: RoomProps) {
   return (
-    <LiveblocksProvider
-      publicApiKey={
-        import.meta.env.VITE_LIVEBLOCKS_PUBLIC_KEY ??
-        DEFAULT_LIVEBLOCKS_PUBLIC_KEY
-      }
-    >
+    <LiveblocksProvider authEndpoint={authorizeLiveblocksRoom}>
       <RoomProvider
         id={id}
         initialPresence={{ cursor: null, userName: null }}
@@ -40,6 +32,30 @@ export function Room({ id, children }: RoomProps) {
       </RoomProvider>
     </LiveblocksProvider>
   )
+}
+
+async function authorizeLiveblocksRoom(room?: string) {
+  const accessToken = getAccessToken()
+
+  if (!accessToken) {
+    throw new Error("Sign in before joining a Liveblocks room")
+  }
+
+  const response = await fetch("/auth/liveblocks", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ room }),
+  })
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => ({}))
+    throw new Error(errorBody.error || "Failed to authorize Liveblocks room")
+  }
+
+  return response.json()
 }
 
 function RoomPresence({ children }: { children: ReactNode }) {

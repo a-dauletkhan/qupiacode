@@ -8,6 +8,8 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, "")
   const voiceApiProxyTarget =
     env.VITE_VOICE_API_PROXY_TARGET || "http://127.0.0.1:8000"
+  const liveblocksAuthProxyTarget =
+    env.VITE_LIVEBLOCKS_AUTH_PROXY_TARGET || "http://127.0.0.1:8787"
 
   return {
     plugins: [react(), tailwindcss()],
@@ -18,6 +20,10 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
+        "/auth/liveblocks": {
+          target: liveblocksAuthProxyTarget,
+          changeOrigin: true,
+        },
         "/api": {
           target: voiceApiProxyTarget,
           changeOrigin: true,

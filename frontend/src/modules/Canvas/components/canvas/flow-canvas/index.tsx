@@ -768,7 +768,7 @@ function areStringArraysEqual(left: string[], right: string[]) {
 function CollaboratorCursor({ connectionId }: { connectionId: number }) {
   const userName = useOther(
     connectionId,
-    (otherUser) => otherUser.presence.userName
+    (otherUser) => otherUser.info.name || otherUser.presence.userName
   )
 
   return (
