@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
 import { CallUserCard } from "@/modules/VoiceCall/components/call-user-card"
 import { VoiceCallControlPanel } from "@/modules/VoiceCall/components/voice-call-control-panel"

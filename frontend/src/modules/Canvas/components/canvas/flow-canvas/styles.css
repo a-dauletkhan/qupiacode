@@ -1,4 +1,4 @@
-@reference "../../../index.css";
+@reference "../../../../../index.css";
 
 .canvas-grid-backdrop {
   @apply absolute inset-0;

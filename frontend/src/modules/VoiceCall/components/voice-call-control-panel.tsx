@@ -1,6 +1,6 @@
 import { LoaderCircleIcon, MicIcon, MicOffIcon, PhoneOffIcon, Volume2Icon } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
 
 type VoiceCallControlPanelProps = React.ComponentProps<"div"> & {

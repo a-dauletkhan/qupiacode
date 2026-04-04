@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import type { CanvasObjectNode } from "@/components/canvas/primitives/schema"
+import type { CanvasObjectNode } from "@/modules/Canvas/components/canvas/primitives/schema"
 
 type CanvasEditorContextValue = {
   editingObjectId: string | null

@@ -8,8 +8,8 @@ import {
 } from "lucide-react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Button } from "@/modules/Canvas/components/ui/button"
+import { Input } from "@/modules/Canvas/components/ui/input"
 import { cn } from "@/lib/utils"
 
 type MessageType = "user" | "person" | "agent"

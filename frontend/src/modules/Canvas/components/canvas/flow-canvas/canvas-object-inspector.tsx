@@ -5,12 +5,12 @@ import {
   applyObjectProperty,
   getObjectPropertySchema,
   type EditableProperty,
-} from "@/components/canvas/primitives/inspector-schema"
-import type { CanvasObjectNode } from "@/components/canvas/primitives/schema"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Slider } from "@/components/ui/slider"
-import { Textarea } from "@/components/ui/textarea"
+} from "@/modules/Canvas/components/canvas/primitives/inspector-schema"
+import type { CanvasObjectNode } from "@/modules/Canvas/components/canvas/primitives/schema"
+import { Button } from "@/modules/Canvas/components/ui/button"
+import { Input } from "@/modules/Canvas/components/ui/input"
+import { Slider } from "@/modules/Canvas/components/ui/slider"
+import { Textarea } from "@/modules/Canvas/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 type CanvasObjectInspectorProps = {

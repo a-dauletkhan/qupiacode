@@ -2,22 +2,22 @@ import * as React from "react"
 import { PanelRightCloseIcon, PanelRightOpenIcon } from "lucide-react"
 import { usePanelRef } from "react-resizable-panels"
 
-import { AppSidebar } from "@/components/app-sidebar"
-import { FlowCanvas } from "@/components/canvas/flow-canvas"
+import { AppSidebar } from "@/modules/Canvas/components/app-sidebar"
+import { FlowCanvas } from "@/modules/Canvas/components/canvas/flow-canvas"
 import {
   DEFAULT_EDITOR_DEFAULTS,
   type CanvasEditorDefaults,
   type ToolId,
-} from "@/components/canvas/primitives/schema"
-import { Room } from "@/components/canvas/room"
-import { ShapesToolbar } from "@/components/canvas/shapes-toolbar"
-import { Button } from "@/components/ui/button"
+} from "@/modules/Canvas/components/canvas/primitives/schema"
+import { Room } from "@/modules/Canvas/components/canvas/room"
+import { ShapesToolbar } from "@/modules/Canvas/components/canvas/shapes-toolbar"
+import { Button } from "@/modules/Canvas/components/ui/button"
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@/components/ui/resizable"
-import { SidebarProvider } from "@/components/ui/sidebar"
+} from "@/modules/Canvas/components/ui/resizable"
+import { SidebarProvider } from "@/modules/Canvas/components/ui/sidebar"
 
 const DEFAULT_SIDEBAR_WIDTH = 420
 const MIN_SIDEBAR_WIDTH = 360

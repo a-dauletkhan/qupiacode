@@ -4,7 +4,7 @@ import { NodeResizer, type NodeProps } from "@xyflow/react"
 import {
   type PrimitivePaintStyle,
   type ShapeNode,
-} from "@/components/canvas/primitives/schema"
+} from "@/modules/Canvas/components/canvas/primitives/schema"
 import { cn } from "@/lib/utils"
 
 const paintStyleBadges: Record<PrimitivePaintStyle, string> = {
