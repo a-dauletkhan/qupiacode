@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { CommandQueue } from "./command-queue.js";
-import type { QueuedCommand } from "./types.js";
+import type { QueueItem } from "./types.js";
 
-function makeCommand(id: string, userName: string = "Test"): QueuedCommand {
+function makeCommand(id: string, userName: string = "Test"): QueueItem {
   return {
     commandId: id,
     userId: "u1",

@@ -1,23 +1,10 @@
-import type { CanvasNode, CanvasEdge, TranscriptSegment } from "./types.js";
-
-interface FeedbackEntry {
-  actionId: string;
-  status: "approved" | "rejected";
-  reason?: string;
-  userId: string;
-  timestamp: number;
-}
-
-interface UserActivityEntry {
-  userId: string;
-  type: string;
-  timestamp: number;
-  data: Record<string, unknown>;
-}
+import type { CanvasNode, CanvasEdge, TranscriptSegment, ActivityEvent } from "./types.js";
 
 interface AccumulatorConfig {
   maxTranscriptSegments: number;
   maxRecentChanges: number;
+  maxActivityEvents?: number;
+  maxFeedbackEntries?: number;
 }
 
 interface ChangeEntry {
@@ -26,13 +13,21 @@ interface ChangeEntry {
   timestamp: number;
 }
 
+interface FeedbackEntry {
+  userId: string;
+  actionId: string;
+  status: "approved" | "rejected";
+  reason?: string;
+  timestamp: number;
+}
+
 export class ContextAccumulator {
   private nodes: CanvasNode[] = [];
   private edges: CanvasEdge[] = [];
   private transcript: TranscriptSegment[] = [];
   private recentChanges: ChangeEntry[] = [];
-  private feedback: FeedbackEntry[] = [];
-  private userEvents: UserActivityEntry[] = [];
+  private activityEvents: ActivityEvent[] = [];
+  private feedbackEntries: FeedbackEntry[] = [];
   private config: AccumulatorConfig;
 
   constructor(config: AccumulatorConfig) {
@@ -58,19 +53,19 @@ export class ContextAccumulator {
     }
   }
 
-  addFeedback(entry: Omit<FeedbackEntry, "timestamp">): void {
-    this.feedback.push({ ...entry, timestamp: Date.now() });
-    if (this.feedback.length > 20) {
-      this.feedback = this.feedback.slice(-20);
+  addActivityEvents(events: ActivityEvent[]): void {
+    const max = this.config.maxActivityEvents ?? 50;
+    this.activityEvents.push(...events);
+    if (this.activityEvents.length > max) {
+      this.activityEvents = this.activityEvents.slice(-max);
     }
   }
 
-  addUserEvents(userId: string, events: Array<{ type: string; timestamp: number; data: Record<string, unknown> }>): void {
-    for (const event of events) {
-      this.userEvents.push({ userId, ...event });
-    }
-    if (this.userEvents.length > 50) {
-      this.userEvents = this.userEvents.slice(-50);
+  addFeedback(userId: string, actionId: string, status: "approved" | "rejected", reason?: string): void {
+    const max = this.config.maxFeedbackEntries ?? 20;
+    this.feedbackEntries.push({ userId, actionId, status, reason, timestamp: Date.now() });
+    if (this.feedbackEntries.length > max) {
+      this.feedbackEntries = this.feedbackEntries.slice(-max);
     }
   }
 
@@ -101,6 +96,14 @@ export class ContextAccumulator {
       sections.push(`## Recent Changes\n${changeLines.join("\n")}`);
     }
 
+    // User activity events
+    if (this.activityEvents.length > 0) {
+      const eventLines = this.activityEvents.map(
+        (e) => `  - [${e.type}] ${JSON.stringify(e.data)}`
+      );
+      sections.push(`## Recent User Activity\n${eventLines.join("\n")}`);
+    }
+
     // Transcript
     if (this.transcript.length > 0) {
       const transcriptLines = this.transcript.map(
@@ -109,20 +112,12 @@ export class ContextAccumulator {
       sections.push(`## Recent Conversation\n${transcriptLines.join("\n")}`);
     }
 
-    // User activity
-    if (this.userEvents.length > 0) {
-      const eventLines = this.userEvents.slice(-10).map(
-        (e) => `  - ${e.userId}: ${e.type} ${JSON.stringify(e.data)}`
-      );
-      sections.push(`## Recent User Activity\n${eventLines.join("\n")}`);
-    }
-
     // Feedback history
-    if (this.feedback.length > 0) {
-      const feedbackLines = this.feedback.map(
-        (f) => `  - ${f.actionId}: ${f.status}${f.reason ? ` (reason: ${f.reason})` : ""}`
+    if (this.feedbackEntries.length > 0) {
+      const feedbackLines = this.feedbackEntries.map(
+        (f) => `  - Action ${f.actionId}: ${f.status}${f.reason ? ` (reason: ${f.reason})` : ""}`
       );
-      sections.push(`## Feedback on AI Actions\n${feedbackLines.join("\n")}`);
+      sections.push(`## User Feedback on AI Actions\n${feedbackLines.join("\n")}`);
     }
 
     return sections.join("\n\n");

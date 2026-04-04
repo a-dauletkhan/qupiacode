@@ -78,6 +78,12 @@ export function Chat() {
     // Detect @agent commands and route to AI agent service
     const agentMatch = text.match(/^@agent\s+(.+)/i)
     if (agentMatch && aiAgent) {
+      console.info("[ai-agent] chat @agent command detected", {
+        rawInput: text,
+        extractedCommand: agentMatch[1],
+        roomId: aiAgent.roomId,
+        userId: aiAgent.userId,
+      })
       aiAgent.sendCommand(agentMatch[1], { source: "chat" })
     }
 
