@@ -176,16 +176,33 @@
   @apply relative flex h-full flex-col overflow-hidden rounded-xl bg-black;
 }
 
-.auth-showcase-bg {
+.auth-showcase-inner > .light-pillar-container {
   @apply absolute inset-0;
-  background:
-    radial-gradient(ellipse at 30% 20%, oklch(0.768 0.233 130.85 / 0.15), transparent 60%),
-    radial-gradient(ellipse at 70% 80%, oklch(0.72 0.16 240 / 0.1), transparent 60%),
-    linear-gradient(135deg, oklch(0.205 0 0) 0%, oklch(0.145 0 0) 100%);
+  z-index: 0;
 }
 
 .auth-showcase-overlay {
-  @apply absolute inset-0 bg-gradient-to-b from-transparent via-black/20 to-black/80;
+  @apply absolute inset-x-0 bottom-0 pointer-events-none;
+  height: 40%;
+  background:
+    linear-gradient(to top,
+      rgb(0 0 0 / 0.95) 0%,
+      rgb(0 0 0 / 0.7) 15%,
+      rgb(0 0 0 / 0.4) 35%,
+      rgb(0 0 0 / 0.15) 55%,
+      transparent 60%,
+      transparent 100%
+    );
+  mask-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 400' preserveAspectRatio='none'%3E%3Cpath d='M0 160 C100 120,200 180,300 140 S500 100,600 150 S800 190,900 130 S1100 100,1200 160 L1200 400 L0 400Z' fill='white'/%3E%3C/svg%3E"),
+    linear-gradient(to top, white 75%, transparent 75%);
+  -webkit-mask-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 400' preserveAspectRatio='none'%3E%3Cpath d='M0 160 C100 120,200 180,300 140 S500 100,600 150 S800 190,900 130 S1100 100,1200 160 L1200 400 L0 400Z' fill='white'/%3E%3C/svg%3E"),
+    linear-gradient(to top, white 75%, transparent 75%);
+  mask-size: 100% 100%;
+  -webkit-mask-size: 100% 100%;
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
 }
 
 .auth-showcase-content {

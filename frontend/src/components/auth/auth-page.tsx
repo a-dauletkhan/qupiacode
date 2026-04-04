@@ -6,6 +6,7 @@ import { AuthError, useAuth } from "@/lib/auth"
 import { Button } from "@/modules/Canvas/components/ui/button"
 import { Input } from "@/modules/Canvas/components/ui/input"
 import { Label } from "@/modules/Canvas/components/ui/label"
+import LightPillar from "@/components/LightPillar"
 
 import "./auth-page.css"
 
@@ -200,7 +201,20 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
         {/* ---- Right: showcase panel (xl only) ---- */}
         <div className="auth-showcase-panel">
           <div className="auth-showcase-inner">
-            <div className="auth-showcase-bg" />
+            <LightPillar
+              topColor="#84CC16"
+              bottomColor="#BEF264"
+              intensity={1}
+              rotationSpeed={0.3}
+              glowAmount={0.002}
+              pillarWidth={3}
+              pillarHeight={0.4}
+              noiseIntensity={0.5}
+              pillarRotation={25}
+              interactive={false}
+              mixBlendMode="screen"
+              quality="high"
+            />
             <div className="auth-showcase-overlay" />
             <div className="auth-showcase-content">
               <div className="auth-showcase-badges">
