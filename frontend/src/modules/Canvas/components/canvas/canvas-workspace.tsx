@@ -34,6 +34,8 @@ import {
 } from "@/modules/Canvas/components/ui/resizable"
 import { SidebarProvider } from "@/modules/Canvas/components/ui/sidebar"
 import { useProjects } from "@/lib/projects"
+import { useAuth } from "@/lib/auth"
+import { AiAgentProvider } from "@/modules/Agent/context/ai-agent-context"
 
 const DEFAULT_SIDEBAR_WIDTH = 420
 const MIN_SIDEBAR_WIDTH = 360
@@ -64,6 +66,7 @@ export function CanvasWorkspace() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
   const { getProject } = useProjects()
+  const { user } = useAuth()
   const project = projectId ? getProject(projectId) : null
   const shareLink = React.useMemo(
     () => new URL(`/invite/${projectId ?? ""}`, SELF_URL).toString(),
@@ -152,6 +155,11 @@ export function CanvasWorkspace() {
 
   return (
     <Room id={project.id}>
+      <AiAgentProvider
+        roomId={project.id}
+        userId={user?.id ?? "anonymous"}
+        userName={user?.email?.split("@")[0] ?? "Anonymous"}
+      >
       <SidebarProvider className="h-svh min-h-0 bg-background">
         <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
           <ResizablePanel defaultSize="70%" minSize="45%">
@@ -237,6 +245,7 @@ export function CanvasWorkspace() {
           </ResizablePanel>
         </ResizablePanelGroup>
       </SidebarProvider>
+      </AiAgentProvider>
     </Room>
   )
 }

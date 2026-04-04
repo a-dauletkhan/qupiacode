@@ -8,28 +8,14 @@ x-backend-service: &backend-service
     APP_ENV: development
     APP_HOST: 0.0.0.0
     APP_PORT: 8000
-    REDIS_URL: redis://redis:6379/0
     PYTHONUNBUFFERED: "1"
   restart: unless-stopped
 
 services:
-  db-init:
-    <<: *backend-service
-    command: [".venv/bin/python", "-m", "scripts.bootstrap_db"]
-    depends_on:
-      redis:
-        condition: service_started
-    restart: "no"
-
   api:
     <<: *backend-service
     command:
       [".venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
-    depends_on:
-      redis:
-        condition: service_started
-      db-init:
-        condition: service_completed_successfully
     ports:
       - "8000:8000"
 
@@ -38,19 +24,13 @@ services:
     command: >
       .venv/bin/python -m voice_agent_worker connect --room
       ${VOICE_AGENT_CONNECT_ROOM:-canvas:demo-canvas}
-    depends_on:
-      redis:
-        condition: service_started
-      db-init:
-        condition: service_completed_successfully
 
-  redis:
-    image: redis:7-alpine
+  ai-agent:
+    build:
+      context: ./ai_agent_service
+      dockerfile: Dockerfile
+    env_file:
+      - ${BACKEND_ENV_FILE:-.env}
     ports:
-      - "6379:6379"
-    volumes:
-      - redis-data:/data
+      - "3001:3001"
     restart: unless-stopped
-
-volumes:
-  redis-data:

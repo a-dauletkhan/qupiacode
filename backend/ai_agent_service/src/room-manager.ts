@@ -1,15 +1,20 @@
+import { randomUUID } from "node:crypto";
 import { Liveblocks } from "@liveblocks/node";
 import { createClient, type Room as LbRoom } from "@liveblocks/client";
 import { config } from "./config.js";
+import { roomLogger } from "./logger.js";
 import { ContextAccumulator } from "./context-accumulator.js";
 import { DecisionEngine } from "./decision-engine.js";
 import { ActionExecutor, type StorageAdapter } from "./action-executor.js";
+import { CommandQueue } from "./command-queue.js";
 import { canvasTools } from "./tools/canvas-tools.js";
 import { createProviderRouter } from "./llm/provider-router.js";
 import { createClaudeProvider } from "./llm/claude-provider.js";
 import { createOpenAIProvider } from "./llm/openai-provider.js";
 import type { LLMProvider, Message } from "./llm/types.js";
 import type { TranscriptSource } from "./transcript/types.js";
+import type { AiActionContext } from "./action-executor.js";
+import type { AiCommandRequest, AiCommandResponse, AiActivityEvent, AiFeedbackRequest, QueuedCommand } from "./types.js";
 
 const SYSTEM_PROMPT = `You are an AI assistant participating in a collaborative canvas whiteboarding session. You can see what's on the canvas and hear what users are saying.
 
@@ -37,6 +42,8 @@ interface RoomSession {
   changeCount: number;
   evaluationTimer: ReturnType<typeof setInterval> | null;
   presenceRoom: LbRoom | null;
+  commandQueue: CommandQueue;
+  processingCommand: boolean;
 }
 
 export class RoomManager {
@@ -66,7 +73,12 @@ export class RoomManager {
   }
 
   async joinRoom(roomId: string): Promise<void> {
-    if (this.sessions.has(roomId)) return;
+    const log = roomLogger(roomId);
+
+    if (this.sessions.has(roomId)) {
+      log.debug("Already in room, skipping join");
+      return;
+    }
 
     // Enter room via client SDK to maintain WebSocket presence
     const { room: presenceRoom } = this.lbClient.enterRoom(roomId, {
@@ -81,12 +93,15 @@ export class RoomManager {
       changeCount: 0,
       evaluationTimer: null,
       presenceRoom,
+      commandQueue: new CommandQueue(10),
+      processingCommand: false,
     };
 
     this.sessions.set(roomId, session);
 
     // Subscribe to transcript events for this room
     this.transcriptSource.subscribe(roomId, (event) => {
+      log.debug({ speaker: event.speaker_name, text: event.text }, "Transcript event received");
       session.accumulator.addTranscriptSegment({
         speakerId: event.speaker_id,
         speakerName: event.speaker_name,
@@ -100,17 +115,18 @@ export class RoomManager {
     // Start periodic evaluation loop
     session.evaluationTimer = setInterval(() => {
       this.evaluate(roomId).catch((err) =>
-        console.error(`Evaluation error in room ${roomId}:`, err)
+        log.error({ err }, "Evaluation error")
       );
     }, 3000);
 
     // Load initial canvas state
     await this.syncCanvasState(roomId);
 
-    console.log(`Joined room: ${roomId}`);
+    log.info("Joined room");
   }
 
   async leaveRoom(roomId: string): Promise<void> {
+    const log = roomLogger(roomId);
     const session = this.sessions.get(roomId);
     if (!session) return;
 
@@ -121,13 +137,15 @@ export class RoomManager {
     }
     this.sessions.delete(roomId);
 
-    console.log(`Left room: ${roomId}`);
+    log.info("Left room");
   }
 
   async handleStorageChange(roomId: string, description: string, userId: string): Promise<void> {
+    const log = roomLogger(roomId);
     const session = this.sessions.get(roomId);
     if (!session) return;
 
+    log.debug({ userId, description }, "Storage change received");
     session.accumulator.addChange(userId, description);
     session.lastChangeTime = Date.now();
     session.changeCount++;
@@ -178,30 +196,40 @@ export class RoomManager {
         session.decisionEngine.setIntensity(intensity);
       }
     } catch (err) {
-      console.error(`Failed to sync canvas state for room ${roomId}:`, err);
+      roomLogger(roomId).error({ err }, "Failed to sync canvas state");
     }
   }
 
   private async evaluate(roomId: string): Promise<void> {
+    const log = roomLogger(roomId);
     const session = this.sessions.get(roomId);
     if (!session) return;
+    if (session.processingCommand) return;
 
     const now = Date.now();
-    const shouldAct = session.decisionEngine.shouldAct({
+    const evalInput = {
       hasDirectMention: false,
       timeSinceLastChange: now - session.lastChangeTime,
       timeSinceLastAction: now - session.lastActionTime,
       changeCount: session.changeCount,
       hasTranscriptActivity: session.accumulator.buildContext().includes("## Recent Conversation"),
-    });
+    };
+    const shouldAct = session.decisionEngine.shouldAct(evalInput);
+
+    log.debug({ shouldAct, ...evalInput, intensity: session.decisionEngine.getIntensity() }, "Evaluation tick");
 
     if (shouldAct) {
+      log.info("Decision: acting");
       await this.act(roomId, session, false);
     }
   }
 
-  private async act(roomId: string, session: RoomSession, isDirect: boolean): Promise<void> {
+  private async act(roomId: string, session: RoomSession, isDirect: boolean, commandId?: string, requestedBy?: string): Promise<void> {
+    const actionId = `act-${randomUUID().slice(0, 8)}`;
     const context = session.accumulator.buildContext();
+
+    log.debug({ isDirect, contextLength: context.length }, "Building LLM request");
+    log.trace({ context }, "Full context sent to LLM");
 
     const messages: Message[] = [
       { role: "system", content: SYSTEM_PROMPT },
@@ -217,91 +245,111 @@ export class RoomManager {
     session.presenceRoom?.updatePresence({ status: "acting" });
 
     try {
+      log.debug("Calling LLM...");
       const response = await this.llm.chat(messages, canvasTools);
+      log.info({ toolCalls: response.toolCalls.length, hasText: !!response.text }, "LLM response received");
+      log.debug({ toolCalls: response.toolCalls, text: response.text }, "LLM response details");
 
       if (response.toolCalls.length > 0) {
-        const adapter = this.createStorageAdapter(roomId);
-        const executor = new ActionExecutor(adapter);
+        const aiContext: AiActionContext = { actionId, commandId: commandId ?? null, requestedBy: requestedBy ?? null };
+        const adapter = this.createStorageAdapter(roomId, aiContext);
+        const executor = new ActionExecutor(adapter, aiContext);
         await executor.execute(response.toolCalls);
         await adapter.flush();
+        log.info({ actions: response.toolCalls.map((tc) => tc.name) }, "Actions executed");
       }
 
       if (response.text && !response.toolCalls.some((tc) => tc.name === "sendMessage")) {
-        // If LLM returned text but no sendMessage, send it as a chat message
-        const adapter = this.createStorageAdapter(roomId);
+        const adapter = this.createStorageAdapter(roomId, { actionId, commandId: commandId ?? null, requestedBy: requestedBy ?? null });
         adapter.sendMessage(response.text);
         await adapter.flush();
+        log.debug("Sent LLM text as chat message");
       }
 
       session.lastActionTime = Date.now();
       session.changeCount = 0;
     } catch (err) {
-      console.error(`Action error in room ${roomId}:`, err);
+      log.error({ err }, "Action error");
     } finally {
       // Return to "watching"
       session.presenceRoom?.updatePresence({ status: "watching" });
     }
   }
 
-  private createStorageAdapter(roomId: string): StorageAdapter & { flush(): Promise<void> } {
-    const mutations: Array<() => void> = [];
+  private createStorageAdapter(roomId: string, aiContext: AiActionContext): StorageAdapter & { flush(): Promise<void> } {
+    const pendingNodeSets: Array<{ id: string; data: Record<string, unknown> }> = [];
+    const pendingNodeDeletes: string[] = [];
+    const pendingEdgeSets: Array<{ id: string; data: Record<string, unknown> }> = [];
+    const pendingEdgeDeletes: string[] = [];
     const messageQueue: string[] = [];
     const liveblocks = this.liveblocks;
 
     return {
-      getNodes() {
-        return [];
-      },
+      getNodes: () => [],
       setNode(id: string, data: Record<string, unknown>) {
-        mutations.push(() => {
-          (globalThis as any).__pendingNodeSets ??= [];
-          (globalThis as any).__pendingNodeSets.push({ id, data });
-        });
+        pendingNodeSets.push({ id, data });
       },
       deleteNode(id: string) {
-        mutations.push(() => {
-          (globalThis as any).__pendingNodeDeletes ??= [];
-          (globalThis as any).__pendingNodeDeletes.push(id);
-        });
+        pendingNodeDeletes.push(id);
       },
       setEdge(id: string, data: Record<string, unknown>) {
-        mutations.push(() => {
-          (globalThis as any).__pendingEdgeSets ??= [];
-          (globalThis as any).__pendingEdgeSets.push({ id, data });
-        });
+        pendingEdgeSets.push({ id, data });
       },
       deleteEdge(id: string) {
-        mutations.push(() => {
-          (globalThis as any).__pendingEdgeDeletes ??= [];
-          (globalThis as any).__pendingEdgeDeletes.push(id);
-        });
+        pendingEdgeDeletes.push(id);
       },
       sendMessage(text: string) {
         messageQueue.push(text);
       },
       async flush() {
-        (globalThis as any).__pendingNodeSets = [];
-        (globalThis as any).__pendingNodeDeletes = [];
-        (globalThis as any).__pendingEdgeSets = [];
-        (globalThis as any).__pendingEdgeDeletes = [];
+        if (pendingNodeSets.length > 0 || pendingNodeDeletes.length > 0 ||
+            pendingEdgeSets.length > 0 || pendingEdgeDeletes.length > 0) {
+          try {
+            const storage = await liveblocks.getStorageDocument(roomId, "json");
+            const root = (storage?.data ?? {}) as Record<string, unknown>;
+            let nodes = (root.nodes ?? []) as Array<Record<string, unknown>>;
+            let edges = (root.edges ?? []) as Array<Record<string, unknown>>;
 
-        for (const mut of mutations) mut();
+            for (const { id, data } of pendingNodeSets) {
+              const existing = nodes.findIndex((n) => n.id === id);
+              if (existing >= 0) {
+                nodes[existing] = { ...nodes[existing], ...data, id };
+              } else {
+                nodes.push({ id, ...data });
+              }
+            }
 
-        const nodeSets = (globalThis as any).__pendingNodeSets as Array<{ id: string; data: Record<string, unknown> }>;
-        const nodeDeletes = (globalThis as any).__pendingNodeDeletes as string[];
-        const edgeSets = (globalThis as any).__pendingEdgeSets as Array<{ id: string; data: Record<string, unknown> }>;
-        const edgeDeletes = (globalThis as any).__pendingEdgeDeletes as string[];
+            nodes = nodes.filter((n) => !pendingNodeDeletes.includes(n.id as string));
 
-        if (nodeSets.length > 0 || nodeDeletes.length > 0 || edgeSets.length > 0 || edgeDeletes.length > 0) {
-          console.log(`Flushing mutations for room ${roomId}:`, {
-            nodeSets: nodeSets.length,
-            nodeDeletes: nodeDeletes.length,
-            edgeSets: edgeSets.length,
-            edgeDeletes: edgeDeletes.length,
-          });
+            for (const { id, data } of pendingEdgeSets) {
+              const existing = edges.findIndex((e) => e.id === id);
+              if (existing >= 0) {
+                edges[existing] = { ...edges[existing], ...data, id };
+              } else {
+                edges.push({ id, ...data });
+              }
+            }
+
+            edges = edges.filter((e) => !pendingEdgeDeletes.includes(e.id as string));
+
+            await liveblocks.initializeStorageDocument(roomId, {
+              liveblocksType: "LiveObject",
+              data: {
+                ...root,
+                nodes: { liveblocksType: "LiveList", data: nodes as any },
+                edges: { liveblocksType: "LiveList", data: edges as any },
+              },
+            });
+
+            console.log(`Flushed to Liveblocks for room ${roomId}:`, {
+              nodeSets: pendingNodeSets.length, nodeDeletes: pendingNodeDeletes.length,
+              edgeSets: pendingEdgeSets.length, edgeDeletes: pendingEdgeDeletes.length,
+            });
+          } catch (err) {
+            console.error(`Failed to flush mutations for room ${roomId}:`, err);
+          }
         }
 
-        // Send chat messages via Liveblocks Comments API
         for (const text of messageQueue) {
           try {
             await liveblocks.createComment({
@@ -309,10 +357,7 @@ export class RoomManager {
               threadId: "agent-thread",
               data: {
                 userId: "ai-agent",
-                body: {
-                  version: 1 as const,
-                  content: [{ type: "paragraph" as const, children: [{ text }] }],
-                },
+                body: { version: 1 as const, content: [{ type: "paragraph" as const, children: [{ text }] }] },
               },
             } as any);
           } catch {
@@ -321,24 +366,173 @@ export class RoomManager {
                 roomId,
                 data: {
                   userId: "ai-agent",
-                  body: {
-                    version: 1 as const,
-                    content: [{ type: "paragraph" as const, children: [{ text }] }],
-                  },
+                  body: { version: 1 as const, content: [{ type: "paragraph" as const, children: [{ text }] }] },
                   metadata: {},
                 },
               } as any);
             } catch (err) {
-              console.error("Failed to send agent message:", err);
+              roomLogger(roomId).error({ err }, "Failed to send agent message");
             }
           }
         }
-
-        delete (globalThis as any).__pendingNodeSets;
-        delete (globalThis as any).__pendingNodeDeletes;
-        delete (globalThis as any).__pendingEdgeSets;
-        delete (globalThis as any).__pendingEdgeDeletes;
       },
+    };
+  }
+
+  async handleCommand(roomId: string, request: AiCommandRequest): Promise<AiCommandResponse> {
+    let session = this.sessions.get(roomId);
+    if (!session) {
+      await this.joinRoom(roomId);
+      session = this.sessions.get(roomId)!;
+    }
+
+    const commandId = `cmd-${randomUUID().slice(0, 8)}`;
+    const command: QueuedCommand = {
+      commandId,
+      userId: request.userId,
+      userName: request.userName,
+      message: request.message,
+      context: request.context,
+      queuedAt: Date.now(),
+    };
+
+    if (session.commandQueue.isFull()) {
+      throw new Error("Queue full");
+    }
+
+    session.commandQueue.enqueue(command);
+
+    if (!session.processingCommand) {
+      this.processQueue(roomId).catch((err) =>
+        console.error(`Queue processing error in room ${roomId}:`, err)
+      );
+    }
+
+    return {
+      commandId,
+      status: "queued",
+      position: session.commandQueue.size(),
+      estimatedWaitMs: session.commandQueue.size() * 5000,
+    };
+  }
+
+  private async processQueue(roomId: string): Promise<void> {
+    const session = this.sessions.get(roomId);
+    if (!session || session.processingCommand) return;
+
+    session.processingCommand = true;
+
+    try {
+      while (session.commandQueue.size() > 0) {
+        const command = session.commandQueue.dequeue();
+        if (!command) break;
+
+        console.log(`Processing command ${command.commandId} from ${command.userName}: "${command.message}"`);
+
+        await this.syncCanvasState(roomId);
+
+        session.accumulator.addTranscriptSegment({
+          speakerId: command.userId,
+          speakerName: command.userName,
+          text: `[Command] ${command.message}`,
+          timestamp: command.queuedAt,
+        });
+
+        await this.act(roomId, session, true, command.commandId, command.userId);
+      }
+    } finally {
+      session.processingCommand = false;
+    }
+  }
+
+  handleEvents(roomId: string, userId: string, events: AiActivityEvent[]): void {
+    const session = this.sessions.get(roomId);
+    if (!session) return;
+
+    session.accumulator.addUserEvents(userId, events);
+    session.lastChangeTime = Date.now();
+    session.changeCount += events.length;
+  }
+
+  async handleFeedback(roomId: string, request: AiFeedbackRequest): Promise<void> {
+    const session = this.sessions.get(roomId);
+    if (!session) return;
+
+    session.accumulator.addFeedback({
+      actionId: request.actionId,
+      status: request.status,
+      reason: request.reason,
+      userId: request.userId,
+    });
+
+    if (request.status === "rejected") {
+      try {
+        const storage = await this.liveblocks.getStorageDocument(roomId, "json");
+        const root = (storage?.data ?? {}) as Record<string, unknown>;
+        let nodes = (root.nodes ?? []) as Array<Record<string, unknown>>;
+        let edges = (root.edges ?? []) as Array<Record<string, unknown>>;
+
+        nodes = nodes.filter((n) => !request.nodeIds.includes(n.id as string));
+        edges = edges.filter((e) => !request.edgeIds.includes(e.id as string));
+
+        await this.liveblocks.initializeStorageDocument(roomId, {
+          liveblocksType: "LiveObject",
+          data: {
+            ...root,
+            nodes: { liveblocksType: "LiveList", data: nodes as any },
+            edges: { liveblocksType: "LiveList", data: edges as any },
+          },
+        });
+      } catch (err) {
+        console.error(`Failed to remove rejected nodes for room ${roomId}:`, err);
+      }
+    } else if (request.status === "approved") {
+      try {
+        const storage = await this.liveblocks.getStorageDocument(roomId, "json");
+        const root = (storage?.data ?? {}) as Record<string, unknown>;
+        const nodes = (root.nodes ?? []) as Array<Record<string, unknown>>;
+        const edges = (root.edges ?? []) as Array<Record<string, unknown>>;
+
+        for (const node of nodes) {
+          if (request.nodeIds.includes(node.id as string)) {
+            const data = node.data as Record<string, unknown> | undefined;
+            const ai = data?._ai as Record<string, unknown> | undefined;
+            if (ai) ai.status = "approved";
+          }
+        }
+
+        for (const edge of edges) {
+          if (request.edgeIds.includes(edge.id as string)) {
+            const ai = edge._ai as Record<string, unknown> | undefined;
+            if (ai) ai.status = "approved";
+          }
+        }
+
+        await this.liveblocks.initializeStorageDocument(roomId, {
+          liveblocksType: "LiveObject",
+          data: {
+            ...root,
+            nodes: { liveblocksType: "LiveList", data: nodes as any },
+            edges: { liveblocksType: "LiveList", data: edges as any },
+          },
+        });
+      } catch (err) {
+        console.error(`Failed to approve nodes for room ${roomId}:`, err);
+      }
+    }
+  }
+
+  getQueueStatus(roomId: string) {
+    const session = this.sessions.get(roomId);
+    if (!session) {
+      return { agentStatus: "idle" as const, currentCommand: null, queue: [], recentActions: [] };
+    }
+
+    return {
+      agentStatus: session.processingCommand ? "processing" as const : "idle" as const,
+      currentCommand: null,
+      queue: session.commandQueue.items().map((q, i) => ({ ...q, position: i + 1 })),
+      recentActions: [],
     };
   }
 }

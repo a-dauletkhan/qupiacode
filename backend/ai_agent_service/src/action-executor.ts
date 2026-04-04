@@ -1,5 +1,13 @@
 import type { ToolCall } from "./llm/types.js";
+import type { AiMetadata } from "./types.js";
 import { randomUUID } from "node:crypto";
+import { logger } from "./logger.js";
+
+export interface AiActionContext {
+  actionId: string;
+  commandId: string | null;
+  requestedBy: string | null;
+}
 
 export interface StorageAdapter {
   setNode: (id: string, data: Record<string, unknown>) => void;
@@ -12,9 +20,22 @@ export interface StorageAdapter {
 
 export class ActionExecutor {
   private storage: StorageAdapter;
+  private aiContext: AiActionContext | null;
 
-  constructor(storage: StorageAdapter) {
+  constructor(storage: StorageAdapter, aiContext?: AiActionContext) {
     this.storage = storage;
+    this.aiContext = aiContext ?? null;
+  }
+
+  private buildAiMeta(): AiMetadata | null {
+    if (!this.aiContext) return null;
+    return {
+      actionId: this.aiContext.actionId,
+      commandId: this.aiContext.commandId,
+      requestedBy: this.aiContext.requestedBy,
+      status: "pending",
+      createdAt: Date.now(),
+    };
   }
 
   async execute(toolCalls: ToolCall[]): Promise<void> {
@@ -50,7 +71,7 @@ export class ActionExecutor {
         this.handleRearrange(call.arguments);
         break;
       default:
-        console.warn(`Unknown tool call: ${call.name}`);
+        logger.warn({ toolCall: call.name }, "Unknown tool call");
     }
   }
 
@@ -82,6 +103,11 @@ export class ActionExecutor {
       data.fontSize = args.fontSize ?? 14;
     }
 
+    const aiMeta = this.buildAiMeta();
+    if (aiMeta) {
+      data._ai = aiMeta;
+    }
+
     this.storage.setNode(id, { type: nodeType, position, width, height, data });
   }
 
@@ -101,11 +127,16 @@ export class ActionExecutor {
 
   private handleCreateEdge(args: Record<string, unknown>): void {
     const id = `agent-edge-${randomUUID().slice(0, 8)}`;
-    this.storage.setEdge(id, {
+    const edgeData: Record<string, unknown> = {
       source: args.source,
       target: args.target,
       label: args.label ?? "",
-    });
+    };
+    const aiMeta = this.buildAiMeta();
+    if (aiMeta) {
+      edgeData._ai = aiMeta;
+    }
+    this.storage.setEdge(id, edgeData);
   }
 
   private handleGroupNodes(args: Record<string, unknown>): void {

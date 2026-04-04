@@ -11,24 +11,28 @@ import {
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
 import "@liveblocks/react-ui/styles.css"
+import "@liveblocks/react-ui/styles/dark/attributes.css"
+import "@/modules/Chat/components/chat-liveblocks.css"
 
 import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
 import { useVoiceCallContext } from "@/modules/VoiceCall/context/voice-call-context"
 import { type VoiceCallChatMessageView } from "@/modules/VoiceCall/hooks/use-voice-call"
+import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
+import { useAiChatMessages } from "@/modules/Agent/hooks/use-ai-chat-messages"
 
 type MessageType = VoiceCallChatMessageView["type"]
 
 const MESSAGE_STYLES: Record<MessageType, string> = {
-  user: "ml-auto border-border bg-muted text-foreground",
-  person: "mr-auto bg-lime2 text-foreground",
-  agent: "mr-auto border-lime-500/20 bg-lime-500/10 text-foreground",
+  user: "ml-auto border-white/[0.06] bg-white/[0.04] text-foreground",
+  person: "mr-auto border-white/[0.06] bg-white/[0.03] text-foreground",
+  agent: "mr-auto border-lime-500/15 bg-lime-500/[0.06] text-foreground",
 }
 
 const BADGE_STYLES: Record<MessageType, string> = {
-  user: "text-muted-foreground",
-  person: "text-muted-foreground",
-  agent: "text-lime-600 dark:text-lime-400",
+  user: "text-muted-foreground/70",
+  person: "text-muted-foreground/70",
+  agent: "text-lime-500/80",
 }
 
 const MESSAGE_LABELS: Record<MessageType, string> = {
@@ -38,9 +42,9 @@ const MESSAGE_LABELS: Record<MessageType, string> = {
 }
 
 const AVATAR_STYLES: Record<MessageType, string> = {
-  user: "border-border bg-muted text-muted-foreground",
-  person: "border-border bg-background",
-  agent: "border-lime-500/20 bg-lime-500/10 text-lime-600 dark:text-lime-400",
+  user: "border-white/[0.08] bg-white/[0.05] text-muted-foreground",
+  person: "border-white/[0.08] bg-white/[0.05] text-muted-foreground",
+  agent: "border-lime-500/20 bg-lime-500/[0.08] text-lime-500",
 }
 
 function MessageAvatar({ type }: { type: MessageType }) {
@@ -50,11 +54,11 @@ function MessageAvatar({ type }: { type: MessageType }) {
   return (
     <div
       className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-sm border text-muted-foreground",
+        "flex size-7 shrink-0 items-center justify-center rounded-md border",
         AVATAR_STYLES[type]
       )}
     >
-      <Icon className="size-4" />
+      <Icon className="size-3.5" />
     </div>
   )
 }
@@ -63,7 +67,7 @@ function ChatMessageRow({ message }: { message: VoiceCallChatMessageView }) {
   const isUserMessage = message.type === "user"
 
   return (
-    <div className="px-4 py-2">
+    <div className="px-3 py-1.5">
       <div
         className={cn(
           "flex items-start gap-2",
@@ -74,15 +78,15 @@ function ChatMessageRow({ message }: { message: VoiceCallChatMessageView }) {
 
         <div
           className={cn(
-            "max-w-[78%] rounded-sm border px-3 py-2",
+            "max-w-[80%] rounded-lg border px-3 py-2",
             MESSAGE_STYLES[message.type]
           )}
         >
           <div className="mb-1 flex items-center justify-between gap-3">
-            <p className="text-xs font-semibold">{message.author}</p>
+            <p className="text-[11px] font-medium text-foreground/90">{message.author}</p>
             <span
               className={cn(
-                "text-[10px] tracking-[0.12em] uppercase",
+                "text-[9px] tabular-nums tracking-[0.1em] uppercase",
                 BADGE_STYLES[message.type]
               )}
             >
@@ -90,10 +94,10 @@ function ChatMessageRow({ message }: { message: VoiceCallChatMessageView }) {
             </span>
           </div>
 
-          <p className="text-xs leading-5">
+          <p className="text-xs leading-[1.5] text-foreground/80">
             {message.text}
             {message.pending ? (
-              <span className="ml-1 text-muted-foreground">...</span>
+              <span className="ml-1 animate-pulse text-muted-foreground">...</span>
             ) : null}
           </p>
         </div>
@@ -125,10 +129,10 @@ function EmptyState({
   return (
     <div className="flex h-full items-center justify-center px-6 py-8 text-center">
       <div className="max-w-xs space-y-2">
-        <p className="text-sm font-semibold text-foreground">{title}</p>
-        <p className="text-xs leading-5 text-muted-foreground">{body}</p>
+        <p className="text-xs font-medium text-foreground/70">{title}</p>
+        <p className="text-[11px] leading-5 text-muted-foreground/50">{body}</p>
         {errorMessage ? (
-          <p className="text-xs leading-5 text-destructive">{errorMessage}</p>
+          <p className="text-[11px] leading-5 text-destructive/80">{errorMessage}</p>
         ) : null}
       </div>
     </div>
@@ -143,16 +147,26 @@ export function Chat() {
   const { threads } = useThreads()
   const createThread = useCreateThread()
   const { chatMessages, errorMessage, inCall, roomName } = useVoiceCallContext()
+  const aiAgent = useAiAgentOptional()
+  const aiMessages = useAiChatMessages()
 
-  const initialMessageIndex = Math.max(chatMessages.length - 1, 0)
+  // Merge voice transcript messages with AI agent messages
+  const mergedMessages = React.useMemo(() => {
+    if (aiMessages.length === 0) return chatMessages
+    return [...chatMessages, ...aiMessages].sort(
+      (a, b) => a.timestamp - b.timestamp,
+    )
+  }, [chatMessages, aiMessages])
+
+  const initialMessageIndex = Math.max(mergedMessages.length - 1, 0)
 
   function scrollToLatestMessage() {
-    if (chatMessages.length === 0) {
+    if (mergedMessages.length === 0) {
       return
     }
 
     virtuosoRef.current?.scrollToIndex({
-      index: chatMessages.length - 1,
+      index: mergedMessages.length - 1,
       align: "end",
       behavior: "smooth",
     })
@@ -164,6 +178,12 @@ export function Chat() {
     const text = input.trim()
     if (!text) {
       return
+    }
+
+    // Detect @agent commands and route to AI agent service
+    const agentMatch = text.match(/^@agent\s+(.+)/i)
+    if (agentMatch && aiAgent) {
+      aiAgent.sendCommand(agentMatch[1], { source: "chat" })
     }
 
     createThread({
@@ -182,21 +202,21 @@ export function Chat() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="border-b border-border px-4 py-3">
-        <p className="text-sm font-semibold text-foreground">Chat</p>
-        <p className="mt-1 text-xs text-muted-foreground">
+    <div className="flex h-full min-h-0 flex-col bg-sidebar">
+      <div className="border-b border-white/[0.06] px-4 py-3">
+        <p className="text-xs font-semibold tracking-wide uppercase text-foreground/80">Chat</p>
+        <p className="mt-0.5 text-[10px] text-muted-foreground">
           {roomName || "No active call"}
         </p>
       </div>
 
       <div className="grid min-h-0 flex-1 grid-rows-[minmax(0,1.15fr)_auto_minmax(0,1fr)_auto]">
         <div className="relative min-h-0">
-          {chatMessages.length > 0 ? (
+          {mergedMessages.length > 0 ? (
             <>
               <Virtuoso
                 ref={virtuosoRef}
-                data={chatMessages}
+                data={mergedMessages}
                 atBottomStateChange={setIsAtBottom}
                 followOutput={(atBottom) => (atBottom ? "smooth" : false)}
                 initialTopMostItemIndex={initialMessageIndex}
@@ -224,8 +244,8 @@ export function Chat() {
           )}
         </div>
 
-        <div className="border-y border-border px-4 py-2">
-          <p className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
+        <div className="border-y border-white/[0.06] px-4 py-2">
+          <p className="text-[10px] font-medium tracking-[0.14em] text-muted-foreground/60 uppercase">
             Team Chat
           </p>
         </div>
@@ -244,19 +264,19 @@ export function Chat() {
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex gap-2 border-t border-border p-2">
+      <form onSubmit={handleSubmit} className="flex gap-1.5 border-t border-white/[0.06] p-2">
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder="Type a message..."
-          className="flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-lime-500"
+          placeholder={aiAgent ? "Message or @agent..." : "Type a message..."}
+          className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:border-lime-500/30 focus:outline-none focus:ring-1 focus:ring-lime-500/20"
         />
         <button
           type="submit"
           disabled={!input.trim()}
-          className="rounded-md bg-lime-500 px-3 py-1.5 text-sm text-black disabled:opacity-50"
+          className="rounded-lg bg-lime-500 px-2.5 py-1.5 text-xs font-medium text-black transition-opacity disabled:opacity-30"
         >
-          <Send className="size-4" />
+          <Send className="size-3.5" />
         </button>
       </form>
     </div>

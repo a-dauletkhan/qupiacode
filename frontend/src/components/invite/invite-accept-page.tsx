@@ -21,7 +21,7 @@ export function InviteAcceptPage() {
 
     async function acceptInvite() {
       try {
-        await joinProject(projectId)
+        await joinProject(projectId!)
         if (isActive) {
           navigate(`/project/${projectId}`, { replace: true })
         }
