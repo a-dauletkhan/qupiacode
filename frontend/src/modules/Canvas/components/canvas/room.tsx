@@ -20,6 +20,18 @@ const AUTH_URL = buildApiUrl("/api/liveblocks/auth")
 export function Room({ id, children }: RoomProps) {
   return (
     <LiveblocksProvider
+       resolveUsers={async ({ userIds }) => {
+        // ["marc@example.com"];
+        console.log('passing user ids' );
+        console.log(userIds)
+
+        return [
+          {
+            name: "Marc",
+            color: "purple",
+          },
+        ];
+      }}
       authEndpoint={async (room) => {
         const token = getAccessToken()
         const resp = await fetch(AUTH_URL, {
@@ -33,11 +45,12 @@ export function Room({ id, children }: RoomProps) {
         if (!resp.ok) {
           throw new Error(`Liveblocks auth failed: ${resp.status}`)
         }
+
         return resp.json()
       }}
     >
       <RoomProvider
-        id={id}
+        id={'id'}
         initialPresence={{ cursor: null, type: "user" }}
         initialStorage={{ agentIntensity: "balanced" }}
       >

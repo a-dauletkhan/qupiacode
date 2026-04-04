@@ -49,6 +49,7 @@ import "@/modules/Canvas/components/canvas/flow-canvas/styles.css"
 import { AgentPresence } from "@/modules/Agent/components/agent-presence"
 import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
+import { AvatarStack } from "@liveblocks/react-ui"
 
 type FlowCanvasProps = {
   className?: string
@@ -685,7 +686,10 @@ function FlowCanvasInner({
               size={1.4}
               color="color-mix(in srgb, var(--color-border) 88%, transparent)"
             />
-            <Cursors />
+           <Cursors style={{ width: "100vw", height: "100vh" }}>
+      <AvatarStack />
+      {/* Rest of your app here */}
+    </Cursors>
           </ReactFlow>
         </div>
 
