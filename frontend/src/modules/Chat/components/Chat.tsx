@@ -246,9 +246,6 @@ export function Chat() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-b border-border px-4 py-3">
         <p className="text-sm font-semibold text-foreground">Live Chat</p>
-        <p className="text-xs text-muted-foreground">
-          Conversation between user, person, and agent
-        </p>
       </div>
 
       <div className="relative min-h-0 flex-1">
