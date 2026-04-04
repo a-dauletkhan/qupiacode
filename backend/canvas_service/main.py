@@ -5,6 +5,7 @@ from core.redis import init_redis, close_redis
 from modules.boards.router import router as boards_router
 from modules.canvas_objects.router import router as canvas_router
 from modules.collaboration.router import router as ws_router
+from modules.auth.router import router as auth_router
 
 
 @asynccontextmanager
@@ -24,6 +25,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth_router)
 app.include_router(boards_router)
 app.include_router(canvas_router)
 app.include_router(ws_router)
