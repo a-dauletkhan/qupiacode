@@ -2,6 +2,7 @@ import * as React from "react"
 import {
   ArrowDown,
   BotIcon,
+  Hand,
   SendHorizonalIcon,
   UserIcon,
 } from "lucide-react"
@@ -160,9 +161,26 @@ const VIRTUOSO_COMPONENTS = {
 
 export function Chat() {
   const virtuosoRef = React.useRef<VirtuosoHandle>(null)
+  const suggestionAudioRef = React.useRef<HTMLAudioElement | null>(null)
+  const suggestionAnimationFrameRef = React.useRef<number | null>(null)
   const [messages, setMessages] = React.useState<ChatMessage[]>(MOCK_MESSAGES)
   const [draft, setDraft] = React.useState("")
   const [isAtBottom, setIsAtBottom] = React.useState(true)
+  const [isSuggestionVisible, setIsSuggestionVisible] = React.useState(false)
+
+  React.useEffect(() => {
+    suggestionAudioRef.current = new Audio("/audio/suggestion.mp3")
+    suggestionAudioRef.current.volume = 0.25
+
+    return () => {
+      if (suggestionAnimationFrameRef.current !== null) {
+        cancelAnimationFrame(suggestionAnimationFrameRef.current)
+      }
+
+      suggestionAudioRef.current?.pause()
+      suggestionAudioRef.current = null
+    }
+  }, [])
 
   function handleSendMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -204,6 +222,26 @@ export function Chat() {
     })
   }
 
+  function handleShowSuggestion() {
+    if (suggestionAnimationFrameRef.current !== null) {
+      cancelAnimationFrame(suggestionAnimationFrameRef.current)
+    }
+
+    const suggestionAudio = suggestionAudioRef.current
+    if (suggestionAudio) {
+      suggestionAudio.currentTime = 0
+      void suggestionAudio.play()
+    }
+
+    setIsSuggestionVisible(false)
+    suggestionAnimationFrameRef.current = requestAnimationFrame(() => {
+      suggestionAnimationFrameRef.current = requestAnimationFrame(() => {
+        setIsSuggestionVisible(true)
+        suggestionAnimationFrameRef.current = null
+      })
+    })
+  }
+
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="border-b border-border px-4 py-3">
@@ -242,8 +280,21 @@ export function Chat() {
 
       <form
         onSubmit={handleSendMessage}
-        className="flex items-center gap-2 border-t border-border p-3"
+        className="relative flex items-center gap-2 border-t border-border p-3"
       >
+        <Button
+          type="button"
+          className={cn(
+            "absolute -top-[44px] left-3 rounded-full transition-all duration-300 ease-out",
+            isSuggestionVisible
+              ? "translate-y-0 opacity-100"
+              : "pointer-events-none translate-y-4 opacity-0"
+          )}
+        >
+          Jammy has got a suggestion
+          <Hand />
+        </Button>
+
         <Input
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
@@ -252,6 +303,9 @@ export function Chat() {
         />
         <Button type="submit" size="icon-lg" aria-label="Send message">
           <SendHorizonalIcon className="size-4" />
+        </Button>
+        <Button type="button" onClick={handleShowSuggestion}>
+          test
         </Button>
       </form>
     </div>
