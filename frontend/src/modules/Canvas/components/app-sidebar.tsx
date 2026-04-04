@@ -4,8 +4,8 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@/components/ui/resizable"
-import { Sidebar, SidebarContent } from "@/components/ui/sidebar"
+} from "@/modules/Canvas/components/ui/resizable"
+import { Sidebar, SidebarContent } from "@/modules/Canvas/components/ui/sidebar"
 import { VoiceCall } from "@/modules/VoiceCall/components/voice-call"
 import { Chat } from "@/modules/Chat/components/Chat"
 

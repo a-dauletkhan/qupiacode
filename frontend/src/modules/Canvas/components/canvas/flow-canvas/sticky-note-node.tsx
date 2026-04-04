@@ -1,12 +1,12 @@
 import * as React from "react"
 import { NodeResizer, type NodeProps } from "@xyflow/react"
 
-import { useCanvasEditor } from "@/components/canvas/flow-canvas/editor-context"
+import { useCanvasEditor } from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
 import {
   isStickyNoteNode,
   type StickyNoteNode,
-} from "@/components/canvas/primitives/schema"
-import { Textarea } from "@/components/ui/textarea"
+} from "@/modules/Canvas/components/canvas/primitives/schema"
+import { Textarea } from "@/modules/Canvas/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 export const StickyNoteNodeCard = React.memo(function StickyNoteNodeCard({

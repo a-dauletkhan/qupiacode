@@ -6,6 +6,7 @@ import {
   LiveblocksProvider,
   RoomProvider,
 } from "@liveblocks/react/suspense"
+import { LoaderCircle } from "lucide-react"
 
 const DEFAULT_LIVEBLOCKS_PUBLIC_KEY =
   "pk_dev_QFb5pt_0sDb3LVyB6vICx5N3k2q1o5QG-MwHURHnRK3aYYJPrcJSshC7zbucmT8c"
@@ -23,10 +24,18 @@ export function Room({ children }: RoomProps) {
       }
     >
       <RoomProvider id="my-room" initialPresence={{ cursor: null }}>
-        <ClientSideSuspense fallback={<div>Loading…</div>}>
+        <ClientSideSuspense fallback={<RoomLoadingFallback />}>
           {children}
         </ClientSideSuspense>
       </RoomProvider>
     </LiveblocksProvider>
+  )
+}
+
+function RoomLoadingFallback() {
+  return (
+    <div className="flex h-full w-full items-center justify-center">
+      <LoaderCircle className="size-8 animate-spin text-lime-400" />
+    </div>
   )
 }

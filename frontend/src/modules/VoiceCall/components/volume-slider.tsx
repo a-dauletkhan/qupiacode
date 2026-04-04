@@ -1,13 +1,13 @@
 import * as React from "react"
 import { Volume2Icon, VolumeOffIcon } from "lucide-react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/modules/Canvas/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Slider } from "@/components/ui/slider"
+} from "@/modules/Canvas/components/ui/dropdown-menu"
+import { Slider } from "@/modules/Canvas/components/ui/slider"
 import { cn } from "@/lib/utils"
 
 type VolumeSliderProps = {

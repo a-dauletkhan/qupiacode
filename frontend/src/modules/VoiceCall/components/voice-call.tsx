@@ -1,6 +1,6 @@
 import * as React from "react"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
 import {
   CallAgentCard,

@@ -1,9 +1,9 @@
 import * as React from "react"
 import { NodeResizer, type NodeProps } from "@xyflow/react"
 
-import { useCanvasEditor } from "@/components/canvas/flow-canvas/editor-context"
-import { isTextNode, type TextNode } from "@/components/canvas/primitives/schema"
-import { Textarea } from "@/components/ui/textarea"
+import { useCanvasEditor } from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
+import { isTextNode, type TextNode } from "@/modules/Canvas/components/canvas/primitives/schema"
+import { Textarea } from "@/modules/Canvas/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 export const TextNodeCard = React.memo(function TextNodeCard({

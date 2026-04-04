@@ -21,14 +21,14 @@ import "@xyflow/react/dist/style.css"
 import "@liveblocks/react-ui/styles.css"
 import "@liveblocks/react-flow/styles.css"
 
-import { CanvasObjectInspector } from "@/components/canvas/flow-canvas/canvas-object-inspector"
+import { CanvasObjectInspector } from "@/modules/Canvas/components/canvas/flow-canvas/canvas-object-inspector"
 import {
   CanvasEditorProvider,
-} from "@/components/canvas/flow-canvas/editor-context"
-import { ShapeNodeCard } from "@/components/canvas/flow-canvas/primitive-node"
-import { StickyNoteNodeCard } from "@/components/canvas/flow-canvas/sticky-note-node"
-import { TextNodeCard } from "@/components/canvas/flow-canvas/text-node"
-import { initialEdges, initialNodes } from "@/components/canvas/primitives/mock-data"
+} from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
+import { ShapeNodeCard } from "@/modules/Canvas/components/canvas/flow-canvas/primitive-node"
+import { StickyNoteNodeCard } from "@/modules/Canvas/components/canvas/flow-canvas/sticky-note-node"
+import { TextNodeCard } from "@/modules/Canvas/components/canvas/flow-canvas/text-node"
+import { initialEdges, initialNodes } from "@/modules/Canvas/components/canvas/primitives/mock-data"
 import {
   DRAFT_CANVAS_OBJECT_ID,
   createShapeNode,
@@ -44,9 +44,9 @@ import {
   type CanvasEditorDefaults,
   type CanvasObjectNode,
   type ToolId,
-} from "@/components/canvas/primitives/schema"
-import "@/components/canvas/flow-canvas/styles.css"
-import { Button } from "@/components/ui/button"
+} from "@/modules/Canvas/components/canvas/primitives/schema"
+import "@/modules/Canvas/components/canvas/flow-canvas/styles.css"
+import { Button } from "@/modules/Canvas/components/ui/button"
 import { cn } from "@/lib/utils"
 
 type FlowCanvasProps = {

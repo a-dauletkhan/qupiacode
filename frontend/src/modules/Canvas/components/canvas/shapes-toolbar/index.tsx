@@ -10,9 +10,9 @@ import {
   isShapeTool,
   type CanvasEditorDefaults,
   type ToolId,
-} from "@/components/canvas/primitives/schema"
-import "@/components/canvas/shapes-toolbar/styles.css"
-import { Button } from "@/components/ui/button"
+} from "@/modules/Canvas/components/canvas/primitives/schema"
+import "@/modules/Canvas/components/canvas/shapes-toolbar/styles.css"
+import { Button } from "@/modules/Canvas/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,8 +21,8 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Slider } from "@/components/ui/slider"
+} from "@/modules/Canvas/components/ui/dropdown-menu"
+import { Slider } from "@/modules/Canvas/components/ui/slider"
 import { cn } from "@/lib/utils"
 
 type ShapesToolbarProps = {
