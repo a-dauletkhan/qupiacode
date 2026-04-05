@@ -24,7 +24,7 @@ export type ToolId =
   | "eraser"
 
 export type ShapeKind = Extract<ToolId, "rectangle" | "ellipse">
-export type CanvasCreationTool = ShapeKind | "text" | "sticky_note"
+export type CanvasCreationTool = ShapeKind | "text" | "sticky_note" | "image"
 export type CanvasObjectType = "shape" | "text" | "sticky_note"
 export type PrimitivePaintStyle = "solid" | "outline" | "sketch" | "hatch"
 export type CanvasTextAlign = "left" | "center" | "right"
@@ -65,10 +65,19 @@ type BaseCanvasObjectData<ObjectType extends CanvasObjectType, Content, Style> =
 
 export type ShapeObjectData = BaseCanvasObjectData<
   "shape",
-  { label: string },
+  {
+    label: string
+    imageUrl?: string
+    requestId?: string
+    generationStatus?: string
+    generationError?: string
+    statusUrl?: string
+    cancelUrl?: string
+  },
   ShapeStylePreset
 > & {
   shapeKind: ShapeKind
+  sourceTool?: ShapeKind | "image"
 }
 
 export type TextObjectData = BaseCanvasObjectData<
@@ -198,7 +207,8 @@ export const TOOL_CONFIGS: ToolConfig[] = [
     label: "Insert image",
     shortcut: "7",
     icon: ImageIcon,
-    implemented: false,
+    implemented: true,
+    fillable: true,
   },
 ]
 
@@ -248,6 +258,7 @@ const CANVAS_CREATION_TOOLS = new Set<CanvasCreationTool>([
   "ellipse",
   "text",
   "sticky_note",
+  "image",
 ])
 
 export function isShapeTool(tool: ToolId): tool is ShapeKind {
@@ -264,6 +275,12 @@ export function isShapeNode(
   node: CanvasObjectNode | null | undefined
 ): node is ShapeNode {
   return Boolean(node && node.data.objectType === "shape")
+}
+
+export function isImagePlaceholderNode(
+  node: CanvasObjectNode | ShapeNode | null | undefined
+): node is ShapeNode {
+  return Boolean(node && node.data.objectType === "shape" && node.data.sourceTool === "image")
 }
 
 export function isTextNode(
@@ -341,6 +358,7 @@ export function createShapeNode(params: {
   rect: CanvasObjectRect
   preset?: ShapeStylePreset
   label?: string
+  sourceTool?: ShapeKind | "image"
   selected?: boolean
   draft?: boolean
 }): ShapeNode {
@@ -361,6 +379,7 @@ export function createShapeNode(params: {
     data: {
       objectType: "shape",
       shapeKind: params.shapeKind,
+      sourceTool: params.sourceTool ?? params.shapeKind,
       zIndex: 0,
       draft: params.draft,
       content: {

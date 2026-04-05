@@ -1,9 +1,10 @@
 import { Liveblocks } from "@liveblocks/node";
-import { LiveObject, LiveMap } from "@liveblocks/client";
-import type { LsonObject } from "@liveblocks/client";
+import { LiveObject, LiveMap, type LsonObject } from "@liveblocks/client";
 import type { AgentStateType } from "../state.js";
 import { ActionExecutor, type AiActionContext } from "../../action-executor.js";
 import { enterSharedRoom, setPresencePhase } from "../shared-room.js";
+
+const lson = (obj: Record<string, unknown>) => obj as unknown as LsonObject;
 
 export function createExecuteNode(liveblocks: Liveblocks) {
   return async (state: AgentStateType): Promise<Partial<AgentStateType>> => {
@@ -148,13 +149,13 @@ export function createExecuteNode(liveblocks: Liveblocks) {
             const updatedData = current.data ?? {};
             const dataEntries: LsonObject = { ...updatedData } as LsonObject;
             if (updatedData.content && typeof updatedData.content === "object") {
-              dataEntries.content = new LiveObject(updatedData.content as LsonObject);
+              dataEntries.content = new LiveObject(lson(updatedData.content));
             }
             if (updatedData.style && typeof updatedData.style === "object") {
-              dataEntries.style = new LiveObject(updatedData.style as LsonObject);
+              dataEntries.style = new LiveObject(lson(updatedData.style));
             }
             if (updatedData._ai && typeof updatedData._ai === "object") {
-              dataEntries._ai = new LiveObject(updatedData._ai as LsonObject);
+              dataEntries._ai = new LiveObject(lson(updatedData._ai));
             }
 
             const nodeEntries: LsonObject = {
@@ -163,14 +164,14 @@ export function createExecuteNode(liveblocks: Liveblocks) {
               draggable: true,
               selectable: true,
               focusable: true,
-              position: new LiveObject((current.position ?? {}) as LsonObject),
-              data: new LiveObject(dataEntries),
+              position: new LiveObject(lson(current.position ?? {})),
+              data: new LiveObject(lson(dataEntries)),
             };
             if (current.style) {
-              nodeEntries.style = new LiveObject(current.style as LsonObject);
+              nodeEntries.style = new LiveObject(lson(current.style));
             }
 
-            nodesMap.set(id, new LiveObject(nodeEntries));
+            nodesMap.set(id, new LiveObject(lson(nodeEntries)));
           } else {
             // Full create — build nested LiveObject structure
             const rawData = nodeData.data as LsonObject;
@@ -178,13 +179,13 @@ export function createExecuteNode(liveblocks: Liveblocks) {
 
             const dataEntries: LsonObject = { ...rawData };
             if (rawData.content && typeof rawData.content === "object") {
-              dataEntries.content = new LiveObject(rawData.content as LsonObject);
+              dataEntries.content = new LiveObject(lson(rawData.content as Record<string, unknown>));
             }
             if (rawData.style && typeof rawData.style === "object") {
-              dataEntries.style = new LiveObject(rawData.style as LsonObject);
+              dataEntries.style = new LiveObject(lson(rawData.style as Record<string, unknown>));
             }
             if (rawData._ai && typeof rawData._ai === "object") {
-              dataEntries._ai = new LiveObject(rawData._ai as LsonObject);
+              dataEntries._ai = new LiveObject(lson(rawData._ai as Record<string, unknown>));
             }
 
             const nodeEntries: LsonObject = {
@@ -193,14 +194,14 @@ export function createExecuteNode(liveblocks: Liveblocks) {
               draggable: true,
               selectable: true,
               focusable: true,
-              position: new LiveObject(nodeData.position as LsonObject),
-              data: new LiveObject(dataEntries),
+              position: new LiveObject(lson(nodeData.position as Record<string, unknown>)),
+              data: new LiveObject(lson(dataEntries)),
             };
             if (rawStyle) {
-              nodeEntries.style = new LiveObject(rawStyle);
+              nodeEntries.style = new LiveObject(lson(rawStyle));
             }
 
-            nodesMap.set(id, new LiveObject(nodeEntries));
+            nodesMap.set(id, new LiveObject(lson(nodeEntries)));
           }
         }
 
@@ -218,9 +219,9 @@ export function createExecuteNode(liveblocks: Liveblocks) {
           const edgeData = { id, ...data } as LsonObject;
           const edgeEntries: LsonObject = { ...edgeData };
           if (edgeData._ai && typeof edgeData._ai === "object") {
-            edgeEntries._ai = new LiveObject(edgeData._ai as LsonObject);
+            edgeEntries._ai = new LiveObject(lson(edgeData._ai as Record<string, unknown>));
           }
-          edgesMap.set(id, new LiveObject(edgeEntries));
+          edgesMap.set(id, new LiveObject(lson(edgeEntries)));
         }
 
         // Apply edge deletes

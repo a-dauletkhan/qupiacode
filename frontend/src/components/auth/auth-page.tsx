@@ -85,12 +85,12 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             {/* Logo + heading */}
             <div className="auth-heading">
               <span className="auth-logo">
-                <HigJamBrand />
+                <HiggsJamBrand />
               </span>
               <div className="auth-heading-text">
                 <h1 className="auth-title">
                   <Typewriter
-                    text={isLogin ? "Welcome back" : "Welcome to HigJam"}
+                    text={isLogin ? "Welcome back" : "Welcome to HiggsJam"}
                   />
                 </h1>
                 <p className="auth-subtitle">
@@ -270,7 +270,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 </span>
               </div>
               <div className="auth-showcase-text">
-                <h2 className="auth-showcase-title">HIGJAM CANVAS</h2>
+                <h2 className="auth-showcase-title">HIGGSJAM CANVAS</h2>
                 <p className="auth-showcase-desc">
                   Collaborate in real-time on an infinite canvas with voice
                   calls, chat, and powerful drawing tools
@@ -329,7 +329,7 @@ function Typewriter({ text }: { text: string }) {
 
 // ---- Brand / OAuth icons ----
 
-function HigJamBrand() {
+function HiggsJamBrand() {
   return (
     <svg
       width="32"

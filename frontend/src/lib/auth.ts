@@ -7,6 +7,7 @@ import { buildApiUrl } from "@/lib/api"
 export type AuthUser = {
   id: string
   email: string
+  name: string
 }
 
 type AuthSession = {
@@ -32,7 +33,7 @@ export class AuthError extends Error {
 
 // ---- storage ----
 
-const STORAGE_KEY = "higjam_auth"
+const STORAGE_KEY = "higgsjam_auth"
 
 function readState(): AuthState {
   try {
@@ -112,13 +113,26 @@ function parseSupabaseResponse(data: Record<string, unknown>): AuthSession {
   const accessToken = (data.access_token as string) ?? ""
   const refreshToken = (data.refresh_token as string) ?? ""
   const rawUser = (data.user as Record<string, unknown>) ?? {}
+  const userMetadata =
+    (rawUser.user_metadata as Record<string, unknown> | undefined) ?? {}
+  const email = (rawUser.email as string) ?? ""
+  const id = (rawUser.id as string) ?? ""
+  const responseName = data.name
+  const metadataName = userMetadata.name
+  const name =
+    typeof metadataName === "string" && metadataName.trim()
+      ? metadataName.trim()
+      : typeof responseName === "string" && responseName.trim()
+        ? responseName.trim()
+        : id
 
   return {
     access_token: accessToken,
     refresh_token: refreshToken,
     user: {
-      id: (rawUser.id as string) ?? "",
-      email: (rawUser.email as string) ?? "",
+      id,
+      email,
+      name,
     },
   }
 }
