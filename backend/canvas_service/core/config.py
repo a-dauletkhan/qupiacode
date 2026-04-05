@@ -9,6 +9,10 @@ class Settings(BaseSettings):
     supabase_storage_bucket: str = "canvas-media"
     liveblocks_secret_key: str = ""
     ai_agent_service_url: str = "http://ai-agent:3001"
+    higgsfield_api_url: str = "https://platform.higgsfield.ai/higgsfield-ai/soul/standard"
+    higgsfield_api_key: str = ""
+    higgsfield_api_key_secret: str = ""
+    higgsfield_resolution: str = "720p"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
