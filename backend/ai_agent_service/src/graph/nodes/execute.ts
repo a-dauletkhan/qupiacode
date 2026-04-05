@@ -3,7 +3,7 @@ import { LiveObject, LiveMap } from "@liveblocks/client";
 import type { LsonObject } from "@liveblocks/client";
 import type { AgentStateType } from "../state.js";
 import { ActionExecutor, type AiActionContext } from "../../action-executor.js";
-import { enterSharedRoom } from "../shared-room.js";
+import { enterSharedRoom, setPresencePhase } from "../shared-room.js";
 
 export function createExecuteNode(liveblocks: Liveblocks) {
   return async (state: AgentStateType): Promise<Partial<AgentStateType>> => {
@@ -64,6 +64,7 @@ export function createExecuteNode(liveblocks: Liveblocks) {
           pendingEdgeSets.length > 0 || pendingEdgeDeletes.length > 0) {
 
         // Use the shared room connection (already entered by gather-context)
+        setPresencePhase(roomId, "applying changes");
         const room = enterSharedRoom(liveblocks, roomId);
         const { root } = await room.getStorage();
 

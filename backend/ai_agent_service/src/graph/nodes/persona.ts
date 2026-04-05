@@ -2,7 +2,7 @@ import type { AgentStateType, PendingAction } from "../state.js";
 import type { PersonasFile } from "../../persona-loader.js";
 import type { LLMProvider, Message, Tool } from "../../llm/types.js";
 import { canvasTools } from "../../tools/canvas-tools.js";
-import { setPersonaPresence } from "../shared-room.js";
+import { setPersonaPresence, setPresencePhase } from "../shared-room.js";
 import { randomUUID } from "node:crypto";
 
 export function createPersonaNode(personasFile: PersonasFile, llm: LLMProvider) {
@@ -18,7 +18,10 @@ export function createPersonaNode(personasFile: PersonasFile, llm: LLMProvider) 
     const actionId = `act-${randomUUID().slice(0, 8)}`;
 
     // Update presence to show which persona is working
-    setPersonaPresence(state.roomId, personaId);
+    const isProactive = state.command?.source === "proactive";
+    const actionLabel = isProactive ? "auto-suggesting" : "thinking";
+    setPersonaPresence(state.roomId, personaId, actionLabel);
+    setPresencePhase(state.roomId, actionLabel);
 
     // Filter tools to persona's allowed list
     const allowedTools: Tool[] = canvasTools.filter((t) => persona.tools.includes(t.name));

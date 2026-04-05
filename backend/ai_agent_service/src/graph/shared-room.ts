@@ -51,13 +51,21 @@ export function enterSharedRoom(liveblocks: Liveblocks, roomId: string): Room {
 }
 
 /** Update presence to show which persona is currently working */
-export function setPersonaPresence(roomId: string, persona: string) {
+export function setPersonaPresence(roomId: string, persona: string, action?: string) {
   const entry = _rooms.get(roomId);
   if (entry) {
-    console.info(`[shared-room] Setting persona presence: ${persona}`);
-    entry.room.updatePresence({ status: "acting", persona });
+    console.info(`[shared-room] Setting persona presence: ${persona}, action: ${action ?? "none"}`);
+    entry.room.updatePresence({ status: "acting", persona, action: action ?? null });
   } else {
     console.info(`[shared-room] Cannot set persona — no room entry for ${roomId}`);
+  }
+}
+
+/** Update presence to show current phase */
+export function setPresencePhase(roomId: string, phase: string) {
+  const entry = _rooms.get(roomId);
+  if (entry) {
+    entry.room.updatePresence({ phase });
   }
 }
 
