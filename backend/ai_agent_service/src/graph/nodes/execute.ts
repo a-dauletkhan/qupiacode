@@ -80,76 +80,83 @@ export function createExecuteNode(liveblocks: Liveblocks) {
           console.info(`[execute] ${isUpdate ? "Updating" : "Creating"} node:`, JSON.stringify(nodeData).slice(0, 300));
 
           if (isUpdate) {
-            // Partial update — modify existing LiveObject fields
+            // Read existing node, apply changes to plain object, then replace entire LiveObject
             const existing = nodesMap.get(id) as LiveObject<any> | undefined;
             if (!existing) {
               console.info(`[execute] Cannot update node "${id}" — not found in map`);
               continue;
             }
-            // Apply each field from the update
-            if (nodeData.position) {
-              existing.set("position", new LiveObject(nodeData.position as Record<string, unknown>));
+
+            // Get current state as plain object
+            const current = existing.toImmutable ? JSON.parse(JSON.stringify(existing.toImmutable())) : {};
+            console.info(`[execute] Node "${id}" BEFORE:`, JSON.stringify(current).slice(0, 200));
+
+            // Apply updates
+            if (nodeData.position) current.position = nodeData.position;
+            if (nodeData.style) current.style = { ...current.style, ...nodeData.style };
+            if (nodeData["data.content.text"] !== undefined) {
+              current.data = current.data ?? {};
+              current.data.content = current.data.content ?? {};
+              current.data.content.text = nodeData["data.content.text"];
             }
-            if (nodeData.style) {
-              // Merge with existing style, don't replace
-              const existingStyle = existing.get("style") as LiveObject<any> | undefined;
-              const newStyle = nodeData.style as Record<string, unknown>;
-              if (existingStyle) {
-                for (const [k, v] of Object.entries(newStyle)) existingStyle.set(k, v);
-              } else {
-                existing.set("style", new LiveObject(newStyle));
-              }
+            if (nodeData["data.content.label"] !== undefined) {
+              current.data = current.data ?? {};
+              current.data.content = current.data.content ?? {};
+              current.data.content.label = nodeData["data.content.label"];
+            }
+            if (nodeData["data.style.color"] !== undefined) {
+              current.data = current.data ?? {};
+              current.data.style = current.data.style ?? {};
+              current.data.style.color = nodeData["data.style.color"];
+            }
+            if (nodeData["data.style.textColor"] !== undefined) {
+              current.data.style.textColor = nodeData["data.style.textColor"];
+            }
+            if (nodeData["data.style.fontSize"] !== undefined) {
+              current.data.style.fontSize = nodeData["data.style.fontSize"];
+            }
+            if (nodeData["data.style.fontWeight"] !== undefined) {
+              current.data.style.fontWeight = nodeData["data.style.fontWeight"];
+            }
+            if (nodeData["data.style.paintStyle"] !== undefined) {
+              current.data.style.paintStyle = nodeData["data.style.paintStyle"];
+            }
+            if (nodeData["data.style.strokeWidth"] !== undefined) {
+              current.data.style.strokeWidth = nodeData["data.style.strokeWidth"];
+            }
+            if (nodeData["data.shapeKind"] !== undefined) {
+              current.data.shapeKind = nodeData["data.shapeKind"];
             }
 
-            // Update nested data fields via dot-path keys
-            const existingData = existing.get("data") as LiveObject<any> | undefined;
-            if (existingData) {
-              // Debug: log current state
-              const beforeData = existingData.toImmutable ? existingData.toImmutable() : existingData;
-              console.info(`[execute] Node "${id}" data BEFORE update:`, JSON.stringify(beforeData).slice(0, 300));
+            console.info(`[execute] Node "${id}" AFTER:`, JSON.stringify(current).slice(0, 200));
 
-              // Content fields (data.content.text, data.content.label)
-              const content = existingData.get("content") as LiveObject<any> | undefined;
-              if (content) {
-                if (nodeData["data.content.text"] !== undefined) {
-                  console.info(`[execute]   Setting content.text = "${nodeData["data.content.text"]}"`);
-                  content.set("text", nodeData["data.content.text"]);
-                }
-                if (nodeData["data.content.label"] !== undefined) {
-                  console.info(`[execute]   Setting content.label = "${nodeData["data.content.label"]}"`);
-                  content.set("label", nodeData["data.content.label"]);
-                }
-              } else {
-                console.info(`[execute]   No "content" LiveObject found in data`);
-              }
-
-              // Style fields (data.style.color, data.style.fontSize, etc.)
-              const dataStyle = existingData.get("style") as LiveObject<any> | undefined;
-              if (dataStyle) {
-                const styleUpdates: Record<string, unknown> = {};
-                if (nodeData["data.style.color"] !== undefined) styleUpdates.color = nodeData["data.style.color"];
-                if (nodeData["data.style.textColor"] !== undefined) styleUpdates.textColor = nodeData["data.style.textColor"];
-                if (nodeData["data.style.fontSize"] !== undefined) styleUpdates.fontSize = nodeData["data.style.fontSize"];
-                if (nodeData["data.style.fontWeight"] !== undefined) styleUpdates.fontWeight = nodeData["data.style.fontWeight"];
-                if (nodeData["data.style.paintStyle"] !== undefined) styleUpdates.paintStyle = nodeData["data.style.paintStyle"];
-                if (nodeData["data.style.strokeWidth"] !== undefined) styleUpdates.strokeWidth = nodeData["data.style.strokeWidth"];
-
-                for (const [k, v] of Object.entries(styleUpdates)) {
-                  console.info(`[execute]   Setting data.style.${k} = ${JSON.stringify(v)}`);
-                  dataStyle.set(k, v);
-                }
-              } else {
-                console.info(`[execute]   No "style" LiveObject found in data`);
-              }
-
-              // Direct data fields
-              if (nodeData["data.shapeKind"] !== undefined) {
-                console.info(`[execute]   Setting data.shapeKind = "${nodeData["data.shapeKind"]}"`);
-                existingData.set("shapeKind", nodeData["data.shapeKind"]);
-              }
-            } else {
-              console.info(`[execute] Node "${id}" has no "data" LiveObject — cannot update`);
+            // Replace entire node LiveObject with updated version (triggers re-render)
+            const updatedData = current.data ?? {};
+            const dataEntries: Record<string, unknown> = { ...updatedData };
+            if (updatedData.content && typeof updatedData.content === "object") {
+              dataEntries.content = new LiveObject(updatedData.content);
             }
+            if (updatedData.style && typeof updatedData.style === "object") {
+              dataEntries.style = new LiveObject(updatedData.style);
+            }
+            if (updatedData._ai && typeof updatedData._ai === "object") {
+              dataEntries._ai = new LiveObject(updatedData._ai);
+            }
+
+            const nodeEntries: Record<string, unknown> = {
+              id: current.id,
+              type: current.type,
+              draggable: true,
+              selectable: true,
+              focusable: true,
+              position: new LiveObject(current.position ?? {}),
+              data: new LiveObject(dataEntries),
+            };
+            if (current.style) {
+              nodeEntries.style = new LiveObject(current.style);
+            }
+
+            nodesMap.set(id, new LiveObject(nodeEntries));
           } else {
             // Full create — build nested LiveObject structure
             const rawData = nodeData.data as Record<string, unknown>;

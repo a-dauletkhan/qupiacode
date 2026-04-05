@@ -14,7 +14,7 @@ import { Button } from "@/modules/Canvas/components/ui/button"
 import { useVoiceCallContext } from "@/modules/VoiceCall/context/voice-call-context"
 import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
 import { SlashCommandMenu, useSlashCommands } from "@/modules/Chat/components/slash-command-menu"
-import { Bot } from "lucide-react"
+import { Bot, Palette, MessageSquareWarning, Megaphone } from "lucide-react"
 
 function ChatMessageFooter() {
   return <div className="h-[88px]" />
@@ -87,24 +87,45 @@ function EmptyState({
   )
 }
 
+const PERSONA_TYPING: Record<string, { icon: typeof Bot; label: string; cssColor: string }> = {
+  designer: { icon: Palette, label: "Designer", cssColor: "oklch(0.72 0.16 240)" },
+  critique: { icon: MessageSquareWarning, label: "Critique", cssColor: "oklch(0.72 0.19 28)" },
+  marketing: { icon: Megaphone, label: "Marketing", cssColor: "oklch(0.86 0.18 95)" },
+}
+
 function AiTypingIndicator() {
   const others = useOthers()
   const agent = others.find((o) => o.presence.type === "ai_agent")
   const isActing = agent?.presence.status === "acting"
+  const persona = (agent?.presence as Record<string, unknown>)?.persona as string | undefined
 
   if (!isActing) return null
 
+  const config = persona ? PERSONA_TYPING[persona] : undefined
+  const Icon = config?.icon ?? Bot
+  const label = config?.label ?? "AI"
+  const color = config?.cssColor ?? "oklch(0.768 0.233 130.85)"
+
   return (
     <div className="flex items-center gap-2 px-4 py-2">
-      <div className="flex size-6 items-center justify-center rounded-md border border-lime-500/20 bg-lime-500/[0.08]">
-        <Bot className="size-3 text-lime-500" />
+      <div
+        className="flex size-6 items-center justify-center rounded-md border"
+        style={{ borderColor: `color-mix(in srgb, ${color} 30%, transparent)`, backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`, color }}
+      >
+        <Icon className="size-3" />
       </div>
       <div className="flex items-center gap-1.5">
-        <span className="text-[11px] text-lime-500/80">AI is typing</span>
+        <span className="text-[11px]" style={{ color: `color-mix(in srgb, ${color} 80%, transparent)` }}>
+          {label} is typing
+        </span>
         <span className="flex gap-0.5">
-          <span className="size-1 animate-bounce rounded-full bg-lime-500/60" style={{ animationDelay: "0ms" }} />
-          <span className="size-1 animate-bounce rounded-full bg-lime-500/60" style={{ animationDelay: "150ms" }} />
-          <span className="size-1 animate-bounce rounded-full bg-lime-500/60" style={{ animationDelay: "300ms" }} />
+          {[0, 150, 300].map((delay) => (
+            <span
+              key={delay}
+              className="size-1 animate-bounce rounded-full"
+              style={{ backgroundColor: `color-mix(in srgb, ${color} 60%, transparent)`, animationDelay: `${delay}ms` }}
+            />
+          ))}
         </span>
       </div>
     </div>

@@ -77,8 +77,20 @@ app.post("/api/ai/rooms/:roomId/command", async (req, res) => {
   }
   try {
     const { roomId } = req.params;
-    const request = req.body as CommandRequest & { targetPersona?: string };
+    const request = req.body as CommandRequest;
     const threadId = `room:${roomId}`;
+    // targetPersona comes from context (frontend sends it there)
+    const targetPersona = (request.context as any)?.targetPersona ?? null;
+
+    console.info(`[command] Room ${roomId}: "${request.message}" — persona: ${targetPersona}, selectedNodeIds: ${JSON.stringify(request.context?.selectedNodeIds)}`);
+
+    // Set presence to "acting" with persona BEFORE graph starts
+    // This ensures the typing indicator shows immediately
+    const { enterSharedRoom: enterRoom, setPersonaPresence: setPresence } = await import("./graph/shared-room.js");
+    enterRoom(liveblocks, roomId);
+    if (targetPersona) setPresence(roomId, targetPersona);
+    // Give WebSocket time to sync presence to frontend
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     const result = await compiledGraph.invoke(
       {
@@ -88,8 +100,8 @@ app.post("/api/ai/rooms/:roomId/command", async (req, res) => {
           userName: request.userName,
           message: request.message,
           source: request.context.source,
-          selectedNodeIds: request.context.selectedNodeIds,
-          targetPersona: request.targetPersona ?? null,
+          selectedNodeIds: request.context.selectedNodeIds ?? [],
+          targetPersona,
         },
         transcript: transcriptBuffers.get(roomId) ?? [],
         userEvents: eventBuffers.get(roomId) ?? [],
@@ -99,10 +111,9 @@ app.post("/api/ai/rooms/:roomId/command", async (req, res) => {
 
     eventBuffers.delete(roomId);
 
-    // Release the shared room (sets presence back to "watching" then disconnects)
-    await leaveSharedRoom(roomId);
-
     const latestAction = result.pendingActions?.[result.pendingActions.length - 1];
+
+    // Send response first, THEN stop typing
     res.status(202).json({
       commandId: latestAction?.actionId ?? "unknown",
       status: "queued",
@@ -110,6 +121,10 @@ app.post("/api/ai/rooms/:roomId/command", async (req, res) => {
       estimatedWaitMs: 0,
       persona: latestAction?.persona ?? null,
     });
+
+    // Small delay so the chat message from Liveblocks arrives before typing stops
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await leaveSharedRoom(roomId);
   } catch (err) {
     console.error("Command error:", err);
     await leaveSharedRoom(req.params.roomId);

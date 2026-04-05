@@ -8,8 +8,11 @@ export function createRouterNode(personasFile: PersonasFile) {
     const message = state.command?.message?.toLowerCase() ?? "";
     const targetFromCommand = state.command?.targetPersona;
 
+    console.info(`[router] message: "${message}", targetFromCommand: ${targetFromCommand}`);
+
     // Priority 1: Direct persona from command
     if (targetFromCommand && personas[targetFromCommand]) {
+      console.info(`[router] → direct: ${targetFromCommand}`);
       return { mode: "direct", targetPersona: targetFromCommand, pipelineSteps: [], currentStep: 0 };
     }
 

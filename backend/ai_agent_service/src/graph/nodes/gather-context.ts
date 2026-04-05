@@ -12,6 +12,10 @@ export function createGatherContextNode(liveblocks: Liveblocks) {
 
       // Enter shared room — sets presence to "acting" immediately
       const room = enterSharedRoom(liveblocks, roomId);
+
+      // Wait for presence to sync to frontend before proceeding
+      await new Promise((resolve) => setTimeout(resolve, 300));
+
       const { root } = await room.getStorage();
 
       // useLiveblocksFlow stores under root.flow.nodes (LiveMap) and root.flow.edges (LiveMap)

@@ -9,7 +9,7 @@ import { createClient, type Room } from "@liveblocks/client";
 let _client: ReturnType<typeof createClient> | null = null;
 const _rooms = new Map<string, { room: Room; idleTimer: ReturnType<typeof setTimeout> | null }>();
 
-const IDLE_DISCONNECT_MS = 30_000; // disconnect after 30s of no activity
+const IDLE_DISCONNECT_MS = 30_000;
 
 function getClient(liveblocks: Liveblocks) {
   if (!_client) {
@@ -30,19 +30,17 @@ function getClient(liveblocks: Liveblocks) {
 export function enterSharedRoom(liveblocks: Liveblocks, roomId: string): Room {
   const existing = _rooms.get(roomId);
   if (existing) {
-    // Cancel idle disconnect timer — room is active again
     if (existing.idleTimer) {
       clearTimeout(existing.idleTimer);
       existing.idleTimer = null;
     }
-    // Set presence to acting
     existing.room.updatePresence({ status: "acting" });
     return existing.room;
   }
 
   const client = getClient(liveblocks);
   const { room } = client.enterRoom(roomId, {
-    initialPresence: { cursor: null, type: "ai_agent", status: "acting" },
+    initialPresence: { cursor: null, type: "ai_agent", status: "acting", persona: null },
     initialStorage: {},
   });
 
@@ -50,14 +48,23 @@ export function enterSharedRoom(liveblocks: Liveblocks, roomId: string): Room {
   return room;
 }
 
+/** Update presence to show which persona is currently working */
+export function setPersonaPresence(roomId: string, persona: string) {
+  const entry = _rooms.get(roomId);
+  if (entry) {
+    console.info(`[shared-room] Setting persona presence: ${persona}`);
+    entry.room.updatePresence({ status: "acting", persona });
+  } else {
+    console.info(`[shared-room] Cannot set persona — no room entry for ${roomId}`);
+  }
+}
+
 export async function leaveSharedRoom(roomId: string): Promise<void> {
   const entry = _rooms.get(roomId);
   if (!entry) return;
 
-  // Set presence to watching (stop typing indicator)
-  entry.room.updatePresence({ status: "watching" });
+  entry.room.updatePresence({ status: "watching", persona: null });
 
-  // Start idle timer — disconnect if no new activity within 30s
   if (entry.idleTimer) clearTimeout(entry.idleTimer);
   entry.idleTimer = setTimeout(() => {
     const current = _rooms.get(roomId);
