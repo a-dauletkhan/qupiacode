@@ -20,7 +20,7 @@ export function PrivacyPage() {
         <h2>2. How We Use Your Information</h2>
         <p>We use your information to:</p>
         <ul>
-          <li>Provide and maintain the HigJam platform</li>
+          <li>Provide and maintain the HiggsJam platform</li>
           <li>Enable real-time collaboration features</li>
           <li>Authenticate your identity and secure your account</li>
           <li>Improve our services and develop new features</li>
@@ -81,7 +81,7 @@ export function TermsPage() {
       <section>
         <h2>1. Acceptance of Terms</h2>
         <p>
-          By accessing or using HigJam, you agree to be bound by these Terms of
+          By accessing or using HiggsJam, you agree to be bound by these Terms of
           Use. If you do not agree, you may not use the platform.
         </p>
       </section>
@@ -110,7 +110,7 @@ export function TermsPage() {
       <section>
         <h2>4. Intellectual Property</h2>
         <p>
-          You retain ownership of all content you create on HigJam. By using the
+          You retain ownership of all content you create on HiggsJam. By using the
           platform, you grant us a limited license to store, process, and
           display your content as necessary to provide the service.
         </p>
@@ -146,7 +146,7 @@ export function TermsPage() {
       <section>
         <h2>8. Limitation of Liability</h2>
         <p>
-          HigJam is provided "as is" without warranties of any kind. We are not
+          HiggsJam is provided "as is" without warranties of any kind. We are not
           liable for any indirect, incidental, or consequential damages arising
           from your use of the platform.
         </p>
