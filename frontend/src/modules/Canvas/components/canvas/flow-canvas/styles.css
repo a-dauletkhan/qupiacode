@@ -218,6 +218,14 @@
   @apply rounded-xl border-white/12 bg-background/90 px-3 text-[11px] font-semibold tracking-[0.02em] text-foreground shadow-sm backdrop-blur-sm;
 }
 
+.primitive-image-status {
+  @apply text-center text-[11px] font-medium text-muted-foreground;
+}
+
+.primitive-image-status-error {
+  @apply text-destructive;
+}
+
 .primitive-node-surface-draft {
   @apply border-dashed;
 }

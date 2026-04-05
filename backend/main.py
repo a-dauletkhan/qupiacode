@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from canvas_service.modules.auth.router import router as auth_router
 from canvas_service.modules.boards.router import router as boards_router
+from canvas_service.modules.image_generation.router import router as image_generation_router
 from canvas_service.modules.liveblocks.router import router as liveblocks_router
 from voice_call_service.app.api.routes import dev, health, voice, webhooks
 from voice_call_service.app.core.config import get_settings as get_voice_settings
@@ -46,6 +47,7 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(boards_router)
+    app.include_router(image_generation_router)
     app.include_router(liveblocks_router)
 
     if voice_settings.app_env != "production":
