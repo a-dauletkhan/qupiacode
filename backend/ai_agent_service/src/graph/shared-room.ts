@@ -5,6 +5,7 @@
 
 import { Liveblocks } from "@liveblocks/node";
 import { createClient, type Room } from "@liveblocks/client";
+import WebSocket from "ws";
 
 let _client: ReturnType<typeof createClient> | null = null;
 const _rooms = new Map<string, { room: Room; idleTimer: ReturnType<typeof setTimeout> | null }>();
@@ -14,6 +15,7 @@ const IDLE_DISCONNECT_MS = 30_000;
 function getClient(liveblocks: Liveblocks) {
   if (!_client) {
     _client = createClient({
+      polyfills: { WebSocket: WebSocket as any },
       authEndpoint: async () => {
         const session = liveblocks.prepareSession("ai-agent", {
           userInfo: { name: "AI Agent" },

@@ -1,5 +1,6 @@
 import { Liveblocks } from "@liveblocks/node";
 import { LiveObject, LiveMap } from "@liveblocks/client";
+import type { LsonObject } from "@liveblocks/client";
 import type { AgentStateType } from "../state.js";
 import { ActionExecutor, type AiActionContext } from "../../action-executor.js";
 import { enterSharedRoom } from "../shared-room.js";
@@ -44,6 +45,18 @@ export function createExecuteNode(liveblocks: Liveblocks) {
 
     if (latestAction.chatMessage && !latestAction.toolCalls.some((tc) => tc.name === "sendMessage")) {
       adapter.sendMessage(latestAction.chatMessage);
+    }
+
+    // Fallback: if no chat message was produced at all, auto-generate a summary
+    if (messageQueue.length === 0) {
+      const parts: string[] = [];
+      if (pendingNodeSets.length > 0) parts.push(`updated ${pendingNodeSets.length} node(s)`);
+      if (pendingNodeDeletes.length > 0) parts.push(`removed ${pendingNodeDeletes.length} node(s)`);
+      if (pendingEdgeSets.length > 0) parts.push(`added ${pendingEdgeSets.length} connection(s)`);
+      if (pendingEdgeDeletes.length > 0) parts.push(`removed ${pendingEdgeDeletes.length} connection(s)`);
+      if (parts.length > 0) {
+        adapter.sendMessage(`Done — ${parts.join(", ")}.`);
+      }
     }
 
     try {
@@ -132,54 +145,54 @@ export function createExecuteNode(liveblocks: Liveblocks) {
 
             // Replace entire node LiveObject with updated version (triggers re-render)
             const updatedData = current.data ?? {};
-            const dataEntries: Record<string, unknown> = { ...updatedData };
+            const dataEntries: LsonObject = { ...updatedData } as LsonObject;
             if (updatedData.content && typeof updatedData.content === "object") {
-              dataEntries.content = new LiveObject(updatedData.content);
+              dataEntries.content = new LiveObject(updatedData.content as LsonObject);
             }
             if (updatedData.style && typeof updatedData.style === "object") {
-              dataEntries.style = new LiveObject(updatedData.style);
+              dataEntries.style = new LiveObject(updatedData.style as LsonObject);
             }
             if (updatedData._ai && typeof updatedData._ai === "object") {
-              dataEntries._ai = new LiveObject(updatedData._ai);
+              dataEntries._ai = new LiveObject(updatedData._ai as LsonObject);
             }
 
-            const nodeEntries: Record<string, unknown> = {
+            const nodeEntries: LsonObject = {
               id: current.id,
               type: current.type,
               draggable: true,
               selectable: true,
               focusable: true,
-              position: new LiveObject(current.position ?? {}),
+              position: new LiveObject((current.position ?? {}) as LsonObject),
               data: new LiveObject(dataEntries),
             };
             if (current.style) {
-              nodeEntries.style = new LiveObject(current.style);
+              nodeEntries.style = new LiveObject(current.style as LsonObject);
             }
 
             nodesMap.set(id, new LiveObject(nodeEntries));
           } else {
             // Full create — build nested LiveObject structure
-            const rawData = nodeData.data as Record<string, unknown>;
-            const rawStyle = nodeData.style as Record<string, unknown> | undefined;
+            const rawData = nodeData.data as LsonObject;
+            const rawStyle = nodeData.style as LsonObject | undefined;
 
-            const dataEntries: Record<string, unknown> = { ...rawData };
+            const dataEntries: LsonObject = { ...rawData };
             if (rawData.content && typeof rawData.content === "object") {
-              dataEntries.content = new LiveObject(rawData.content as Record<string, unknown>);
+              dataEntries.content = new LiveObject(rawData.content as LsonObject);
             }
             if (rawData.style && typeof rawData.style === "object") {
-              dataEntries.style = new LiveObject(rawData.style as Record<string, unknown>);
+              dataEntries.style = new LiveObject(rawData.style as LsonObject);
             }
             if (rawData._ai && typeof rawData._ai === "object") {
-              dataEntries._ai = new LiveObject(rawData._ai as Record<string, unknown>);
+              dataEntries._ai = new LiveObject(rawData._ai as LsonObject);
             }
 
-            const nodeEntries: Record<string, unknown> = {
-              id: nodeData.id,
-              type: nodeData.type,
+            const nodeEntries: LsonObject = {
+              id: nodeData.id as string,
+              type: nodeData.type as string,
               draggable: true,
               selectable: true,
               focusable: true,
-              position: new LiveObject(nodeData.position as Record<string, unknown>),
+              position: new LiveObject(nodeData.position as LsonObject),
               data: new LiveObject(dataEntries),
             };
             if (rawStyle) {
@@ -201,10 +214,10 @@ export function createExecuteNode(liveblocks: Liveblocks) {
 
         // Apply edge creates/updates
         for (const { id, data } of pendingEdgeSets) {
-          const edgeData = { id, ...data } as Record<string, unknown>;
-          const edgeEntries: Record<string, unknown> = { ...edgeData };
+          const edgeData = { id, ...data } as LsonObject;
+          const edgeEntries: LsonObject = { ...edgeData };
           if (edgeData._ai && typeof edgeData._ai === "object") {
-            edgeEntries._ai = new LiveObject(edgeData._ai as Record<string, unknown>);
+            edgeEntries._ai = new LiveObject(edgeData._ai as LsonObject);
           }
           edgesMap.set(id, new LiveObject(edgeEntries));
         }
