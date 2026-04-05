@@ -35,6 +35,23 @@ export function buildApiUrl(path: string, baseUrl?: string) {
   return joinBaseUrl(resolvedBaseUrl, normalizedPath)
 }
 
+export function getAiAgentBaseUrl() {
+  return (
+    import.meta.env.VITE_AI_AGENT_BASE_URL?.trim() || getApiBaseUrl()
+  )
+}
+
+export function buildAiAgentUrl(path: string, baseUrl?: string) {
+  const normalizedPath = normalizePath(path)
+  const resolvedBaseUrl = baseUrl?.trim() || getAiAgentBaseUrl()
+
+  if (!resolvedBaseUrl || /^https?:\/\//.test(normalizedPath)) {
+    return normalizedPath
+  }
+
+  return joinBaseUrl(resolvedBaseUrl, normalizedPath)
+}
+
 export function buildVoiceApiUrl(path: string, baseUrl?: string) {
   const normalizedPath = normalizePath(path)
   const resolvedBaseUrl = baseUrl?.trim() || getVoiceApiBaseUrl()

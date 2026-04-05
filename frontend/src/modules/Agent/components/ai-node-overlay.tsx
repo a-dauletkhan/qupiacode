@@ -1,13 +1,3 @@
-/**
- * Overlay rendered on top of any canvas node that has `_ai` metadata.
- *
- * Adds:
- *  - Dashed lime border (pending) or subtle border (approved)
- *  - AI badge in the top-right corner
- *  - Approve / Reject action bar below the node (pending only)
- *  - Entry animation via Motion
- */
-
 import { AnimatePresence, motion } from "motion/react"
 import type { AiActionStatus } from "../types"
 import { AiBadge } from "./ai-badge"
@@ -16,6 +6,8 @@ import { cn } from "@/lib/utils"
 
 type AiNodeOverlayProps = {
   status: AiActionStatus
+  persona?: string
+  personaColor?: string
   onApprove: () => void
   onReject: () => void
   children: React.ReactNode
@@ -23,6 +15,8 @@ type AiNodeOverlayProps = {
 
 export function AiNodeOverlay({
   status,
+  persona,
+  personaColor,
   onApprove,
   onReject,
   children,
@@ -40,7 +34,11 @@ export function AiNodeOverlay({
         isPending && "ai-node-pending"
       )}
     >
-      <AiBadge status={isPending ? "pending" : "approved"} />
+      <AiBadge
+        status={isPending ? "pending" : "approved"}
+        persona={persona}
+        personaColor={personaColor}
+      />
 
       {children}
 

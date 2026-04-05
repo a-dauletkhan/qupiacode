@@ -1,4 +1,4 @@
-import { buildApiUrl } from "@/lib/api"
+import { buildAiAgentUrl } from "@/lib/api"
 import { getAccessToken } from "@/lib/auth"
 import type {
   AiCommandRequest,
@@ -19,7 +19,7 @@ function authHeaders(): Record<string, string> {
 }
 
 async function post<T>(path: string, body: unknown, action: string): Promise<T> {
-  const url = buildApiUrl(path)
+  const url = buildAiAgentUrl(path)
   console.info(`[ai-agent] → POST ${url}`, `\n  action: ${action}`, "\n  payload:", body)
   const res = await fetch(url, {
     method: "POST",
@@ -36,7 +36,7 @@ async function post<T>(path: string, body: unknown, action: string): Promise<T> 
 }
 
 async function get<T>(path: string, action: string): Promise<T> {
-  const url = buildApiUrl(path)
+  const url = buildAiAgentUrl(path)
   console.info(`[ai-agent] → GET ${url}`, `\n  action: ${action}`)
   const res = await fetch(url, {
     method: "GET",

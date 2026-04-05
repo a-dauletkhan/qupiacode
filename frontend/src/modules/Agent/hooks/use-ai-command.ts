@@ -1,5 +1,5 @@
 import * as React from "react"
-import * as aiAgent from "../services/ai-agent-mock"
+import * as aiAgent from "../services/ai-agent-service"
 import type { AiCommandContext, AiCommandResponse, CommandSource } from "../types"
 
 type UseAiCommandOptions = {
@@ -25,6 +25,7 @@ export function useAiCommand({ roomId, userId, userName }: UseAiCommandOptions) 
             selectedEdgeIds: context.selectedEdgeIds ?? [],
             viewport: context.viewport ?? { x: 0, y: 0, zoom: 1 },
             source: context.source,
+            ...(context.targetPersona !== undefined ? { targetPersona: context.targetPersona } : {}),
           },
         })
         setLastResponse(res)

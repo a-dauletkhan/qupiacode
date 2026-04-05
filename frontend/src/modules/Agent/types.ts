@@ -12,6 +12,8 @@ export type AiMetadata = {
   requestedBy: string | null
   status: AiActionStatus
   createdAt: number
+  persona: string
+  personaColor: string
 }
 
 // ---------------------------------------------------------------------------
@@ -25,6 +27,7 @@ export type AiCommandContext = {
   selectedEdgeIds: string[]
   viewport: { x: number; y: number; zoom: number }
   source: CommandSource
+  targetPersona?: string
 }
 
 export type AiCommandRequest = {

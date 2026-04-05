@@ -19,6 +19,12 @@ export const config = {
   server: {
     port: parseInt(process.env.PORT ?? "3001", 10),
   },
+  redis: {
+    url: process.env.REDIS_URL ?? "redis://localhost:6379",
+  },
+  agent: {
+    proactiveIntervalMs: parseInt(process.env.AI_PROACTIVE_INTERVAL_MS ?? "10000", 10),
+  },
 } as const;
 
 function requireEnv(key: string): string {

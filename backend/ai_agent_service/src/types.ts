@@ -72,13 +72,19 @@ export interface TranscriptSegment {
 
 // --- AI Metadata ---
 
+export type AiActionStatus = "pending" | "approved" | "rejected";
+
 export interface AiMetadata {
   actionId: string;
   commandId: string | null;
   requestedBy: string | null;
-  status: "pending" | "approved" | "rejected";
+  status: AiActionStatus;
   createdAt: number;
+  persona: string;
+  personaColor: string;
 }
+
+export type AiActivityEvent = ActivityEvent;
 
 // --- Command API ---
 

@@ -41,6 +41,8 @@ function withAiOverlay<N extends Node<Record<string, unknown>>>(
       return (
         <AiNodeOverlay
           status="approved"
+          persona={aiMeta.persona}
+          personaColor={aiMeta.personaColor}
           onApprove={() => {}}
           onReject={() => {}}
         >
@@ -84,6 +86,8 @@ function withAiOverlay<N extends Node<Record<string, unknown>>>(
     return (
       <AiNodeOverlay
         status={aiMeta.status}
+        persona={aiMeta.persona}
+        personaColor={aiMeta.personaColor}
         onApprove={handleApprove}
         onReject={handleReject}
       >

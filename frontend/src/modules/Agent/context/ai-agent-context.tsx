@@ -16,7 +16,7 @@ type AiAgentContextValue = {
   roomId: string
   userId: string
   userName: string
-  sendCommand: (message: string, context: { selectedNodeIds?: string[]; selectedEdgeIds?: string[]; viewport?: { x: number; y: number; zoom: number }; source: CommandSource }) => Promise<unknown>
+  sendCommand: (message: string, context: { selectedNodeIds?: string[]; selectedEdgeIds?: string[]; viewport?: { x: number; y: number; zoom: number }; source: CommandSource; targetPersona?: string }) => Promise<unknown>
   commandPending: boolean
   approve: (actionId: string, nodeIds: string[], edgeIds: string[]) => Promise<unknown>
   reject: (actionId: string, nodeIds: string[], edgeIds: string[], reason?: string) => Promise<unknown>
