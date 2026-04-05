@@ -41,6 +41,7 @@ import {
   createTextNode,
   expandCanvasRect,
   getCanvasObjectSize,
+  isImagePlaceholderNode,
   isCanvasCreationTool,
   normalizeCanvasRect,
   type CanvasCreationTool,
@@ -394,6 +395,13 @@ function FlowCanvasInner({
       event.preventDefault()
       finishEditing()
       setSelectedObjectIds([node.id])
+
+      if (isImagePlaceholderNode(node)) {
+        setInspectedObjectId(null)
+        setInspectorOpen(false)
+        return
+      }
+
       setInspectedObjectId(node.id)
       setInspectorOpen(true)
     },
@@ -480,6 +488,18 @@ function FlowCanvasInner({
           draft: options?.draft,
           selected: options?.selected,
           preset: editorDefaults.stickyNote,
+        })
+      }
+
+      if (tool === "image") {
+        return createShapeNode({
+          id: options?.id ?? createCanvasObjectId("image"),
+          shapeKind: "rectangle",
+          sourceTool: "image",
+          rect,
+          draft: options?.draft,
+          selected: options?.selected,
+          preset: editorDefaults.shape,
         })
       }
 
