@@ -228,8 +228,9 @@ export function CanvasWorkspace() {
             maxSize={`${MAX_SIDEBAR_WIDTH}px`}
             minSize={`${MIN_SIDEBAR_WIDTH}px`}
             panelRef={sidebarPanelRef}
-            onCollapse={() => setIsSidebarOpen(false)}
-            onExpand={() => setIsSidebarOpen(true)}
+            onResize={(size) => {
+              setIsSidebarOpen(Number(size) > 0)
+            }}
           >
             <AppSidebar
               side="right"

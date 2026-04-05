@@ -24,12 +24,6 @@ const VIRTUOSO_COMPONENTS = {
   Footer: ChatMessageFooter,
 }
 
-type ChatFeedMessage = {
-  id: string
-  comment: CommentData
-  isOwnMessage: boolean
-}
-
 function getCommentTimestamp(value: Date | string | number) {
   return new Date(value).getTime()
 }
