@@ -1,4 +1,5 @@
 import * as React from "react"
+import { Image as ImageIcon } from "lucide-react"
 import { NodeResizer, type NodeProps } from "@xyflow/react"
 
 import { useCanvasEditor } from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
@@ -8,6 +9,7 @@ import {
   type PrimitivePaintStyle,
   type ShapeNode,
 } from "@/modules/Canvas/components/canvas/primitives/schema"
+import { Button } from "@/modules/Canvas/components/ui/button"
 import { Textarea } from "@/modules/Canvas/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
@@ -29,6 +31,7 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
   const { editingObjectId, finishEditing, updateCanvasObject } =
     useCanvasEditor()
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
+  const isImagePlaceholder = data.sourceTool === "image"
   const isEditing = editingObjectId === id && !data.draft
   const dimensions = `${Math.round(width ?? 0)} × ${Math.round(height ?? 0)}`
 
@@ -78,7 +81,64 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
           )}
           style={getPrimitiveCssVars(data.style.color, data.style.strokeWidth)}
         >
-          {isEditing ? (
+          {isImagePlaceholder && !data.draft ? (
+            <div className="primitive-image-content">
+              {isEditing ? (
+                <Textarea
+                  ref={textareaRef}
+                  value={data.content.label}
+                  placeholder="Type something"
+                  onChange={(event) =>
+                    updateCanvasObject(id, (node) =>
+                      isShapeNode(node)
+                        ? {
+                            ...node,
+                            data: {
+                              ...node.data,
+                              content: {
+                                label: event.target.value,
+                              },
+                            },
+                          }
+                        : node
+                    )
+                  }
+                  onBlur={finishEditing}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      event.currentTarget.blur()
+                    }
+                  }}
+                  className="primitive-node-editor nodrag nopan nowheel"
+                />
+              ) : (
+                <div
+                  className={cn(
+                    "primitive-node-content",
+                    !data.content.label && "primitive-node-content-placeholder"
+                  )}
+                >
+                  {data.content.label || "Type something"}
+                </div>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="primitive-image-action nodrag nopan"
+                onPointerDown={(event) => {
+                  event.stopPropagation()
+                }}
+                onClick={(event) => {
+                  event.stopPropagation()
+                }}
+              >
+                <ImageIcon className="size-3.5" />
+                Generate image
+              </Button>
+            </div>
+          ) : isEditing ? (
             <Textarea
               ref={textareaRef}
               value={data.content.label}
@@ -122,7 +182,7 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
           <div className="primitive-node-badge">
             {data.draft
               ? dimensions
-              : `${data.content.label} · ${paintStyleBadges[data.style.paintStyle]}`}
+              : `${isImagePlaceholder ? "Image" : data.content.label} · ${paintStyleBadges[data.style.paintStyle]}`}
           </div>
         )}
       </div>
