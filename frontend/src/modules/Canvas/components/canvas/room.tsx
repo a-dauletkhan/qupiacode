@@ -23,7 +23,7 @@ const RESOLVE_USERS_URL = buildApiUrl("/api/liveblocks/resolve-users")
 export function Room({ id, children }: RoomProps) {
   const location = useLocation()
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
   const hasRedirectedRef = React.useRef(false)
   const returnPath = `${location.pathname}${location.search}${location.hash}`
 
@@ -85,7 +85,10 @@ export function Room({ id, children }: RoomProps) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify({ room }),
+          body: JSON.stringify({
+            room,
+            userName: user?.name,
+          }),
         })
         if (resp.status === 401 || resp.status === 403) {
           redirectToLogin()

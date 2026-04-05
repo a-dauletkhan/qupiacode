@@ -67,27 +67,17 @@ export function CanvasWorkspace() {
   const { user } = useAuth()
   const project = projectId ? getProject(projectId) : null
   const displayName = React.useMemo(() => {
-    const email = user?.email?.trim()
-
-    if (!email) {
-      return "Anonymous"
+    const resolvedName = user?.name?.trim()
+    if (resolvedName) {
+      return resolvedName
     }
 
-    const [localPart] = email.split("@")
-    return localPart || email
-  }, [user?.email])
+    return "Anonymous"
+  }, [user?.name])
   const shareLink = React.useMemo(
     () => new URL(`/invite/${projectId ?? ""}`, SELF_URL).toString(),
     [projectId]
   )
-  const voiceDisplayName = React.useMemo(() => {
-    const email = user?.email?.trim()
-    if (!email) {
-      return "Guest"
-    }
-
-    return email.split("@")[0] || email
-  }, [user?.email])
 
   const sidebarPanelRef = usePanelRef()
   const [activeTool, setActiveTool] = React.useState<ToolId>("selection")
@@ -143,7 +133,7 @@ export function CanvasWorkspace() {
       <AiAgentProvider
         roomId={project.id}
         userId={user?.id ?? "anonymous"}
-        userName={user?.email?.split("@")[0] ?? "Anonymous"}
+        userName={displayName}
       >
       <SidebarProvider className="h-svh min-h-0 bg-background">
         <ResizablePanelGroup orientation="horizontal" className="h-full w-full">
@@ -218,7 +208,7 @@ export function CanvasWorkspace() {
               className="w-full"
               projectId={project.id}
               userId={user?.id}
-              displayName={voiceDisplayName}
+              displayName={displayName}
             />
           </ResizablePanel>
         </ResizablePanelGroup>
