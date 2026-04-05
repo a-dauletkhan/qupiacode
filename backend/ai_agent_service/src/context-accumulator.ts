@@ -125,8 +125,13 @@ export class ContextAccumulator {
           "";
         const shapeKind = node.data.shapeKind ? ` shape=${node.data.shapeKind}` : "";
         const draftState = node.data._ai ? ` ai_status=${node.data._ai.status}` : "";
+        const size =
+          typeof node.width === "number" && typeof node.height === "number"
+            ? ` size=${Math.round(node.width)}x${Math.round(node.height)}`
+            : "";
+        const color = typeof node.data.style?.color === "string" ? ` color=${node.data.style.color}` : "";
         const label = primaryText ? ` label="${primaryText}"` : "";
-        return `  - id="${node.id}" type=${node.type}${shapeKind}${label} pos=(${Math.round(node.position.x)}, ${Math.round(node.position.y)})${draftState}`;
+        return `  - id="${node.id}" type=${node.type}${shapeKind}${label} pos=(${Math.round(node.position.x)}, ${Math.round(node.position.y)})${size}${color}${draftState}`;
       });
       const edgeDescriptions = this.edges.map(
         (edge) =>

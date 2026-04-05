@@ -19,7 +19,15 @@ function ResizablePanelGroup({
 }
 
 function ResizablePanel({ ...props }: ResizablePrimitive.PanelProps) {
-  return <ResizablePrimitive.Panel data-slot="resizable-panel" {...props} />
+  const { onCollapse, onExpand, ...panelProps } = props as ResizablePrimitive.PanelProps & {
+    onCollapse?: () => void
+    onExpand?: () => void
+  }
+
+  void onCollapse
+  void onExpand
+
+  return <ResizablePrimitive.Panel data-slot="resizable-panel" {...panelProps} />
 }
 
 function ResizableHandle({

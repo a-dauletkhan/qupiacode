@@ -9,14 +9,8 @@ export interface AgentPresence {
 }
 
 export type CanvasObjectType = "shape" | "text" | "sticky_note";
-<<<<<<< Updated upstream
-export type ShapeKind = "rectangle" | "ellipse";
-export type PaintStyle = "solid" | "outline" | "sketch" | "hatch";
-export type TextAlign = "left" | "center" | "right";
-export type FontWeight = "normal" | "medium" | "bold";
-=======
 export type ShapeKind = "rectangle" | "diamond" | "ellipse";
->>>>>>> Stashed changes
+export type TargetPersona = "designer" | "critique" | "marketing";
 
 export interface Position {
   x: number;
@@ -35,6 +29,8 @@ export interface AiMetadata {
   requestedBy: string | null;
   status: "pending" | "approved" | "rejected";
   createdAt: number;
+  persona?: string;
+  personaColor?: string;
 }
 
 export interface CanvasNodeData {
@@ -90,29 +86,7 @@ export interface TranscriptSegment {
   endTimeMs: number | null;
 }
 
-<<<<<<< Updated upstream
-// --- AI Metadata ---
-
-export type AiActionStatus = "pending" | "approved" | "rejected";
-
-export interface AiMetadata {
-  actionId: string;
-  commandId: string | null;
-  requestedBy: string | null;
-  status: AiActionStatus;
-  createdAt: number;
-  persona: string;
-  personaColor: string;
-}
-
-export type AiActivityEvent = ActivityEvent;
-
-// --- Command API ---
-
-=======
->>>>>>> Stashed changes
 export type CommandSource = "chat" | "canvas_context_menu";
-export type TargetPersona = "designer" | "critique" | "marketing";
 
 export interface CommandRequest {
   userId: string;
@@ -147,7 +121,25 @@ export interface CreateEdgeAction {
   label?: string;
 }
 
-export type AiCanvasAction = CreateNodeAction | CreateEdgeAction;
+export interface NodeMutationSnapshot {
+  position: Position;
+  parentId?: string | null;
+  width?: number;
+  height?: number;
+  content: Record<string, unknown>;
+  style: Record<string, unknown>;
+  shapeKind?: ShapeKind;
+  zIndex?: number;
+}
+
+export interface UpdateNodeAction {
+  type: "update_node";
+  nodeId: string;
+  before: NodeMutationSnapshot;
+  after: NodeMutationSnapshot;
+}
+
+export type AiCanvasAction = CreateNodeAction | CreateEdgeAction | UpdateNodeAction;
 
 export interface PendingActionResponse {
   actionId: string;

@@ -3,54 +3,57 @@ import { logger } from "./logger.js";
 import type { ToolCall } from "./llm/types.js";
 import type {
   AiCanvasAction,
+  CanvasNode,
   CanvasObjectType,
   CanvasSnapshot,
   CreateEdgeAction,
   CreateNodeAction,
+  NodeMutationSnapshot,
   Position,
   ShapeKind,
+  UpdateNodeAction,
 } from "./types.js";
 
 export interface ActionContext {
+  actionId?: string | null;
   commandId?: string | null;
   requestedBy?: string | null;
+  persona?: string | null;
+  personaColor?: string | null;
   canvasSnapshot?: CanvasSnapshot;
 }
 
-export interface AiActionContext {
-  actionId: string;
-  commandId: string | null;
-  requestedBy: string | null;
-  persona: string;
-  personaColor: string;
+export type AiActionContext = ActionContext;
+
+interface LegacyActionAdapter {
+  setNode(id: string, data: Record<string, unknown>): void;
+  deleteNode(id: string): void;
+  setEdge(id: string, data: Record<string, unknown>): void;
+  deleteEdge(id: string): void;
+  sendMessage(text: string): void;
 }
 
 export class ActionExecutor {
   private actionContext: ActionContext;
-<<<<<<< Updated upstream
-  private aiContext: AiActionContext | null;
-  private _createdNodeIds: string[] = [];
-  private _createdEdgeIds: string[] = [];
-=======
->>>>>>> Stashed changes
+  private legacyAdapter: LegacyActionAdapter | null = null;
   private _actionId: string;
   private _actions: AiCanvasAction[] = [];
   private _messages: string[] = [];
 
-<<<<<<< Updated upstream
-  constructor(storage: StorageAdapter, actionContext?: ActionContext | AiActionContext) {
-    this.storage = storage;
-    if (actionContext && "persona" in actionContext) {
-      this.aiContext = actionContext as AiActionContext;
-      this.actionContext = { commandId: actionContext.commandId, requestedBy: actionContext.requestedBy };
+  constructor(actionContext?: ActionContext);
+  constructor(legacyAdapter: LegacyActionAdapter, actionContext?: ActionContext);
+  constructor(
+    legacyAdapterOrActionContext?: LegacyActionAdapter | ActionContext,
+    maybeActionContext?: ActionContext,
+  ) {
+    if (maybeActionContext || isLegacyActionAdapter(legacyAdapterOrActionContext)) {
+      this.legacyAdapter = isLegacyActionAdapter(legacyAdapterOrActionContext)
+        ? legacyAdapterOrActionContext
+        : null;
+      this.actionContext = maybeActionContext ?? { commandId: null, requestedBy: null };
     } else {
-      this.aiContext = null;
-      this.actionContext = actionContext ?? { commandId: null, requestedBy: null };
+      this.actionContext = legacyAdapterOrActionContext ?? { commandId: null, requestedBy: null };
     }
-=======
-  constructor(actionContext?: ActionContext) {
-    this.actionContext = actionContext ?? { commandId: null, requestedBy: null };
->>>>>>> Stashed changes
     this._actionId = `act-${randomUUID().slice(0, 8)}`;
   }
 
@@ -68,7 +71,10 @@ export class ActionExecutor {
 
   get createdNodeIds(): string[] {
     return this._actions
-      .filter((action): action is CreateNodeAction => action.type === "create_node")
+      .filter(
+        (action): action is CreateNodeAction | UpdateNodeAction =>
+          action.type === "create_node" || action.type === "update_node",
+      )
       .map((action) => action.nodeId);
   }
 
@@ -84,41 +90,19 @@ export class ActionExecutor {
     }
   }
 
-<<<<<<< Updated upstream
-  private makeAiMetadata(): AiMetadata {
-    return {
-      actionId: this._actionId,
-      commandId: this.actionContext.commandId,
-      requestedBy: this.actionContext.requestedBy,
-      status: "pending",
-      createdAt: Date.now(),
-      persona: this.aiContext?.persona ?? "",
-      personaColor: this.aiContext?.personaColor ?? "",
-    };
-  }
-
-  private buildAiMeta(): AiMetadata | null {
-    if (!this.aiContext) return null;
-    return {
-      actionId: this.aiContext.actionId,
-      commandId: this.aiContext.commandId,
-      requestedBy: this.aiContext.requestedBy,
-      status: "pending",
-      createdAt: Date.now(),
-      persona: this.aiContext.persona,
-      personaColor: this.aiContext.personaColor,
-    };
-  }
-
-=======
->>>>>>> Stashed changes
   private executeOne(call: ToolCall): void {
     switch (call.name) {
       case "createNode":
         this.handleCreateNode(call.arguments);
         break;
+      case "updateNode":
+        this.handleUpdateNode(call.arguments);
+        break;
       case "createDiagram":
         this.handleCreateDiagram(call.arguments);
+        break;
+      case "rearrangeNodes":
+        this.handleRearrangeNodes(call.arguments);
         break;
       case "createEdge":
         this.handleCreateEdge(call.arguments);
@@ -132,81 +116,27 @@ export class ActionExecutor {
   }
 
   private handleCreateNode(args: Record<string, unknown>): void {
-<<<<<<< Updated upstream
-    const id = `ai-${randomUUID().slice(0, 8)}`;
-    const nodeType = args.nodeType as string;
-    const position = args.position as { x: number; y: number };
-    const width = (args.width as number) ?? 150;
-    const height = (args.height as number) ?? 80;
-
-    // Build data in the exact format the frontend React Flow schema expects
-    const data: Record<string, unknown> = { objectType: nodeType, zIndex: 0 };
-
-    if (nodeType === "shape") {
-      data.shapeKind = args.shapeKind ?? "rectangle";
-      data.content = { label: (args.label as string) ?? "" };
-      data.style = {
-        color: (args.color as string) ?? "oklch(0.768 0.233 130.85)",
-        paintStyle: (args.paintStyle as string) ?? "solid",
-        strokeWidth: 2,
-      };
-    } else if (nodeType === "text") {
-      data.content = { text: (args.text as string) ?? "" };
-      data.style = {
-        color: (args.color as string) ?? "oklch(0.268 0 0)",
-        fontSize: (args.fontSize as number) ?? 16,
-        fontWeight: "normal",
-        align: "left",
-      };
-    } else if (nodeType === "sticky_note") {
-      data.content = { text: (args.text as string) ?? "" };
-      data.style = {
-        color: (args.color as string) ?? "oklch(0.92 0.17 122)",
-        textColor: "oklch(0.268 0 0)",
-        fontSize: (args.fontSize as number) ?? 14,
-      };
-    }
-
-    data._ai = this.makeAiMetadata();
-
-    this._createdNodeIds.push(id);
-    // React Flow expects: { id, type, position, style: { width, height }, data }
-    this.storage.setNode(id, { type: nodeType, position, style: { width, height }, data });
-  }
-
-  private handleUpdateNode(args: Record<string, unknown>): void {
-    const nodeId = args.nodeId as string;
-    const updates: Record<string, unknown> = {};
-
-    // Layout
-    if (args.position) updates.position = args.position;
-    if (args.width || args.height) updates.style = { ...(args.width ? { width: args.width } : {}), ...(args.height ? { height: args.height } : {}) };
-
-    // Content — text for text/sticky_note, label for shapes
-    if (args.text !== undefined) updates["data.content.text"] = args.text;
-    if (args.label !== undefined) updates["data.content.label"] = args.label;
-
-    // Style properties
-    if (args.color !== undefined) updates["data.style.color"] = args.color;
-    if (args.textColor !== undefined) updates["data.style.textColor"] = args.textColor;
-    if (args.fontSize !== undefined) updates["data.style.fontSize"] = args.fontSize;
-    if (args.fontWeight !== undefined) updates["data.style.fontWeight"] = args.fontWeight;
-    if (args.paintStyle !== undefined) updates["data.style.paintStyle"] = args.paintStyle;
-    if (args.strokeWidth !== undefined) updates["data.style.strokeWidth"] = args.strokeWidth;
-    if (args.shapeKind !== undefined) updates["data.shapeKind"] = args.shapeKind;
-
-    this.storage.setNode(nodeId, updates);
-=======
     const nodeType = normalizeNodeType(args.nodeType);
     if (!nodeType) {
       logger.warn({ args }, "Skipping createNode with invalid nodeType");
       return;
     }
 
-    this._actions.push(
+    this.pushAction(
       buildCreateNodeAction(`ai-${randomUUID().slice(0, 8)}`, nodeType, args, normalizePosition(args.position)),
     );
->>>>>>> Stashed changes
+  }
+
+  private handleUpdateNode(args: Record<string, unknown>): void {
+    const nodeId = normalizeRequiredString(args.nodeId);
+    const currentNode = nodeId ? this.findSnapshotNode(nodeId) : null;
+
+    if (!nodeId || !currentNode) {
+      logger.warn({ args }, "Skipping updateNode with missing or unknown nodeId");
+      return;
+    }
+
+    this.pushAction(buildUpdateNodeAction(currentNode, args));
   }
 
   private handleCreateEdge(args: Record<string, unknown>): void {
@@ -225,7 +155,73 @@ export class ActionExecutor {
       label: normalizeOptionalString(args.label),
     };
 
-    this._actions.push(action);
+    this.pushAction(action);
+  }
+
+  private handleRearrangeNodes(args: Record<string, unknown>): void {
+    if (!this.actionContext.canvasSnapshot) {
+      logger.warn({ args }, "Skipping rearrangeNodes without a canvas snapshot");
+      return;
+    }
+
+    const requestedNodeIds = Array.isArray(args.nodeIds)
+      ? args.nodeIds.map(normalizeRequiredString).filter((value): value is string => Boolean(value))
+      : [];
+    const nodeIds = resolveRearrangeNodeIds(requestedNodeIds, this.actionContext.canvasSnapshot);
+
+    if (nodeIds.length < 2) {
+      logger.warn({ args }, "Skipping rearrangeNodes with insufficient nodeIds");
+      return;
+    }
+
+    const layout = normalizeRearrangeLayout(args.layout) ?? "force";
+    const spacing = normalizeOptionalNumber(args.spacing) ?? 140;
+    const snapshotNodes = nodeIds
+      .map((nodeId) => this.findSnapshotNode(nodeId))
+      .filter((node): node is CanvasNode => Boolean(node));
+
+    if (snapshotNodes.length < 2) {
+      logger.warn({ args }, "Skipping rearrangeNodes because nodes were not found in snapshot");
+      return;
+    }
+
+    const rootNodeId =
+      normalizeOptionalString(args.rootNodeId) ??
+      this.actionContext.canvasSnapshot.selectedNodeIds.find((nodeId) => nodeIds.includes(nodeId)) ??
+      chooseLayoutRoot(snapshotNodes, this.actionContext.canvasSnapshot);
+
+    const positionMap = rearrangeExistingNodes(
+      snapshotNodes,
+      this.actionContext.canvasSnapshot,
+      layout,
+      spacing,
+      rootNodeId,
+    );
+
+    for (const node of snapshotNodes) {
+      const nextPosition = positionMap.get(node.id);
+      if (!nextPosition) {
+        continue;
+      }
+
+      const current = createNodeMutationSnapshot(node);
+      if (
+        Math.abs(current.position.x - nextPosition.x) < 2 &&
+        Math.abs(current.position.y - nextPosition.y) < 2
+      ) {
+        continue;
+      }
+
+      this.pushAction({
+        type: "update_node",
+        nodeId: node.id,
+        before: current,
+        after: {
+          ...current,
+          position: nextPosition,
+        },
+      });
+    }
   }
 
   private handleCreateDiagram(args: Record<string, unknown>): void {
@@ -282,7 +278,7 @@ export class ActionExecutor {
         buildDiagramNodeArguments(node, rootKey, diagramType),
         positionMap.get(node.key) ?? anchor,
       );
-      this._actions.push(action);
+      this.pushAction(action);
       nodeIdByKey.set(node.key, action.nodeId);
     }
 
@@ -294,7 +290,7 @@ export class ActionExecutor {
         continue;
       }
 
-      this._actions.push({
+      this.pushAction({
         type: "create_edge",
         edgeId: `ai-edge-${randomUUID().slice(0, 8)}`,
         source,
@@ -305,16 +301,54 @@ export class ActionExecutor {
 
     const summary = normalizeRequiredString(args.summary);
     if (summary) {
-      this._messages.push(summary);
+      this.pushMessage(summary);
     }
   }
 
   private handleSendMessage(args: Record<string, unknown>): void {
     const text = normalizeRequiredString(args.text);
     if (text) {
-      this._messages.push(text);
+      this.pushMessage(text);
     }
   }
+
+  private findSnapshotNode(nodeId: string): CanvasNode | null {
+    return this.actionContext.canvasSnapshot?.nodes.find((node) => node.id === nodeId) ?? null;
+  }
+
+  private pushAction(action: AiCanvasAction): void {
+    this._actions.push(action);
+    if (!this.legacyAdapter) {
+      return;
+    }
+
+    switch (action.type) {
+      case "create_node":
+        this.legacyAdapter.setNode(action.nodeId, legacyCreateNodePayload(action, this.actionContext));
+        break;
+      case "update_node":
+        this.legacyAdapter.setNode(action.nodeId, legacyUpdateNodePayload(action));
+        break;
+      case "create_edge":
+        this.legacyAdapter.setEdge(action.edgeId, legacyCreateEdgePayload(action, this.actionContext));
+        break;
+    }
+  }
+
+  private pushMessage(text: string): void {
+    this._messages.push(text);
+    this.legacyAdapter?.sendMessage(text);
+  }
+}
+
+function isLegacyActionAdapter(value: unknown): value is LegacyActionAdapter {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      "setNode" in value &&
+      "setEdge" in value &&
+      "sendMessage" in value,
+  );
 }
 
 function normalizePosition(value: unknown): { x: number; y: number } {
@@ -363,6 +397,17 @@ function normalizeDiagramLayout(value: unknown): DiagramLayout | undefined {
   return value === "radial" || value === "horizontal" || value === "vertical" ? value : undefined;
 }
 
+function normalizeRearrangeLayout(value: unknown): RearrangeLayout | undefined {
+  return value === "force" ||
+    value === "mindmap" ||
+    value === "radial" ||
+    value === "horizontal" ||
+    value === "vertical" ||
+    value === "grid"
+    ? value
+    : undefined;
+}
+
 function getDefaultLayout(diagramType: DiagramType): DiagramLayout {
   if (diagramType === "timeline") return "vertical";
   return "horizontal";
@@ -397,6 +442,103 @@ function buildCreateNodeAction(
     shapeKind,
     zIndex: 10,
   } satisfies CreateNodeAction;
+}
+
+function buildUpdateNodeAction(node: CanvasNode, args: Record<string, unknown>): UpdateNodeAction {
+  const before = createNodeMutationSnapshot(node);
+  const textUpdate = normalizeOptionalString(args.text);
+  const labelUpdate = normalizeOptionalString(args.label);
+  const content =
+    node.type === "shape"
+      ? {
+          ...before.content,
+          ...(labelUpdate !== undefined ? { label: labelUpdate } : {}),
+          ...(labelUpdate === undefined && textUpdate !== undefined ? { label: textUpdate } : {}),
+        }
+      : {
+          ...before.content,
+          ...(textUpdate !== undefined ? { text: textUpdate } : {}),
+          ...(textUpdate === undefined && labelUpdate !== undefined ? { text: labelUpdate } : {}),
+        };
+
+  const style = {
+    ...before.style,
+    ...(normalizeOptionalString(args.color) !== undefined ? { color: normalizeOptionalString(args.color) } : {}),
+    ...(normalizeOptionalString(args.textColor) !== undefined
+      ? { textColor: normalizeOptionalString(args.textColor) }
+      : {}),
+    ...(normalizeOptionalNumber(args.fontSize) !== undefined ? { fontSize: normalizeOptionalNumber(args.fontSize) } : {}),
+    ...(normalizeOptionalString(args.fontWeight) !== undefined
+      ? { fontWeight: normalizeOptionalString(args.fontWeight) }
+      : {}),
+    ...(normalizeOptionalString(args.align) !== undefined ? { align: normalizeOptionalString(args.align) } : {}),
+    ...(normalizeOptionalString(args.paintStyle) !== undefined
+      ? { paintStyle: normalizeOptionalString(args.paintStyle) }
+      : {}),
+    ...(normalizeOptionalNumber(args.strokeWidth) !== undefined
+      ? { strokeWidth: normalizeOptionalNumber(args.strokeWidth) }
+      : {}),
+  };
+
+  const shapeKind = normalizeShapeKind(args.shapeKind) ?? before.shapeKind;
+  const resizedText = extractMutationSnapshotText(node.type, content);
+
+  const estimatedSize = estimateNodeSize(
+    node.type,
+    shapeKind,
+    resizedText,
+    typeof style.fontSize === "number" ? style.fontSize : undefined,
+  );
+
+  return {
+    type: "update_node",
+    nodeId: node.id,
+    before,
+    after: {
+      position: normalizeOptionalPosition(args.position) ?? before.position,
+      parentId: normalizeOptionalString(args.parentId) ?? before.parentId,
+      width: normalizeOptionalNumber(args.width) ?? Math.max(before.width ?? 0, estimatedSize.width),
+      height: normalizeOptionalNumber(args.height) ?? Math.max(before.height ?? 0, estimatedSize.height),
+      content,
+      style,
+      shapeKind,
+      zIndex: normalizeOptionalNumber(args.zIndex) ?? before.zIndex,
+    },
+  };
+}
+
+function createNodeMutationSnapshot(node: CanvasNode): NodeMutationSnapshot {
+  const text = extractMutationSnapshotText(node.type, node.data.content);
+  const estimatedSize = estimateNodeSize(
+    node.type,
+    node.data.shapeKind,
+    text,
+    typeof node.data.style.fontSize === "number" ? node.data.style.fontSize : undefined,
+  );
+
+  return {
+    position: { ...node.position },
+    parentId: node.parentId ?? null,
+    width: typeof node.width === "number" ? node.width : estimatedSize.width,
+    height: typeof node.height === "number" ? node.height : estimatedSize.height,
+    content: { ...node.data.content },
+    style: { ...node.data.style },
+    shapeKind: node.data.shapeKind,
+    zIndex: node.data.zIndex,
+  };
+}
+
+function extractMutationSnapshotText(
+  nodeType: CanvasNode["type"],
+  content: Record<string, unknown>,
+): string {
+  return nodeType === "shape"
+    ? typeof content.label === "string"
+      ? content.label
+      : ""
+    : typeof content.text === "string"
+      ? content.text
+      : "";
 }
 
 function buildNodeContent(
@@ -466,18 +608,18 @@ function estimateNodeSize(
   const sizing =
     nodeType === "sticky_note"
       ? {
-          minWidth: 280,
-          maxWidth: 380,
+          minWidth: 320,
+          maxWidth: 520,
           minHeight: 168,
-          maxHeight: 300,
-          paddingX: 92,
-          paddingY: 72,
-          targetLines: 3,
+          maxHeight: 340,
+          paddingX: 80,
+          paddingY: 68,
+          targetLines: 4,
         }
       : nodeType === "text"
         ? {
-            minWidth: 280,
-            maxWidth: 460,
+            minWidth: 300,
+            maxWidth: 560,
             minHeight: 80,
             maxHeight: 260,
             paddingX: 36,
@@ -485,13 +627,13 @@ function estimateNodeSize(
             targetLines: 2,
           }
         : {
-            minWidth: shapeKind === "ellipse" ? 240 : 220,
-            maxWidth: shapeKind === "ellipse" ? 340 : 320,
-            minHeight: shapeKind === "ellipse" ? 124 : 112,
+            minWidth: shapeKind === "ellipse" ? 260 : 240,
+            maxWidth: shapeKind === "ellipse" ? 400 : 440,
+            minHeight: shapeKind === "ellipse" ? 128 : 112,
             maxHeight: 240,
-            paddingX: 40,
+            paddingX: 46,
             paddingY: 34,
-            targetLines: shapeKind === "ellipse" ? 2 : 3,
+            targetLines: 2,
           };
 
   if (!content) {
@@ -566,6 +708,7 @@ function clampNumber(value: number, min: number, max: number): number {
 
 type DiagramType = "mindmap" | "flowchart" | "timeline" | "concept_map";
 type DiagramLayout = "radial" | "horizontal" | "vertical";
+type RearrangeLayout = "force" | "mindmap" | "radial" | "horizontal" | "vertical" | "grid";
 
 interface DiagramNodeInput {
   key: string;
@@ -696,6 +839,22 @@ function buildExistingNodeLookup(snapshot?: CanvasSnapshot): Map<string, Existin
   return lookup;
 }
 
+function resolveRearrangeNodeIds(requestedNodeIds: string[], snapshot: CanvasSnapshot): string[] {
+  if (requestedNodeIds.length >= 2) {
+    return requestedNodeIds;
+  }
+
+  if (snapshot.selectedNodeIds.length >= 2) {
+    return [...snapshot.selectedNodeIds];
+  }
+
+  if (snapshot.nodes.length >= 2) {
+    return snapshot.nodes.map((node) => node.id);
+  }
+
+  return [];
+}
+
 function resolveDiagramAnchor(
   snapshot: CanvasSnapshot | undefined,
   explicitAnchor: Position | undefined,
@@ -793,10 +952,30 @@ function layoutDiagramNodes(
   diagramType: DiagramType,
   rootKey: string,
 ): Map<string, Position> {
-  if (diagramType === "mindmap" || diagramType === "concept_map") {
-    return layoutMindmapNodes(nodes, edges, anchor, existingNodes, diagramType, rootKey);
-  }
+  const basePositions =
+    diagramType === "mindmap" || diagramType === "concept_map"
+      ? layoutMindmapNodes(nodes, edges, anchor, existingNodes, diagramType, rootKey)
+      : layoutLayeredDiagramNodes(nodes, depthMap, layout, anchor, existingNodes, diagramType, rootKey);
 
+  return relaxDiagramNodePositions(
+    nodes,
+    edges,
+    basePositions,
+    existingNodes,
+    diagramType,
+    rootKey,
+  );
+}
+
+function layoutLayeredDiagramNodes(
+  nodes: DiagramNodeInput[],
+  depthMap: Map<string, number>,
+  layout: DiagramLayout,
+  anchor: Position,
+  existingNodes: Map<string, ExistingNodeInfo>,
+  diagramType: DiagramType,
+  rootKey: string,
+): Map<string, Position> {
   const groups = new Map<number, DiagramNodeInput[]>();
   for (const node of nodes) {
     const depth = depthMap.get(node.key) ?? 0;
@@ -827,9 +1006,10 @@ function layoutDiagramNodes(
     }
 
     if (layout === "vertical") {
-      const widthGap = 72;
+      const widthGap = 88;
       const totalWidth = group.reduce(
-        (sum, node, index) => sum + getDiagramNodeSize(node, rootKey, diagramType, existingNodes).width + (index > 0 ? widthGap : 0),
+        (sum, node, index) =>
+          sum + getDiagramNodeSize(node, rootKey, diagramType, existingNodes).width + (index > 0 ? widthGap : 0),
         0,
       );
       let cursorX = anchor.x - totalWidth / 2;
@@ -841,16 +1021,17 @@ function layoutDiagramNodes(
         const size = getDiagramNodeSize(node, rootKey, diagramType, existingNodes);
         positions.set(node.key, {
           x: Math.round(cursorX),
-          y: Math.round(anchor.y + depth * 260),
+          y: Math.round(anchor.y + depth * 280),
         });
         cursorX += size.width + widthGap;
       }
       continue;
     }
 
-    const heightGap = 64;
+    const heightGap = 84;
     const totalHeight = group.reduce(
-      (sum, node, index) => sum + getDiagramNodeSize(node, rootKey, diagramType, existingNodes).height + (index > 0 ? heightGap : 0),
+      (sum, node, index) =>
+        sum + getDiagramNodeSize(node, rootKey, diagramType, existingNodes).height + (index > 0 ? heightGap : 0),
       0,
     );
     let cursorY = anchor.y - totalHeight / 2;
@@ -861,7 +1042,7 @@ function layoutDiagramNodes(
       }
       const size = getDiagramNodeSize(node, rootKey, diagramType, existingNodes);
       positions.set(node.key, {
-        x: Math.round(anchor.x + depth * 360),
+        x: Math.round(anchor.x + depth * 380),
         y: Math.round(cursorY),
       });
       cursorY += size.height + heightGap;
@@ -918,8 +1099,8 @@ function layoutMindmapNodes(
   }
 
   const spanCache = new Map<string, number>();
-  const subtreeGap = 56;
-  const leafMinSpan = 136;
+  const subtreeGap = 72;
+  const leafMinSpan = 160;
 
   const measureSpan = (nodeKey: string): number => {
     if (spanCache.has(nodeKey)) {
@@ -949,8 +1130,8 @@ function layoutMindmapNodes(
   const placeSide = (roots: string[], side: -1 | 1): void => {
     if (roots.length === 0) return;
 
-    const rootGap = 88;
-    const baseStep = 280;
+    const rootGap = 120;
+    const baseStep = 340;
     const totalSpan = roots.reduce((sum, key, index) => sum + measureSpan(key) + (index > 0 ? 72 : 0), 0);
     let cursorY = rootCenterY - totalSpan / 2;
 
@@ -1003,12 +1184,60 @@ function layoutMindmapNodes(
   if (unplaced.length > 0) {
     let fallbackY = rootPosition.y + rootSize.height + 120;
     for (const node of unplaced) {
-      positions.set(node.key, { x: rootPosition.x + rootSize.width + 220, y: fallbackY });
-      fallbackY += getDiagramNodeSize(node, rootKey, diagramType, existingNodes).height + 48;
+      positions.set(node.key, { x: rootPosition.x + rootSize.width + 260, y: fallbackY });
+      fallbackY += getDiagramNodeSize(node, rootKey, diagramType, existingNodes).height + 64;
     }
   }
 
   return positions;
+}
+
+function relaxDiagramNodePositions(
+  nodes: DiagramNodeInput[],
+  edges: DiagramEdgeInput[],
+  positions: Map<string, Position>,
+  existingNodes: Map<string, ExistingNodeInfo>,
+  diagramType: DiagramType,
+  rootKey: string,
+): Map<string, Position> {
+  const nodeSpecs = nodes.map((node) => {
+    const size = getDiagramNodeSize(node, rootKey, diagramType, existingNodes);
+    return {
+      id: node.key,
+      width: size.width,
+      height: size.height,
+    };
+  });
+
+  const obstacleSpecs = [...existingNodes.entries()].map(([id, size]) => ({
+    id: `obstacle:${id}`,
+    width: size.width,
+    height: size.height,
+  }));
+  const obstaclePositions = new Map<string, Position>(
+    [...existingNodes.entries()].map(([id, size]) => [`obstacle:${id}`, size.position]),
+  );
+
+  const fixedIds = new Set<string>([
+    ...nodes
+      .filter((node) => node.existingNodeId && existingNodes.has(node.existingNodeId))
+      .map((node) => node.key),
+    ...obstacleSpecs.map((node) => node.id),
+  ]);
+  const rootPosition = positions.get(rootKey);
+
+  return relaxNodeLayoutPositions(
+    [...nodeSpecs, ...obstacleSpecs],
+    edges.map((edge) => ({ source: edge.sourceKey, target: edge.targetKey })),
+    new Map([...positions.entries(), ...obstaclePositions.entries()]),
+    {
+      fixedIds,
+      spacing: diagramType === "mindmap" ? 126 : 112,
+      iterations: diagramType === "mindmap" ? 60 : 48,
+      anchor: rootPosition,
+      preserveBias: 0.06,
+    },
+  );
 }
 
 function buildDiagramChildrenMap(
@@ -1109,4 +1338,375 @@ function getDefaultDiagramShapeKind(
     return "ellipse";
   }
   return "rectangle";
+}
+
+function chooseLayoutRoot(nodes: CanvasNode[], snapshot: CanvasSnapshot): string {
+  const selected = snapshot.selectedNodeIds.find((nodeId) => nodes.some((node) => node.id === nodeId));
+  if (selected) {
+    return selected;
+  }
+
+  const degree = new Map<string, number>();
+  for (const node of nodes) {
+    degree.set(node.id, 0);
+  }
+  for (const edge of snapshot.edges) {
+    if (degree.has(edge.source)) {
+      degree.set(edge.source, (degree.get(edge.source) ?? 0) + 1);
+    }
+    if (degree.has(edge.target)) {
+      degree.set(edge.target, (degree.get(edge.target) ?? 0) + 1);
+    }
+  }
+
+  return [...degree.entries()].sort((left, right) => right[1] - left[1])[0]?.[0] ?? nodes[0]!.id;
+}
+
+function rearrangeExistingNodes(
+  nodes: CanvasNode[],
+  snapshot: CanvasSnapshot,
+  layout: RearrangeLayout,
+  spacing: number,
+  rootNodeId: string,
+): Map<string, Position> {
+  switch (layout) {
+    case "horizontal":
+    case "vertical":
+    case "grid":
+      return simpleExistingNodeLayout(nodes, layout, spacing);
+    case "radial":
+    case "mindmap":
+      return radialExistingNodeLayout(nodes, spacing, rootNodeId);
+    case "force":
+    default:
+      return forceDirectedExistingNodeLayout(nodes, snapshot, spacing, rootNodeId);
+  }
+}
+
+function simpleExistingNodeLayout(
+  nodes: CanvasNode[],
+  layout: Extract<RearrangeLayout, "horizontal" | "vertical" | "grid">,
+  spacing: number,
+): Map<string, Position> {
+  const positions = new Map<string, Position>();
+  const sorted = [...nodes].sort((left, right) => left.position.x - right.position.x || left.position.y - right.position.y);
+  const anchor = sorted[0]?.position ?? { x: 0, y: 0 };
+
+  if (layout === "grid") {
+    const columns = Math.max(2, Math.ceil(Math.sqrt(sorted.length)));
+    sorted.forEach((node, index) => {
+      const size = createNodeMutationSnapshot(node);
+      const column = index % columns;
+      const row = Math.floor(index / columns);
+      positions.set(node.id, {
+        x: Math.round(anchor.x + column * ((size.width ?? 220) + spacing)),
+        y: Math.round(anchor.y + row * ((size.height ?? 120) + spacing)),
+      });
+    });
+    return positions;
+  }
+
+  let cursorX = anchor.x;
+  let cursorY = anchor.y;
+  for (const node of sorted) {
+    const size = createNodeMutationSnapshot(node);
+    positions.set(node.id, { x: Math.round(cursorX), y: Math.round(cursorY) });
+    if (layout === "horizontal") {
+      cursorX += (size.width ?? 220) + spacing;
+    } else {
+      cursorY += (size.height ?? 120) + spacing;
+    }
+  }
+
+  return positions;
+}
+
+function radialExistingNodeLayout(
+  nodes: CanvasNode[],
+  spacing: number,
+  rootNodeId: string,
+): Map<string, Position> {
+  const positions = new Map<string, Position>();
+  const root = nodes.find((node) => node.id === rootNodeId) ?? nodes[0];
+  if (!root) {
+    return positions;
+  }
+
+  positions.set(root.id, { ...root.position });
+  const others = nodes.filter((node) => node.id !== root.id);
+  const rootSize = createNodeMutationSnapshot(root);
+  const radius = Math.max(240, spacing * 1.4 + Math.max(rootSize.width ?? 0, rootSize.height ?? 0));
+
+  others.forEach((node, index) => {
+    const angle = (-Math.PI / 2) + (index / Math.max(others.length, 1)) * Math.PI * 2;
+    const size = createNodeMutationSnapshot(node);
+    positions.set(node.id, {
+      x: Math.round(root.position.x + Math.cos(angle) * radius - (size.width ?? 220) / 2),
+      y: Math.round(root.position.y + Math.sin(angle) * radius - (size.height ?? 120) / 2),
+    });
+  });
+
+  return positions;
+}
+
+function forceDirectedExistingNodeLayout(
+  nodes: CanvasNode[],
+  snapshot: CanvasSnapshot,
+  spacing: number,
+  rootNodeId: string,
+): Map<string, Position> {
+  const root = nodes.find((node) => node.id === rootNodeId) ?? nodes[0];
+  const selectedIds = new Set(nodes.map((node) => node.id));
+  const edges = snapshot.edges.filter(
+    (edge) => selectedIds.has(edge.source) && selectedIds.has(edge.target),
+  );
+
+  if (!root) {
+    return new Map();
+  }
+
+  const initialPositions = new Map(nodes.map((node) => [node.id, { ...node.position }]));
+  const nodeSpecs = nodes.map((node) => {
+    const snapshotState = createNodeMutationSnapshot(node);
+    return {
+      id: node.id,
+      width: snapshotState.width ?? 220,
+      height: snapshotState.height ?? 120,
+    };
+  });
+
+  return relaxNodeLayoutPositions(
+    nodeSpecs,
+    edges.map((edge) => ({ source: edge.source, target: edge.target })),
+    initialPositions,
+    {
+      fixedIds: new Set([root.id]),
+      spacing,
+      anchor: root.position,
+      preserveBias: 0.08,
+      iterations: 64,
+    },
+  );
+}
+
+function legacyCreateNodePayload(
+  action: CreateNodeAction,
+  context: ActionContext,
+): Record<string, unknown> {
+  return {
+    id: action.nodeId,
+    type: action.nodeType,
+    position: action.position,
+    style: action.width || action.height ? { width: action.width, height: action.height } : undefined,
+    data: {
+      objectType: action.objectType,
+      content: action.content,
+      style: action.style,
+      shapeKind: action.shapeKind,
+      zIndex: action.zIndex ?? 10,
+      _ai: {
+        actionId: context.commandId ?? null,
+        commandId: context.commandId ?? null,
+        requestedBy: context.requestedBy ?? null,
+        status: "pending",
+        createdAt: Date.now(),
+      },
+    },
+  };
+}
+
+function legacyUpdateNodePayload(action: UpdateNodeAction): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    position: action.after.position,
+    parentId: action.after.parentId ?? null,
+    width: action.after.width,
+    height: action.after.height,
+    "data.shapeKind": action.after.shapeKind,
+    zIndex: action.after.zIndex,
+  };
+
+  if (typeof action.after.content.label === "string") {
+    payload["data.content.label"] = action.after.content.label;
+  }
+  if (typeof action.after.content.text === "string") {
+    payload["data.content.text"] = action.after.content.text;
+  }
+  if (typeof action.after.style.color === "string") {
+    payload["data.style.color"] = action.after.style.color;
+  }
+  if (typeof action.after.style.textColor === "string") {
+    payload["data.style.textColor"] = action.after.style.textColor;
+  }
+  if (typeof action.after.style.fontSize === "number") {
+    payload["data.style.fontSize"] = action.after.style.fontSize;
+  }
+  if (typeof action.after.style.fontWeight === "string") {
+    payload["data.style.fontWeight"] = action.after.style.fontWeight;
+  }
+  if (typeof action.after.style.paintStyle === "string") {
+    payload["data.style.paintStyle"] = action.after.style.paintStyle;
+  }
+  if (typeof action.after.style.strokeWidth === "number") {
+    payload["data.style.strokeWidth"] = action.after.style.strokeWidth;
+  }
+
+  return payload;
+}
+
+function legacyCreateEdgePayload(
+  action: CreateEdgeAction,
+  context: ActionContext,
+): Record<string, unknown> {
+  return {
+    id: action.edgeId,
+    source: action.source,
+    target: action.target,
+    label: action.label,
+    _ai: {
+      actionId: context.commandId ?? null,
+      commandId: context.commandId ?? null,
+      requestedBy: context.requestedBy ?? null,
+      status: "pending",
+      createdAt: Date.now(),
+    },
+  };
+}
+
+interface LayoutNodeSpec {
+  id: string;
+  width: number;
+  height: number;
+}
+
+interface LayoutEdgeSpec {
+  source: string;
+  target: string;
+}
+
+function relaxNodeLayoutPositions(
+  nodeSpecs: LayoutNodeSpec[],
+  edges: LayoutEdgeSpec[],
+  initialPositions: Map<string, Position>,
+  options: {
+    fixedIds?: Set<string>;
+    spacing: number;
+    anchor?: Position;
+    preserveBias?: number;
+    iterations?: number;
+  },
+): Map<string, Position> {
+  const fixedIds = options.fixedIds ?? new Set<string>();
+  const iterations = options.iterations ?? 48;
+  const preserveBias = options.preserveBias ?? 0.06;
+  const centers = new Map<string, { x: number; y: number }>();
+  const initialCenters = new Map<string, { x: number; y: number }>();
+  const specById = new Map(nodeSpecs.map((node) => [node.id, node]));
+
+  for (const node of nodeSpecs) {
+    const position = initialPositions.get(node.id) ?? { x: 0, y: 0 };
+    const center = {
+      x: position.x + node.width / 2,
+      y: position.y + node.height / 2,
+    };
+    centers.set(node.id, { ...center });
+    initialCenters.set(node.id, center);
+  }
+
+  const anchorCenter = options.anchor
+    ? { x: options.anchor.x, y: options.anchor.y }
+    : undefined;
+
+  for (let iteration = 0; iteration < iterations; iteration += 1) {
+    const forces = new Map<string, { x: number; y: number }>();
+    for (const node of nodeSpecs) {
+      forces.set(node.id, { x: 0, y: 0 });
+    }
+
+    for (let index = 0; index < nodeSpecs.length; index += 1) {
+      for (let inner = index + 1; inner < nodeSpecs.length; inner += 1) {
+        const left = nodeSpecs[index]!;
+        const right = nodeSpecs[inner]!;
+        const leftCenter = centers.get(left.id)!;
+        const rightCenter = centers.get(right.id)!;
+        const deltaX = rightCenter.x - leftCenter.x;
+        const deltaY = rightCenter.y - leftCenter.y;
+        const distance = Math.hypot(deltaX, deltaY) || 1;
+        const desiredX = left.width / 2 + right.width / 2 + options.spacing;
+        const desiredY = left.height / 2 + right.height / 2 + options.spacing * 0.78;
+        const overlapX = desiredX - Math.abs(deltaX);
+        const overlapY = desiredY - Math.abs(deltaY);
+        const shouldRepel = overlapX > 0 || overlapY > 0;
+
+        if (!shouldRepel && distance > Math.max(desiredX, desiredY) * 1.15) {
+          continue;
+        }
+
+        const unitX = deltaX / distance;
+        const unitY = deltaY / distance;
+        const pushMagnitude = shouldRepel
+          ? Math.max(overlapX, overlapY, 8) * 0.18
+          : (Math.max(desiredX, desiredY) * 1.15 - distance) * 0.02;
+
+        forces.get(left.id)!.x -= unitX * pushMagnitude;
+        forces.get(left.id)!.y -= unitY * pushMagnitude;
+        forces.get(right.id)!.x += unitX * pushMagnitude;
+        forces.get(right.id)!.y += unitY * pushMagnitude;
+      }
+    }
+
+    for (const edge of edges) {
+      const sourceSpec = specById.get(edge.source);
+      const targetSpec = specById.get(edge.target);
+      const source = centers.get(edge.source);
+      const target = centers.get(edge.target);
+      if (!sourceSpec || !targetSpec || !source || !target) {
+        continue;
+      }
+
+      const deltaX = target.x - source.x;
+      const deltaY = target.y - source.y;
+      const distance = Math.hypot(deltaX, deltaY) || 1;
+      const idealDistance =
+        sourceSpec.width / 2 + targetSpec.width / 2 + options.spacing * 1.35;
+      const pull = (distance - idealDistance) * 0.035;
+      const unitX = deltaX / distance;
+      const unitY = deltaY / distance;
+
+      forces.get(edge.source)!.x += unitX * pull;
+      forces.get(edge.source)!.y += unitY * pull;
+      forces.get(edge.target)!.x -= unitX * pull;
+      forces.get(edge.target)!.y -= unitY * pull;
+    }
+
+    for (const node of nodeSpecs) {
+      if (fixedIds.has(node.id)) {
+        continue;
+      }
+
+      const center = centers.get(node.id)!;
+      const force = forces.get(node.id)!;
+      const initialCenter = initialCenters.get(node.id)!;
+
+      center.x += force.x + (initialCenter.x - center.x) * preserveBias;
+      center.y += force.y + (initialCenter.y - center.y) * preserveBias;
+
+      if (anchorCenter) {
+        center.x += (anchorCenter.x - center.x) * 0.0025;
+        center.y += (anchorCenter.y - center.y) * 0.0025;
+      }
+    }
+  }
+
+  return new Map(
+    nodeSpecs.map((node) => {
+      const center = centers.get(node.id)!;
+      return [
+        node.id,
+        {
+          x: Math.round(center.x - node.width / 2),
+          y: Math.round(center.y - node.height / 2),
+        },
+      ];
+    }),
+  );
 }

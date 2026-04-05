@@ -54,6 +54,13 @@ class VoiceAgentHttpForwarder:
         try:
             with urlopen(request, timeout=self._timeout_seconds) as response:
                 response.read()
+                logger.info(
+                    "Transcript forward succeeded url=%s room_id=%s utterance_id=%s final=%s",
+                    self._target_url,
+                    payload.get("room_id"),
+                    payload.get("utterance_id"),
+                    payload.get("is_final"),
+                )
         except HTTPError as exc:
             logger.warning(
                 "Transcript forward failed status=%s url=%s",

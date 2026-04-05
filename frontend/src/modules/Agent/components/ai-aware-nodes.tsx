@@ -53,9 +53,21 @@ function withAiOverlay<N extends Node<Record<string, unknown>>>(
 
     function handleApprove() {
       if (!agent || !aiMeta) return
+      const pendingAction = agent.getPendingAction(aiMeta.actionId)
       const matchingAction = agent.queue.recentActions.find((action) => action.actionId === aiMeta.actionId)
-      const nodeIds = matchingAction?.nodeIds ?? [props.id]
-      const edgeIds = matchingAction?.edgeIds ?? []
+      const nodeIds =
+        pendingAction?.actions
+          .filter((action) => action.type === "create_node" || action.type === "update_node")
+          .map((action) => ("nodeId" in action ? action.nodeId : ""))
+          .filter(Boolean) ??
+        matchingAction?.nodeIds ??
+        [props.id]
+      const edgeIds =
+        pendingAction?.actions
+          .filter((action) => action.type === "create_edge")
+          .map((action) => action.edgeId) ??
+        matchingAction?.edgeIds ??
+        []
       console.info("[ai-agent] approve clicked", {
         actionId: aiMeta.actionId,
         nodeIds,
@@ -68,14 +80,27 @@ function withAiOverlay<N extends Node<Record<string, unknown>>>(
         actionId: aiMeta.actionId,
         nodeIds,
         edgeIds,
+        pendingAction,
       })
     }
 
     function handleReject() {
       if (!agent || !aiMeta) return
+      const pendingAction = agent.getPendingAction(aiMeta.actionId)
       const matchingAction = agent.queue.recentActions.find((action) => action.actionId === aiMeta.actionId)
-      const nodeIds = matchingAction?.nodeIds ?? [props.id]
-      const edgeIds = matchingAction?.edgeIds ?? []
+      const nodeIds =
+        pendingAction?.actions
+          .filter((action) => action.type === "create_node" || action.type === "update_node")
+          .map((action) => ("nodeId" in action ? action.nodeId : ""))
+          .filter(Boolean) ??
+        matchingAction?.nodeIds ??
+        [props.id]
+      const edgeIds =
+        pendingAction?.actions
+          .filter((action) => action.type === "create_edge")
+          .map((action) => action.edgeId) ??
+        matchingAction?.edgeIds ??
+        []
       console.info("[ai-agent] reject clicked", {
         actionId: aiMeta.actionId,
         nodeIds,
@@ -88,6 +113,7 @@ function withAiOverlay<N extends Node<Record<string, unknown>>>(
         actionId: aiMeta.actionId,
         nodeIds,
         edgeIds,
+        pendingAction,
       })
     }
 

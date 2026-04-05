@@ -95,21 +95,6 @@ function FlowCanvasInner({
   onActiveToolChange,
 }: FlowCanvasProps) {
   const sectionRef = React.useRef<HTMLElement | null>(null)
-<<<<<<< Updated upstream
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
-    useLiveblocksFlow<CanvasObjectNode, Edge>({
-      suspense: true,
-      nodes: {
-        initial: initialNodes,
-      },
-      edges: {
-        initial: initialEdges,
-      },
-    })
-  const [draftCreation, setDraftCreation] =
-    React.useState<DraftCreation | null>(null)
-  const [draftNode, setDraftNode] = React.useState<CanvasObjectNode | null>(
-=======
   const hasMeasuredCanvasRef = React.useRef(false)
   const previousToolRef = React.useRef<ToolId | null>(null)
   const suppressSemanticEventsRef = React.useRef(false)
@@ -135,9 +120,9 @@ function FlowCanvasInner({
   })
   const [isMiniMapVisible, setIsMiniMapVisible] = React.useState(true)
   const [draftCreation, setDraftCreation] = React.useState<DraftCreation | null>(
->>>>>>> Stashed changes
     null
   )
+  const [draftNode, setDraftNode] = React.useState<CanvasObjectNode | null>(null)
   const [selectedObjectIds, setSelectedObjectIds] = React.useState<string[]>([])
   const [editingObjectId, setEditingObjectId] = React.useState<string | null>(
     null
@@ -158,56 +143,6 @@ function FlowCanvasInner({
   const aiAgent = useAiAgentOptional()
   // useAiMockBridge({ onNodesChange })  // Mock bridge disabled — Liveblocks handles AI node sync
 
-  // Listen for approve/reject actions from AI-aware nodes
-  React.useEffect(() => {
-    if (!aiAgent) return
-    return aiAgent.registerCanvasAction((action) => {
-      if (action.type === "reject") {
-        // Remove rejected nodes from canvas
-<<<<<<< Updated upstream
-        const removeChanges: NodeChange<CanvasObjectNode>[] =
-          action.nodeIds.map((id) => ({ type: "remove", id }))
-        onNodesChange(removeChanges)
-=======
-        const removeChanges: NodeChange<CanvasObjectNode>[] = action.nodeIds.map(
-          (id) => ({ type: "remove", id }),
-        )
-        withSuppressedSemanticEvents(() => onNodesChange(removeChanges))
-        if (action.edgeIds.length > 0) {
-          withSuppressedSemanticEvents(() =>
-            onEdgesChange(action.edgeIds.map((id) => ({ type: "remove", id }))),
-          )
-        }
->>>>>>> Stashed changes
-      } else if (action.type === "approve") {
-        // Update node data to mark as approved
-        for (const nodeId of action.nodeIds) {
-          const node = nodes.find((n) => n.id === nodeId)
-          if (!node) continue
-          const data = node.data as Record<string, unknown>
-          const aiField = data._ai as Record<string, unknown> | undefined
-          if (!aiField) continue
-          withSuppressedSemanticEvents(() => onNodesChange([
-            {
-              type: "replace",
-              id: nodeId,
-              item: {
-                ...node,
-                data: {
-                  ...node.data,
-                  _ai: { ...aiField, status: "approved" },
-                },
-              } as unknown as CanvasObjectNode,
-            },
-          ]))
-        }
-      }
-    })
-  }, [aiAgent, nodes, onEdgesChange, onNodesChange])
-
-  const reactFlow = useReactFlow<CanvasObjectNode, Edge>()
-  const viewport = useViewport()
-
   const withSuppressedSemanticEvents = React.useCallback((fn: () => void) => {
     suppressSemanticEventsRef.current = true
     try {
@@ -218,6 +153,84 @@ function FlowCanvasInner({
       }, 0)
     }
   }, [])
+
+  // Listen for approve/reject actions from AI-aware nodes
+  React.useEffect(() => {
+    if (!aiAgent) return
+    return aiAgent.registerCanvasAction((action) => {
+      const nextNodes: NodeChange<CanvasObjectNode>[] = []
+      const nextEdges: EdgeChange<Edge>[] = []
+
+      if (action.type === "reject" && action.pendingAction) {
+        for (const pending of action.pendingAction.actions) {
+          if (pending.type === "create_node") {
+            nextNodes.push({ type: "remove", id: pending.nodeId })
+            continue
+          }
+
+          if (pending.type === "create_edge") {
+            nextEdges.push({ type: "remove", id: pending.edgeId })
+            continue
+          }
+
+          const currentNode = nodes.find((node) => node.id === pending.nodeId)
+          if (!currentNode) continue
+
+          nextNodes.push({
+            type: "replace",
+            id: pending.nodeId,
+            item: restoreNodeFromPendingUpdate(currentNode, pending),
+          })
+        }
+      } else if (action.type === "approve") {
+        for (const nodeId of action.nodeIds) {
+          const node = nodes.find((entry) => entry.id === nodeId)
+          const aiField = node?.data._ai as Record<string, unknown> | undefined
+          if (!node || !aiField) continue
+          nextNodes.push({
+            type: "replace",
+            id: nodeId,
+            item: {
+              ...node,
+              data: {
+                ...node.data,
+                _ai: { ...aiField, status: "approved" },
+              },
+            } as CanvasObjectNode,
+          })
+        }
+
+        for (const edgeId of action.edgeIds) {
+          const edge = edges.find((entry) => entry.id === edgeId)
+          const aiField = edge?.data?._ai as Record<string, unknown> | undefined
+          if (!edge || !aiField) continue
+          nextEdges.push({
+            type: "replace",
+            id: edgeId,
+            item: {
+              ...edge,
+              data: {
+                ...(edge.data ?? {}),
+                _ai: { ...aiField, status: "approved" },
+              },
+            } as Edge,
+          })
+        }
+      }
+
+      withSuppressedSemanticEvents(() => {
+        if (nextNodes.length > 0) {
+          onNodesChange(nextNodes)
+        }
+        if (nextEdges.length > 0) {
+          onEdgesChange(nextEdges)
+        }
+      })
+    })
+  }, [aiAgent, edges, nodes, onEdgesChange, onNodesChange, withSuppressedSemanticEvents])
+
+  const reactFlow = useReactFlow<CanvasObjectNode, Edge>()
+  const viewport = useViewport()
 
   const buildCanvasSnapshot = React.useCallback((): CanvasSnapshot => {
     const visibleNodes = nodes
@@ -269,7 +282,7 @@ function FlowCanvasInner({
             type: "add",
             item: buildNodeFromPendingAction(action, pendingAction.actionId, aiAgent.userId),
           })
-        } else {
+        } else if (action.type === "create_edge") {
           nextEdges.push({
             type: "add",
             item: {
@@ -288,6 +301,14 @@ function FlowCanvasInner({
               },
             } as Edge,
           })
+        } else {
+          const currentNode = nodes.find((node) => node.id === action.nodeId)
+          if (!currentNode) continue
+          nextNodes.push({
+            type: "replace",
+            id: action.nodeId,
+            item: buildNodeFromUpdateAction(currentNode, action, pendingAction.actionId, aiAgent.userId),
+          })
         }
       }
 
@@ -300,7 +321,7 @@ function FlowCanvasInner({
         }
       })
     })
-  }, [aiAgent, onEdgesChange, onNodesChange, withSuppressedSemanticEvents])
+  }, [aiAgent, nodes, onEdgesChange, onNodesChange, withSuppressedSemanticEvents])
 
   const renderedNodes = React.useMemo(
     () => (draftNode ? [...nodes, draftNode] : nodes),
@@ -506,24 +527,11 @@ function FlowCanvasInner({
         setInspectorOpen(false)
       }
 
-<<<<<<< Updated upstream
-      // Push selection events to AI event batcher
-      if (aiAgent) {
-        if (nextIds.length > 0) {
-          aiAgent.pushEvent({
-            type: "node:selected",
-            data: { nodeIds: nextIds },
-          })
-        } else {
-          aiAgent.pushEvent({ type: "node:deselected", data: {} })
-        }
-=======
       if (aiAgent && !suppressSemanticEventsRef.current) {
         aiAgent.pushEvent({
           type: "canvas.selection.changed",
           data: { nodeIds: nextIds },
         })
->>>>>>> Stashed changes
       }
 
       // Close AI prompt only when selection is fully cleared
@@ -680,11 +688,7 @@ function FlowCanvasInner({
         source: "canvas_context_menu",
       })
     },
-<<<<<<< Updated upstream
-    [aiAgent, selectedObjectIds, viewport]
-=======
     [aiAgent],
->>>>>>> Stashed changes
   )
 
   const handleNodeDoubleClick = React.useCallback<
@@ -1099,21 +1103,21 @@ function buildNodeFromPendingAction(
     width:
       action.width ??
       (action.nodeType === "sticky_note"
-        ? 280
+        ? 320
         : action.nodeType === "text"
-          ? 300
+          ? 320
           : action.shapeKind === "ellipse"
-            ? 260
-            : 220),
+            ? 280
+            : 240),
     height:
       action.height ??
       (action.nodeType === "sticky_note"
-        ? 168
+        ? 176
         : action.nodeType === "text"
-          ? 80
+          ? 88
           : action.shapeKind === "ellipse"
-            ? 124
-            : 112),
+            ? 132
+            : 120),
   }
 
   const aiMeta = {
@@ -1199,6 +1203,74 @@ function buildNodeFromPendingAction(
       ...node.data,
       zIndex: action.zIndex ?? 10,
       _ai: aiMeta,
+    },
+  }
+}
+
+function buildNodeFromUpdateAction(
+  currentNode: CanvasObjectNode,
+  action: Extract<AiPendingAction["actions"][number], { type: "update_node" }>,
+  actionId: string,
+  requestedBy: string,
+): CanvasObjectNode {
+  return applyPendingSnapshotToNode(currentNode, action.after, {
+    actionId,
+    commandId: null,
+    requestedBy,
+    status: "pending",
+    createdAt: Date.now(),
+  })
+}
+
+function restoreNodeFromPendingUpdate(
+  currentNode: CanvasObjectNode,
+  action: Extract<AiPendingAction["actions"][number], { type: "update_node" }>,
+): CanvasObjectNode {
+  return applyPendingSnapshotToNode(currentNode, action.before, null)
+}
+
+function applyPendingSnapshotToNode(
+  currentNode: CanvasObjectNode,
+  snapshot: {
+    position: { x: number; y: number }
+    parentId?: string | null
+    width?: number
+    height?: number
+    content: Record<string, unknown>
+    style: Record<string, unknown>
+    shapeKind?: "rectangle" | "diamond" | "ellipse"
+    zIndex?: number
+  },
+  aiMeta: {
+    actionId: string
+    commandId: string | null
+    requestedBy: string | null
+    status: "pending" | "approved" | "rejected"
+    createdAt: number
+  } | null,
+): CanvasObjectNode {
+  const normalizedShapeKind =
+    snapshot.shapeKind === "ellipse" ||
+    snapshot.shapeKind === "rectangle" ||
+    snapshot.shapeKind === "diamond"
+      ? snapshot.shapeKind
+      : currentNode.data.objectType === "shape" && currentNode.data.shapeKind
+        ? currentNode.data.shapeKind
+        : "rectangle"
+
+  return {
+    ...currentNode,
+    position: snapshot.position,
+    parentId: snapshot.parentId ?? undefined,
+    width: snapshot.width,
+    height: snapshot.height,
+    data: {
+      ...currentNode.data,
+      content: { ...snapshot.content },
+      style: { ...snapshot.style },
+      ...(currentNode.type === "shape" ? { shapeKind: normalizedShapeKind } : {}),
+      zIndex: snapshot.zIndex ?? currentNode.data.zIndex ?? 10,
+      _ai: aiMeta ?? undefined,
     },
   }
 }

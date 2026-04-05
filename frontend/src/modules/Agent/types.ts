@@ -8,8 +8,8 @@ export type AiMetadata = {
   requestedBy: string | null
   status: AiActionStatus
   createdAt: number
-  persona: string
-  personaColor: string
+  persona?: string
+  personaColor?: string
 }
 
 export type CommandSource = "chat" | "canvas_context_menu"
@@ -49,12 +49,7 @@ export type CanvasSnapshot = {
   edges: CanvasSnapshotEdge[]
   selectedNodeIds: string[]
   viewport: { x: number; y: number; zoom: number }
-<<<<<<< Updated upstream
-  source: CommandSource
-  targetPersona?: string
-=======
   agentIntensity?: "quiet" | "balanced" | "active"
->>>>>>> Stashed changes
 }
 
 export type AiCommandRequest = {
@@ -90,7 +85,28 @@ export type AiCreateEdgeAction = {
   label?: string
 }
 
-export type AiCanvasAction = AiCreateNodeAction | AiCreateEdgeAction
+export type AiNodeMutationSnapshot = {
+  position: { x: number; y: number }
+  parentId?: string | null
+  width?: number
+  height?: number
+  content: Record<string, unknown>
+  style: Record<string, unknown>
+  shapeKind?: "rectangle" | "diamond" | "ellipse"
+  zIndex?: number
+}
+
+export type AiUpdateNodeAction = {
+  type: "update_node"
+  nodeId: string
+  before: AiNodeMutationSnapshot
+  after: AiNodeMutationSnapshot
+}
+
+export type AiCanvasAction =
+  | AiCreateNodeAction
+  | AiCreateEdgeAction
+  | AiUpdateNodeAction
 
 export type AiPendingAction = {
   actionId: string

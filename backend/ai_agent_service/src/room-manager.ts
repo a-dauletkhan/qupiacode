@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { Liveblocks, type CommentBody } from "@liveblocks/node";
 import { ActionExecutor } from "./action-executor.js";
 import { config } from "./config.js";
 import { ContextAccumulator } from "./context-accumulator.js";
@@ -41,7 +42,13 @@ Rules:
 - Do not cram long comma-separated content into tiny shapes.
 - If you propose board changes, only create new pending draft nodes or edges.
 - You may connect new draft nodes to existing visible nodes when that clearly helps satisfy the request.
-- Do not modify or delete existing user-created nodes in this mode.
+- Do not delete existing user-created nodes in this mode.
+- You may update existing user-created nodes as pending changes when the user explicitly asks for edits, color changes, cleaner spacing, better readability, or reduced overlap.
+- When the user asks to edit, recolor, rename, move, resize, or restyle existing blocks, prefer updateNode over creating new nodes.
+- When one or more nodes are selected and the request sounds like an edit, treat the selected nodes as the default targets unless the user clearly says otherwise.
+- When the user asks to clean up layout, reduce overlaps, or untangle connections, prefer rearrangeNodes.
+- rearrangeNodes may omit nodeIds when the selected nodes or the whole visible board should be cleaned up together.
+- When the user asks to recolor, resize, move, or restyle an existing block, prefer updateNode.
 - Do not collapse a requested structure into a single summary node.
 - Create as many pending draft nodes and edges as needed to satisfy the user's request.
 - Keep drafts reversible and keep your chat reply concise.
@@ -86,6 +93,7 @@ export class RoomManager {
   private llm: LLMProvider;
   private sessions = new Map<string, RoomSession>();
   private store = new SupabaseRoomStore();
+  private liveblocks = new Liveblocks({ secret: config.liveblocks.secretKey });
 
   constructor() {
     const claude = createClaudeProvider(config.llm.anthropic.apiKey, config.llm.anthropic.model);
@@ -453,6 +461,7 @@ export class RoomManager {
 
     const context = session.accumulator.buildContext();
     const selectedInfo = buildSelectedNodeInfo(request);
+    const actionHint = buildExplicitActionHint(request);
     const systemPrompt = buildSystemPrompt(request.targetPersona);
     const personaHint = buildPersonaUserHint(request.targetPersona);
 
@@ -460,7 +469,7 @@ export class RoomManager {
       { role: "system", content: systemPrompt },
       {
         role: "user",
-        content: `${personaHint ? `${personaHint}\n\n` : ""}User request (${request.source}): "${request.message}"${selectedInfo}\n\nCurrent room context:\n\n${context}`,
+        content: `${personaHint ? `${personaHint}\n\n` : ""}${actionHint ? `${actionHint}\n\n` : ""}User request (${request.source}): "${request.message}"${selectedInfo}\n\nCurrent room context:\n\n${context}`,
       },
     ];
 
@@ -515,6 +524,7 @@ export class RoomManager {
 
     const message = buildAssistantMessage(response.text, executor.messages, request.message);
     const pendingAction = await this.persistPendingAction(roomId, session, commandId, request, executor, message);
+    const publishedThreadId = await this.publishAssistantMessage(roomId, request, message);
 
     if (message) {
       await this.store.appendRoomEvent({
@@ -528,6 +538,7 @@ export class RoomManager {
           command_id: commandId,
           requested_by: request.userId,
           thread_id: request.threadId ?? null,
+          published_thread_id: publishedThreadId,
           target_persona: request.targetPersona ?? null,
           message,
         },
@@ -602,6 +613,48 @@ export class RoomManager {
       requiresApproval: true,
     };
   }
+
+  private async publishAssistantMessage(
+    roomId: string,
+    request: CommandRequest,
+    message: string,
+  ): Promise<string | null> {
+    if (!message.trim()) {
+      return request.threadId ?? null;
+    }
+
+    const body = toCommentBody(message);
+    try {
+      if (request.threadId) {
+        await this.liveblocks.createComment({
+          roomId,
+          threadId: request.threadId,
+          data: {
+            userId: "ai-agent",
+            createdAt: new Date(),
+            body,
+          },
+        });
+        return request.threadId;
+      }
+
+      const thread = await this.liveblocks.createThread({
+        roomId,
+        data: {
+          metadata: {},
+          comment: {
+            userId: "ai-agent",
+            createdAt: new Date(),
+            body,
+          },
+        },
+      });
+      return thread.id;
+    } catch (err) {
+      roomLogger(roomId).error({ err, threadId: request.threadId ?? null }, "Failed to publish assistant message");
+      return request.threadId ?? null;
+    }
+  }
 }
 
 function buildAssistantMessage(responseText: string | null, toolMessages: string[], userMessage: string): string {
@@ -615,6 +668,16 @@ function buildAssistantMessage(responseText: string | null, toolMessages: string
   }
 
   return `I reviewed "${userMessage}" and prepared the most relevant next step I could from the current board context.`;
+}
+
+function toCommentBody(text: string): CommentBody {
+  return {
+    version: 1,
+    content: text.split(/\n{2,}/).map((paragraph) => ({
+      type: "paragraph",
+      children: [{ text: paragraph }],
+    })),
+  };
 }
 
 function buildSelectedNodeInfo(request: CommandRequest): string {
@@ -636,13 +699,52 @@ function buildSelectedNodeInfo(request: CommandRequest): string {
       (typeof content?.label === "string" && content.label.trim()) ||
       (typeof content?.text === "string" && content.text.trim()) ||
       "";
+    const color = typeof node.data.style.color === "string" ? node.data.style.color : undefined;
+    const width = typeof node.width === "number" ? Math.round(node.width) : undefined;
+    const height = typeof node.height === "number" ? Math.round(node.height) : undefined;
+    const meta = [
+      `id=${node.id}`,
+      `type=${node.type}`,
+      `pos=(${Math.round(node.position.x)}, ${Math.round(node.position.y)})`,
+      width && height ? `size=${width}x${height}` : null,
+      color ? `color=${color}` : null,
+    ]
+      .filter(Boolean)
+      .join(", ");
 
     return label
-      ? `"${label}" (id=${node.id}, type=${node.type})`
-      : `${node.id} (${node.type})`;
+      ? `"${label}" (${meta})`
+      : `${node.id} (${meta})`;
   });
 
   return `\nSelected nodes: ${descriptions.join(", ")}`;
+}
+
+function buildExplicitActionHint(request: CommandRequest): string {
+  const lower = request.message.toLowerCase();
+  const hasSelection = request.canvasSnapshot.selectedNodeIds.length > 0;
+  const editIntent = /\b(edit|update|change|rename|rewrite|reword|recolor|color|move|reposition|resize|restyle|align|make .* (?:blue|green|yellow|bigger|smaller))\b/.test(
+    lower,
+  );
+  const layoutIntent = /\b(layout|rearrange|untangle|tidy|clean up|cleanup|organize|space out|spread out|overlap|overlapping|readability|less overlap)\b/.test(
+    lower,
+  );
+
+  if (layoutIntent) {
+    return hasSelection
+      ? `Important: this is a layout-cleanup request on existing selected nodes (${request.canvasSnapshot.selectedNodeIds.join(", ")}). Prefer rearrangeNodes and targeted updateNode calls. Do not create new nodes unless the user explicitly asks for new content.`
+      : "Important: this is a layout-cleanup request on the existing board. Prefer rearrangeNodes and targeted updateNode calls. Do not create new nodes unless the user explicitly asks for new content.";
+  }
+
+  if (editIntent && hasSelection) {
+    return `Important: this is an edit request targeting the selected node ids ${request.canvasSnapshot.selectedNodeIds.join(", ")}. Prefer updateNode on those existing nodes instead of createNode.`;
+  }
+
+  if (editIntent) {
+    return "Important: this is an edit request on existing content. Prefer updateNode over createNode when possible.";
+  }
+
+  return "";
 }
 
 function buildSystemPrompt(targetPersona: TargetPersona | null | undefined): string {

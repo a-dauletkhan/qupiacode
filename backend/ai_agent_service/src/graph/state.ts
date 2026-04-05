@@ -3,7 +3,7 @@ import type {
   CanvasNode,
   CanvasEdge,
   TranscriptSegment,
-  AiActivityEvent,
+  ActivityEvent,
 } from "../types.js";
 import type { ToolCall } from "../llm/types.js";
 
@@ -53,8 +53,8 @@ export const AgentState = Annotation.Root({
     ...lastValue<TranscriptSegment[]>(),
     default: () => [],
   }),
-  userEvents: Annotation<AiActivityEvent[]>({
-    ...lastValue<AiActivityEvent[]>(),
+  userEvents: Annotation<ActivityEvent[]>({
+    ...lastValue<ActivityEvent[]>(),
     default: () => [],
   }),
 

@@ -4,119 +4,88 @@ export const canvasTools: Tool[] = [
   {
     name: "createDiagram",
     description:
-      "Create a complete pending diagram in one call. Use this for mindmaps, multi-step routines, processes, workflows, timelines, trees, and any request that needs multiple connected blocks.",
+      "Create a complete pending diagram in one call. Use this for mindmaps, multi-step routines, workflows, trees, timelines, branching structures, and other requests that need multiple connected blocks.",
     parameters: {
       type: "object",
       properties: {
         diagramType: {
           type: "string",
-          description: "The overall diagram style",
           enum: ["mindmap", "flowchart", "timeline", "concept_map"],
+          description: "Overall diagram style",
         },
         layout: {
           type: "string",
-          description: "Preferred layout direction for the generated draft",
           enum: ["radial", "horizontal", "vertical"],
+          description: "Preferred high-level layout direction",
         },
         rootKey: {
           type: "string",
-          description: "Optional key of the central or first node in the diagram",
+          description: "Optional key of the central or first node",
         },
         summary: {
           type: "string",
-          description: "Short summary of the draft you are preparing",
+          description: "Short summary of the draft being prepared",
         },
         anchor: {
           type: "object",
-          description: "Optional anchor position for the whole diagram",
+          description: "Optional anchor position for the diagram",
           properties: {
-            x: { type: "number", description: "X coordinate" },
-            y: { type: "number", description: "Y coordinate" },
+            x: { type: "number" },
+            y: { type: "number" },
           },
           required: ["x", "y"],
         },
         nodes: {
           type: "array",
-          description:
-            "Every node that should be created. If the user asks for 5 steps, include 5 separate step nodes here.",
+          description: "Nodes to include in the generated structure",
           items: {
             type: "object",
             properties: {
-              key: {
-                type: "string",
-                description: "Temporary key used to connect edges inside this diagram",
-              },
-              existingNodeId: {
-                type: "string",
-                description:
-                  "Optional existing canvas node id to reuse instead of creating a new node for this key",
-              },
+              key: { type: "string" },
+              existingNodeId: { type: "string" },
               nodeType: {
                 type: "string",
-                description: "The type of canvas object",
                 enum: ["shape", "text", "sticky_note"],
               },
-              label: {
-                type: "string",
-                description: "Label text for shape nodes",
-              },
-              text: {
-                type: "string",
-                description: "Text content for text and sticky note nodes",
-              },
+              label: { type: "string" },
+              text: { type: "string" },
               shapeKind: {
                 type: "string",
-                description: "Shape variant (only for nodeType=shape)",
                 enum: ["rectangle", "diamond", "ellipse"],
               },
-              width: { type: "number", description: "Width in pixels" },
-              height: { type: "number", description: "Height in pixels" },
-              color: { type: "string", description: "Fill or text color as oklch string" },
+              width: { type: "number" },
+              height: { type: "number" },
+              color: { type: "string" },
               paintStyle: {
                 type: "string",
-                description: "Paint style (only for shapes)",
                 enum: ["solid", "outline", "sketch", "hatch"],
               },
-              textColor: {
-                type: "string",
-                description: "Sticky note text color",
-              },
-              fontSize: { type: "number", description: "Font size in pixels" },
+              textColor: { type: "string" },
+              fontSize: { type: "number" },
               fontWeight: {
                 type: "string",
-                description: "Text weight (only for nodeType=text)",
                 enum: ["normal", "medium", "bold"],
               },
               align: {
                 type: "string",
-                description: "Text alignment (only for nodeType=text)",
                 enum: ["left", "center", "right"],
               },
-              parentKey: {
-                type: "string",
-                description: "Optional parent key for grouping/hierarchy hints",
-              },
-              depth: {
-                type: "number",
-                description: "Optional hierarchy depth hint for layout",
-              },
-              lane: {
-                type: "number",
-                description: "Optional ordering hint among sibling nodes",
-              },
+              parentKey: { type: "string" },
+              depth: { type: "number" },
+              lane: { type: "number" },
             },
             required: ["key", "nodeType"],
           },
         },
         edges: {
           type: "array",
-          description: "Connections between nodes in this diagram using node keys",
+          description: "Connections between nodes using diagram node keys",
           items: {
             type: "object",
             properties: {
-              sourceKey: { type: "string", description: "Source node key" },
-              targetKey: { type: "string", description: "Target node key" },
-              label: { type: "string", description: "Edge label text" },
+              sourceKey: { type: "string" },
+              targetKey: { type: "string" },
+              label: { type: "string" },
             },
             required: ["sourceKey", "targetKey"],
           },
@@ -128,115 +97,133 @@ export const canvasTools: Tool[] = [
   {
     name: "createNode",
     description:
-<<<<<<< Updated upstream
-      "Create a new node on the canvas. Use 'shape' for rectangles/ellipses, 'text' for text labels, 'sticky_note' for sticky notes.",
-=======
-      "Create a new pending node on the canvas. Use 'shape' for rectangles/diamonds/ellipses, 'text' for text labels, 'sticky_note' for sticky notes.",
->>>>>>> Stashed changes
+      "Create a new pending node on the canvas. Use this for isolated additions, not large diagrams.",
     parameters: {
       type: "object",
       properties: {
         nodeType: {
           type: "string",
-          description: "The type of canvas object",
           enum: ["shape", "text", "sticky_note"],
         },
         position: {
           type: "object",
-          description: "Position on canvas",
           properties: {
-            x: { type: "number", description: "X coordinate" },
-            y: { type: "number", description: "Y coordinate" },
+            x: { type: "number" },
+            y: { type: "number" },
           },
           required: ["x", "y"],
         },
-        width: { type: "number", description: "Width in pixels. Default 150." },
-        height: { type: "number", description: "Height in pixels. Default 80." },
+        width: { type: "number" },
+        height: { type: "number" },
         shapeKind: {
           type: "string",
-          description: "Shape variant (only for nodeType=shape)",
-          enum: ["rectangle", "ellipse"],
+          enum: ["rectangle", "diamond", "ellipse"],
         },
-        color: { type: "string", description: "Fill color as oklch string" },
+        color: { type: "string" },
         paintStyle: {
           type: "string",
-          description: "Paint style (only for shapes)",
           enum: ["solid", "outline", "sketch", "hatch"],
         },
-        text: { type: "string", description: "Text content (for text and sticky_note types)" },
-        fontSize: { type: "number", description: "Font size in pixels" },
-        label: { type: "string", description: "Label text (for shapes)" },
+        text: { type: "string" },
+        fontSize: { type: "number" },
+        label: { type: "string" },
         fontWeight: {
           type: "string",
-          description: "Text weight (only for nodeType=text)",
           enum: ["normal", "medium", "bold"],
         },
         align: {
           type: "string",
-          description: "Text alignment (only for nodeType=text)",
           enum: ["left", "center", "right"],
         },
-        textColor: {
-          type: "string",
-          description: "Sticky note text color (only for nodeType=sticky_note)",
-        },
+        textColor: { type: "string" },
       },
       required: ["nodeType", "position"],
     },
   },
   {
-<<<<<<< Updated upstream
     name: "updateNode",
-    description: "Update an existing node's properties. Use this to edit text, labels, colors, sizes, positions, and styles of nodes already on the canvas. Pass the node's ID and only the fields you want to change.",
+    description:
+      "Propose a pending update to an existing node. Use this to move, recolor, resize, restyle, or edit text/labels on existing blocks. Prefer this over createNode when the user asks to change selected or visible existing blocks.",
     parameters: {
       type: "object",
       properties: {
-        nodeId: { type: "string", description: "ID of the node to update (from the canvas state)" },
+        nodeId: {
+          type: "string",
+          description: "ID of the existing node to update",
+        },
         position: {
           type: "object",
-          description: "New position on canvas",
           properties: {
-            x: { type: "number", description: "X coordinate" },
-            y: { type: "number", description: "Y coordinate" },
+            x: { type: "number" },
+            y: { type: "number" },
           },
         },
-        width: { type: "number", description: "New width in pixels" },
-        height: { type: "number", description: "New height in pixels" },
-        text: { type: "string", description: "New text content (for text and sticky_note nodes)" },
-        label: { type: "string", description: "New label (for shape nodes)" },
-        color: { type: "string", description: "New fill/background color as oklch string" },
-        textColor: { type: "string", description: "New text color as oklch string" },
-        fontSize: { type: "number", description: "New font size in pixels" },
-        fontWeight: { type: "string", description: "Font weight", enum: ["normal", "medium", "bold"] },
-        paintStyle: { type: "string", description: "Shape paint style", enum: ["solid", "outline", "sketch", "hatch"] },
-        strokeWidth: { type: "number", description: "Shape border width in pixels" },
-        shapeKind: { type: "string", description: "Shape variant", enum: ["rectangle", "diamond", "ellipse"] },
+        width: { type: "number" },
+        height: { type: "number" },
+        label: { type: "string" },
+        text: { type: "string" },
+        color: { type: "string" },
+        textColor: { type: "string" },
+        fontSize: { type: "number" },
+        fontWeight: {
+          type: "string",
+          enum: ["normal", "medium", "bold"],
+        },
+        align: {
+          type: "string",
+          enum: ["left", "center", "right"],
+        },
+        paintStyle: {
+          type: "string",
+          enum: ["solid", "outline", "sketch", "hatch"],
+        },
+        strokeWidth: { type: "number" },
+        shapeKind: {
+          type: "string",
+          enum: ["rectangle", "diamond", "ellipse"],
+        },
       },
       required: ["nodeId"],
     },
   },
   {
-    name: "deleteNode",
-    description: "Delete a node from the canvas.",
+    name: "rearrangeNodes",
+    description:
+      "Rearrange existing nodes to reduce overlap and improve readability. Use this when edges are tangled, blocks overlap, or the user asks for a cleaner layout. If nodeIds are omitted, the selected nodes are rearranged first, otherwise the whole visible board may be rearranged.",
     parameters: {
       type: "object",
       properties: {
-        nodeId: { type: "string", description: "ID of the node to delete" },
+        nodeIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Optional IDs of existing nodes to rearrange",
+        },
+        layout: {
+          type: "string",
+          enum: ["force", "mindmap", "radial", "horizontal", "vertical", "grid"],
+          description: "Layout strategy to apply",
+        },
+        rootNodeId: {
+          type: "string",
+          description: "Optional root node to keep more stable during layout",
+        },
+        spacing: {
+          type: "number",
+          description: "Preferred spacing between nodes in pixels",
+        },
       },
-      required: ["nodeId"],
+      required: ["layout"],
     },
   },
   {
-=======
->>>>>>> Stashed changes
     name: "createEdge",
-    description: "Create a new pending connection (edge) between two nodes.",
+    description: "Create a new pending connection between two nodes.",
     parameters: {
       type: "object",
       properties: {
-        source: { type: "string", description: "Source node ID" },
-        target: { type: "string", description: "Target node ID" },
-        label: { type: "string", description: "Edge label text" },
+        source: { type: "string" },
+        target: { type: "string" },
+        label: { type: "string" },
       },
       required: ["source", "target"],
     },
@@ -244,11 +231,11 @@ export const canvasTools: Tool[] = [
   {
     name: "sendMessage",
     description:
-      "Provide the assistant reply that should appear in chat after you answer or create a pending draft.",
+      "Provide the assistant reply that should appear in chat after you answer or prepare a pending draft.",
     parameters: {
       type: "object",
       properties: {
-        text: { type: "string", description: "Message text" },
+        text: { type: "string" },
       },
       required: ["text"],
     },

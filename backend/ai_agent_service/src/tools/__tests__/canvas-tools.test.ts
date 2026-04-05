@@ -6,6 +6,8 @@ describe("canvasTools", () => {
     const toolNames = canvasTools.map((t) => t.name);
     expect(toolNames).toContain("createDiagram");
     expect(toolNames).toContain("createNode");
+    expect(toolNames).toContain("updateNode");
+    expect(toolNames).toContain("rearrangeNodes");
     expect(toolNames).toContain("createEdge");
     expect(toolNames).toContain("sendMessage");
   });

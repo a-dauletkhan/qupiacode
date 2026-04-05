@@ -1,14 +1,15 @@
 import * as React from "react"
 import type { CommentData } from "@liveblocks/core"
-<<<<<<< Updated upstream
-import { useCreateThread, useOthers, useSelf, useThreads } from "@liveblocks/react/suspense"
-import { Comment } from "@liveblocks/react-ui"
-import { ArrowDown, Send } from "lucide-react"
-=======
 import { useCreateThread, useSelf, useThreads } from "@liveblocks/react/suspense"
 import { Comment } from "@liveblocks/react-ui"
-import { ArrowDown, Bot, Megaphone, MessageSquareWarning, Palette, Send } from "lucide-react"
->>>>>>> Stashed changes
+import {
+  ArrowDown,
+  Bot,
+  Megaphone,
+  MessageSquareWarning,
+  Palette,
+  Send,
+} from "lucide-react"
 import { Virtuoso, type VirtuosoHandle } from "react-virtuoso"
 
 import "@liveblocks/react-ui/styles.css"
@@ -16,19 +17,14 @@ import "@liveblocks/react-ui/styles/dark/attributes.css"
 import "@/modules/Chat/components/chat-liveblocks.css"
 
 import { cn } from "@/lib/utils"
-<<<<<<< Updated upstream
-import { Button } from "@/modules/Canvas/components/ui/button"
-import { useVoiceCallContext } from "@/modules/VoiceCall/context/voice-call-context"
-import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
-import { SlashCommandMenu, useSlashCommands } from "@/modules/Chat/components/slash-command-menu"
-import { Bot, Palette, MessageSquareWarning, Megaphone } from "lucide-react"
-=======
 import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
 import type { AiChatPersona, AiTargetPersona } from "@/modules/Agent/types"
 import { Button } from "@/modules/Canvas/components/ui/button"
-import { SlashCommandMenu, useSlashCommands } from "@/modules/Chat/components/slash-command-menu"
+import {
+  SlashCommandMenu,
+  useSlashCommands,
+} from "@/modules/Chat/components/slash-command-menu"
 import { useVoiceCallContext } from "@/modules/VoiceCall/context/voice-call-context"
->>>>>>> Stashed changes
 
 function ChatMessageFooter() {
   return <div className="h-[88px]" />
@@ -44,8 +40,6 @@ type ChatFeedMessage = {
   isOwnMessage: boolean
 }
 
-<<<<<<< Updated upstream
-=======
 const PERSONA_TYPING: Record<
   AiChatPersona,
   { icon: typeof Bot; label: string; cssColor: string }
@@ -64,7 +58,6 @@ const PERSONA_TYPING: Record<
   },
 }
 
->>>>>>> Stashed changes
 function getCommentTimestamp(value: Date | string | number) {
   return new Date(value).getTime()
 }
@@ -81,9 +74,7 @@ function ChatFeedItem({
       <div
         className={cn(
           "chat-message w-fit max-w-[90%]",
-          isOwnMessage
-            ? "chat-message--self ml-auto"
-            : "chat-message--other mr-auto",
+          isOwnMessage ? "chat-message--self ml-auto" : "chat-message--other mr-auto",
         )}
       >
         <Comment
@@ -122,26 +113,6 @@ function EmptyState({
   )
 }
 
-<<<<<<< Updated upstream
-const PERSONA_TYPING: Record<string, { icon: typeof Bot; label: string; cssColor: string }> = {
-  designer: { icon: Palette, label: "Designer", cssColor: "oklch(0.72 0.16 240)" },
-  critique: { icon: MessageSquareWarning, label: "Critique", cssColor: "oklch(0.72 0.19 28)" },
-  marketing: { icon: Megaphone, label: "Marketing", cssColor: "oklch(0.86 0.18 95)" },
-}
-
-function AiTypingIndicator() {
-  const others = useOthers()
-  const agent = others.find((o) => o.presence.type === "ai_agent")
-  const isActing = agent?.presence.status === "acting"
-  const persona = (agent?.presence as Record<string, unknown>)?.persona as string | undefined
-
-  if (!isActing) return null
-
-  const config = persona ? PERSONA_TYPING[persona] : undefined
-  const Icon = config?.icon ?? Bot
-  const label = config?.label ?? "AI"
-  const color = config?.cssColor ?? "oklch(0.768 0.233 130.85)"
-=======
 function AiTypingIndicator({
   visible,
   persona,
@@ -156,49 +127,35 @@ function AiTypingIndicator({
   const resolvedPersona = persona ?? "agent"
   const config = PERSONA_TYPING[resolvedPersona]
   const Icon = config.icon
->>>>>>> Stashed changes
 
   return (
     <div className="flex items-center gap-2 px-4 py-2">
       <div
         className="flex size-6 items-center justify-center rounded-md border"
-<<<<<<< Updated upstream
-        style={{ borderColor: `color-mix(in srgb, ${color} 30%, transparent)`, backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`, color }}
-=======
         style={{
           borderColor: `color-mix(in srgb, ${config.cssColor} 30%, transparent)`,
           backgroundColor: `color-mix(in srgb, ${config.cssColor} 10%, transparent)`,
           color: config.cssColor,
         }}
->>>>>>> Stashed changes
       >
         <Icon className="size-3" />
       </div>
       <div className="flex items-center gap-1.5">
-<<<<<<< Updated upstream
-        <span className="text-[11px]" style={{ color: `color-mix(in srgb, ${color} 80%, transparent)` }}>
-          {label} is typing
-=======
         <span
           className="text-[11px]"
           style={{ color: `color-mix(in srgb, ${config.cssColor} 80%, transparent)` }}
         >
           {config.label} is thinking
->>>>>>> Stashed changes
         </span>
         <span className="flex gap-0.5">
           {[0, 150, 300].map((delay) => (
             <span
               key={delay}
               className="size-1 animate-bounce rounded-full"
-<<<<<<< Updated upstream
-              style={{ backgroundColor: `color-mix(in srgb, ${color} 60%, transparent)`, animationDelay: `${delay}ms` }}
-=======
               style={{
                 backgroundColor: `color-mix(in srgb, ${config.cssColor} 60%, transparent)`,
                 animationDelay: `${delay}ms`,
               }}
->>>>>>> Stashed changes
             />
           ))}
         </span>
@@ -217,6 +174,7 @@ export function Chat() {
   const createThread = useCreateThread()
   const { errorMessage, inCall } = useVoiceCallContext()
   const aiAgent = useAiAgentOptional()
+
   const messages: ChatFeedMessage[] = threads
     .flatMap((thread) =>
       thread.comments.map((comment) => ({
@@ -236,6 +194,7 @@ export function Chat() {
 
       return left.comment.id.localeCompare(right.comment.id)
     })
+
   const initialMessageIndex = Math.max(messages.length - 1, 0)
 
   function scrollToLatestMessage() {
@@ -258,27 +217,8 @@ export function Chat() {
       return
     }
 
-<<<<<<< Updated upstream
-    // Detect @agent / @designer / @critique / @marketing commands
-    const agentMatch = text.match(/^@(agent|designer|critique|marketing)\s+(.+)/i)
-    if (agentMatch && aiAgent) {
-      const persona = agentMatch[1].toLowerCase()
-      const message = agentMatch[2]
-      const targetPersona = persona === "agent" ? undefined : persona
-      console.info("[ai-agent] chat command detected", {
-        rawInput: text,
-        persona: targetPersona ?? "auto",
-        extractedCommand: message,
-        roomId: aiAgent.roomId,
-      })
-      aiAgent.sendCommand(message, { source: "chat", targetPersona })
-    }
-
-    createThread({
-=======
     const agentMatch = text.match(/^@(agent|designer|critique|marketing)\s+(.+)/i)
     const thread = createThread({
->>>>>>> Stashed changes
       body: {
         version: 1,
         content: [{ type: "paragraph", children: [{ text }] }],
@@ -304,15 +244,6 @@ export function Chat() {
       const chatPersona = agentMatch[1].toLowerCase() as AiChatPersona
       const targetPersona: AiTargetPersona | null =
         chatPersona === "agent" ? null : chatPersona
-
-      console.info("[ai-agent] chat command detected", {
-        rawInput: text,
-        persona: chatPersona,
-        extractedCommand: agentMatch[2],
-        roomId: aiAgent.roomId,
-        userId: aiAgent.userId,
-        threadId: thread.id,
-      })
 
       void aiAgent.sendCommand(agentMatch[2], {
         source: "chat",
@@ -377,12 +308,8 @@ export function Chat() {
         </div>
       </div>
 
-<<<<<<< Updated upstream
-      <AiTypingIndicator />
-=======
       <AiTypingIndicator visible={typingVisible} persona={aiAgent?.activePersona ?? null} />
 
->>>>>>> Stashed changes
       <div className="relative border-t border-white/[0.06] p-2">
         <SlashCommandMenu
           visible={slash.menuOpen && aiAgent != null}
@@ -390,24 +317,13 @@ export function Chat() {
           selectedIndex={slash.selectedIndex}
           onSelect={slash.selectCommand}
         />
-<<<<<<< Updated upstream
-=======
 
->>>>>>> Stashed changes
         <form onSubmit={handleSubmit} className="flex gap-1.5">
           <input
             value={input}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={slash.handleKeyDown}
-<<<<<<< Updated upstream
-            placeholder={aiAgent ? 'Type / for AI personas or message...' : "Type a message..."}
-=======
-            placeholder={
-              aiAgent
-                ? "Type / for AI personas or message..."
-                : "Type a message..."
-            }
->>>>>>> Stashed changes
+            placeholder={aiAgent ? "Type / for AI personas or message..." : "Type a message..."}
             className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:border-lime-500/30 focus:outline-none focus:ring-1 focus:ring-lime-500/20"
           />
           <button

@@ -48,11 +48,8 @@ def create_app() -> FastAPI:
 
     app.include_router(auth_router)
     app.include_router(boards_router)
-<<<<<<< Updated upstream
     app.include_router(image_generation_router)
-=======
     app.include_router(ai_agent_router)
->>>>>>> Stashed changes
     app.include_router(liveblocks_router)
 
     if voice_settings.app_env != "production":

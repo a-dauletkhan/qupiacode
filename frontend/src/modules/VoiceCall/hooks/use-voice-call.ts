@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useCreateThread } from "@liveblocks/react/suspense"
 import {
   ConnectionState,
   Room,
@@ -11,6 +12,7 @@ import {
 } from "livekit-client"
 
 import { requestVoiceToken } from "@/modules/VoiceCall/services/voice-call-service"
+import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
 
 const DEFAULT_CANVAS_ID = "demo-canvas"
 const DEFAULT_AGENT_NAME = "AI Agent"
@@ -333,6 +335,64 @@ function buildTranscriptEntryId(
   return `${participantIdentity ?? "unknown"}:${trackId ?? "unknown"}:${segmentId}`
 }
 
+function normalizeWakePhrase(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ")
+}
+
+function extractVoiceCommand(
+  transcript: string,
+  wakePhrases: string[]
+): string | null {
+  const trimmed = transcript.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  const normalizedTranscript = normalizeWakePhrase(trimmed)
+  const normalizedWakePhrases = wakePhrases
+    .map(normalizeWakePhrase)
+    .filter(Boolean)
+    .sort((left, right) => right.length - left.length)
+
+  for (const wakePhrase of normalizedWakePhrases) {
+    if (normalizedTranscript === wakePhrase) {
+      return null
+    }
+
+    if (!normalizedTranscript.startsWith(wakePhrase)) {
+      continue
+    }
+
+    const nextCharacter = normalizedTranscript.slice(wakePhrase.length, wakePhrase.length + 1)
+    if (nextCharacter && !/[\s,.:;!?-]/.test(nextCharacter)) {
+      continue
+    }
+
+    const command = trimmed
+      .slice(wakePhrase.length)
+      .replace(/^[\s,.:;!?-]+/, "")
+      .trim()
+
+    if (command) {
+      return command
+    }
+  }
+
+  return null
+}
+
+function buildVoiceCommandThreadBody(text: string) {
+  return {
+    version: 1 as const,
+    content: [
+      {
+        type: "paragraph" as const,
+        children: [{ text: `@agent ${text}` }],
+      },
+    ],
+  }
+}
+
 function upsertTranscriptItems(
   currentItems: VoiceCallTranscriptItem[],
   segments: TranscriptionSegment[],
@@ -429,6 +489,8 @@ export function useVoiceCall({
   displayName,
   apiBaseUrl,
 }: UseVoiceCallOptions) {
+  const aiAgent = useAiAgentOptional()
+  const createThread = useCreateThread()
   const bootstrap = React.useMemo(() => resolveBootstrap(), [])
   const resolvedCanvasId = canvasId ?? bootstrap.canvasId
   const resolvedUserId = userId ?? bootstrap.userId
@@ -479,6 +541,7 @@ export function useVoiceCall({
   )
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
   const roomScopeRef = React.useRef(roomScopeKey)
+  const handledVoiceCommandIdsRef = React.useRef<Set<string>>(new Set())
 
   const syncParticipants = React.useCallback(
     (activeRoom: Room | null) => {
@@ -575,6 +638,7 @@ export function useVoiceCall({
   const resetVoiceState = React.useCallback(() => {
     detachAllAudioTracks()
     roomRef.current = null
+    handledVoiceCommandIdsRef.current.clear()
     agentMetadataRef.current = buildDefaultAgentMetadata()
     setConnectionState(ConnectionState.Disconnected)
     setParticipants([])
@@ -745,6 +809,26 @@ export function useVoiceCall({
     activeRoom.on(
       RoomEvent.TranscriptionReceived,
       (segments, participant, publication) => {
+        const localParticipantIdentity = activeRoom.localParticipant.identity
+        const isLocalSpeaker =
+          Boolean(participant?.identity) &&
+          participant?.identity === localParticipantIdentity
+
+        console.info("[voice-call] transcription received", {
+          roomName: activeRoom.name,
+          localParticipantIdentity,
+          participantIdentity: participant?.identity ?? null,
+          participantName: participant?.name ?? null,
+          isLocalSpeaker,
+          segmentCount: segments.length,
+          segments: segments.map((segment) => ({
+            id: segment.id,
+            text: segment.text,
+            final: segment.final,
+          })),
+          wakePhrases: agentMetadataRef.current.wakePhrases,
+        })
+
         setTranscripts((currentTranscripts) =>
           upsertTranscriptItems(
             currentTranscripts,
@@ -754,6 +838,102 @@ export function useVoiceCall({
             agentMetadataRef.current.transcriptPartialsEnabled
           )
         )
+
+        if (!aiAgent || !isLocalSpeaker || agentMetadataRef.current.wakePhrases.length === 0) {
+          if (!aiAgent) {
+            console.info("[voice-call] skipping voice command trigger: aiAgent unavailable")
+          } else if (!isLocalSpeaker) {
+            console.info("[voice-call] skipping voice command trigger: transcript is not from local speaker")
+          } else {
+            console.info("[voice-call] skipping voice command trigger: no wake phrases configured")
+          }
+          return
+        }
+
+        for (const segment of segments) {
+          if (!segment.final) {
+            console.info("[voice-call] ignoring partial transcript segment", {
+              segmentId: segment.id,
+            })
+            continue
+          }
+
+          const commandText = extractVoiceCommand(
+            segment.text,
+            agentMetadataRef.current.wakePhrases
+          )
+          if (!commandText) {
+            console.info("[voice-call] no wake phrase match for transcript", {
+              segmentId: segment.id,
+              text: segment.text,
+            })
+            continue
+          }
+
+          const transcriptKey = buildTranscriptEntryId(
+            participant?.identity ?? null,
+            publication?.trackSid ?? null,
+            segment.id
+          )
+          if (handledVoiceCommandIdsRef.current.has(transcriptKey)) {
+            console.info("[voice-call] duplicate voice command ignored", {
+              transcriptKey,
+            })
+            continue
+          }
+          handledVoiceCommandIdsRef.current.add(transcriptKey)
+
+          console.info("[voice-call] wake phrase matched", {
+            transcriptKey,
+            commandText,
+            roomId: aiAgent.roomId,
+          })
+
+          const thread = createThread({
+            body: buildVoiceCommandThreadBody(commandText),
+            metadata: {},
+          })
+
+          aiAgent.pushEvent({
+            type: "chat.message.mentioned_ai",
+            data: {
+              text: `@agent ${commandText}`,
+              mentionedAi: true,
+              source: "voice_transcript",
+              roomId: aiAgent.roomId,
+              threadId: thread.id,
+              transcriptSegmentId: segment.id,
+              participantIdentity: participant?.identity ?? null,
+              targetPersona: null,
+            },
+          })
+
+          void aiAgent
+            .sendCommand(commandText, {
+              source: "chat",
+              threadId: thread.id,
+              chatPersona: "agent",
+            })
+            .then((response) => {
+              console.info("[voice-call] voice command sent to ai-agent", {
+                transcriptKey,
+                threadId: thread.id,
+                commandId: response.commandId,
+                hasPendingAction: Boolean(response.pendingAction),
+              })
+              setErrorMessage(null)
+            })
+            .catch((error) => {
+              console.error("[voice-call] failed to send voice command to ai-agent", {
+                transcriptKey,
+                threadId: thread.id,
+                error,
+              })
+              setErrorMessage(formatVoiceError(error))
+              setStatusMessage("Voice command failed")
+            })
+          setStatusMessage(`Sent voice command to ${agentMetadataRef.current.name}`)
+        }
       }
     )
     activeRoom.on(RoomEvent.ChatMessage, (message, participant) => {
@@ -843,9 +1023,11 @@ export function useVoiceCall({
       setIsJoining(false)
     }
   }, [
+    aiAgent,
     apiBaseUrl,
     attachExistingRemoteAudioTracks,
     attachRemoteAudioTrack,
+    createThread,
     detachRemoteAudioTrack,
     isJoining,
     resetVoiceState,

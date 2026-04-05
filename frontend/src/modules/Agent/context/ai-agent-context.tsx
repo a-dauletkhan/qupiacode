@@ -1,5 +1,4 @@
 import * as React from "react"
-import { useCreateComment, useCreateThread } from "@liveblocks/react/suspense"
 import { useAiCommand } from "../hooks/use-ai-command"
 import { useAiFeedback } from "../hooks/use-ai-feedback"
 import { useAiEventBatcher } from "../hooks/use-ai-event-batcher"
@@ -20,6 +19,7 @@ type OnCanvasAction = (action: {
   nodeIds: string[]
   edgeIds: string[]
   actionId: string
+  pendingAction: AiPendingAction | null
 }) => void
 
 type ApplyPendingAction = (pendingAction: AiPendingAction) => void
@@ -35,18 +35,15 @@ type AiAgentContextValue = {
   roomId: string
   userId: string
   userName: string
-<<<<<<< Updated upstream
-  sendCommand: (message: string, context: { selectedNodeIds?: string[]; selectedEdgeIds?: string[]; viewport?: { x: number; y: number; zoom: number }; source: CommandSource; targetPersona?: string }) => Promise<unknown>
-=======
   activePersona: AiChatPersona | null
   sendCommand: (message: string, options: SendCommandOptions) => Promise<AiCommandResponse>
->>>>>>> Stashed changes
   commandPending: boolean
   approve: (actionId: string, nodeIds: string[], edgeIds: string[]) => Promise<unknown>
   reject: (actionId: string, nodeIds: string[], edgeIds: string[], reason?: string) => Promise<unknown>
   feedbackPending: boolean
   pushEvent: (event: Pick<AiEvent, "type" | "data">) => void
   queue: AiQueueResponse
+  getPendingAction: (actionId: string) => AiPendingAction | null
   registerCanvasAction: (cb: OnCanvasAction) => () => void
   registerCanvasSnapshotProvider: (cb: () => CanvasSnapshot) => () => void
   registerPendingActionApplier: (cb: ApplyPendingAction) => () => void
@@ -67,11 +64,10 @@ export function AiAgentProvider({ roomId, userId, userName, children }: AiAgentP
   const feedback = useAiFeedback({ roomId, userId })
   const batcher = useAiEventBatcher({ roomId, userId })
   const queue = useAiQueue({ roomId })
-  const createThread = useCreateThread()
-  const createComment = useCreateComment()
   const [activePersona, setActivePersona] = React.useState<AiChatPersona | null>(null)
   const canvasActionCallbacks = React.useRef(new Set<OnCanvasAction>())
   const pendingActionAppliers = React.useRef(new Set<ApplyPendingAction>())
+  const pendingActionsRef = React.useRef(new Map<string, AiPendingAction>())
   const snapshotProviderRef = React.useRef<() => CanvasSnapshot>(() => ({
     roomId,
     projectId: roomId,
@@ -113,6 +109,10 @@ export function AiAgentProvider({ roomId, userId, userName, children }: AiAgentP
     canvasActionCallbacks.current.forEach((cb) => cb(action))
   }, [])
 
+  const getPendingAction = React.useCallback((actionId: string) => {
+    return pendingActionsRef.current.get(actionId) ?? null
+  }, [])
+
   const sendCommand = React.useCallback(
     async (message: string, options: SendCommandOptions) => {
       setActivePersona(options.chatPersona ?? null)
@@ -128,22 +128,8 @@ export function AiAgentProvider({ roomId, userId, userName, children }: AiAgentP
         })
 
         if (response.pendingAction) {
+          pendingActionsRef.current.set(response.pendingAction.actionId, response.pendingAction)
           pendingActionAppliers.current.forEach((cb) => cb(response.pendingAction!))
-        }
-
-        if (response.message.trim()) {
-          const body = richTextBody(response.message)
-          if (options.threadId) {
-            createComment({
-              threadId: options.threadId,
-              body,
-            })
-          } else {
-            createThread({
-              body,
-              metadata: {},
-            })
-          }
         }
 
         return response
@@ -151,7 +137,7 @@ export function AiAgentProvider({ roomId, userId, userName, children }: AiAgentP
         setActivePersona(null)
       }
     },
-    [command, createComment, createThread, userId, userName],
+    [command, userId, userName],
   )
 
   const value = React.useMemo<AiAgentContextValue>(
@@ -167,6 +153,7 @@ export function AiAgentProvider({ roomId, userId, userName, children }: AiAgentP
       feedbackPending: feedback.pending,
       pushEvent: batcher.push,
       queue,
+      getPendingAction,
       registerCanvasAction,
       registerCanvasSnapshotProvider,
       registerPendingActionApplier,
@@ -184,6 +171,7 @@ export function AiAgentProvider({ roomId, userId, userName, children }: AiAgentP
       feedback.pending,
       batcher.push,
       queue,
+      getPendingAction,
       registerCanvasAction,
       registerCanvasSnapshotProvider,
       registerPendingActionApplier,
@@ -204,11 +192,4 @@ export function useAiAgent() {
 
 export function useAiAgentOptional() {
   return React.useContext(AiAgentContext)
-}
-
-function richTextBody(text: string) {
-  return {
-    version: 1 as const,
-    content: [{ type: "paragraph" as const, children: [{ text }] }],
-  }
 }

@@ -10,6 +10,14 @@ import type {
   AiQueueResponse,
 } from "../types"
 
+function isAiAgentDebugEnabled() {
+  if (!import.meta.env.DEV || typeof window === "undefined") {
+    return false
+  }
+
+  return window.localStorage.getItem("debug.ai-agent") === "1"
+}
+
 function authHeaders(): Record<string, string> {
   const token = getAccessToken()
   return {
@@ -20,7 +28,9 @@ function authHeaders(): Record<string, string> {
 
 async function post<T>(path: string, body: unknown, action: string): Promise<T> {
   const url = buildAiAgentUrl(path)
-  console.info(`[ai-agent] → POST ${url}`, `\n  action: ${action}`, "\n  payload:", body)
+  if (isAiAgentDebugEnabled()) {
+    console.info(`[ai-agent] → POST ${url}`, `\n  action: ${action}`, "\n  payload:", body)
+  }
   const res = await fetch(url, {
     method: "POST",
     headers: authHeaders(),
@@ -28,26 +38,32 @@ async function post<T>(path: string, body: unknown, action: string): Promise<T> 
   })
   const data = await res.json().catch(() => ({ message: res.statusText }))
   if (!res.ok) {
-    console.info(`[ai-agent] ✗ POST ${url} → ${res.status}`, data)
+    console.error(`[ai-agent] ✗ POST ${url} → ${res.status}`, data)
     throw new Error(data.message ?? `Request failed: ${res.status}`)
   }
-  console.info(`[ai-agent] ✓ POST ${url} → ${res.status}`, data)
+  if (isAiAgentDebugEnabled()) {
+    console.info(`[ai-agent] ✓ POST ${url} → ${res.status}`, data)
+  }
   return data as T
 }
 
 async function get<T>(path: string, action: string): Promise<T> {
   const url = buildAiAgentUrl(path)
-  console.info(`[ai-agent] → GET ${url}`, `\n  action: ${action}`)
+  if (isAiAgentDebugEnabled()) {
+    console.info(`[ai-agent] → GET ${url}`, `\n  action: ${action}`)
+  }
   const res = await fetch(url, {
     method: "GET",
     headers: authHeaders(),
   })
   const data = await res.json().catch(() => ({ message: res.statusText }))
   if (!res.ok) {
-    console.info(`[ai-agent] ✗ GET ${url} → ${res.status}`, data)
+    console.error(`[ai-agent] ✗ GET ${url} → ${res.status}`, data)
     throw new Error(data.message ?? `Request failed: ${res.status}`)
   }
-  console.info(`[ai-agent] ✓ GET ${url} → ${res.status}`, data)
+  if (isAiAgentDebugEnabled()) {
+    console.info(`[ai-agent] ✓ GET ${url} → ${res.status}`, data)
+  }
   return data as T
 }
 
