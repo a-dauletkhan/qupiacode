@@ -28,9 +28,12 @@ services:
   ai-agent:
     build:
       context: ./ai_agent_service
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     env_file:
       - ${BACKEND_ENV_FILE:-.env}
     ports:
       - "3001:3001"
+    volumes:
+      - ./ai_agent_service/src:/app/src
+      - ./ai_agent_service/package.json:/app/package.json
     restart: unless-stopped
