@@ -49,8 +49,21 @@ export function createPersonaNode(personasFile: PersonasFile, llm: LLMProvider) 
     }
 
     const context = contextParts.join("\n\n");
-    const commandText = state.command?.message ?? "Analyze the canvas and help where appropriate.";
+    const rawCommandText = state.command?.message ?? "Analyze the canvas and help where appropriate.";
     const commandUser = state.command?.userName ?? "System";
+
+    // When nodes are selected (from canvas "Ask AI"), make it explicit
+    let commandText = rawCommandText;
+    if (selectedIds.size > 0) {
+      const selectedNodes = nodes.filter((n) => selectedIds.has(n.id));
+      const selectedDesc = selectedNodes.map((n) => {
+        const data = n.data as Record<string, unknown>;
+        const content = data.content as Record<string, unknown> | undefined;
+        const label = (content?.label as string) ?? (content?.text as string) ?? "";
+        return `"${label}" (id="${n.id}", type=${n.type})`;
+      }).join(", ");
+      commandText = `The user selected these nodes: ${selectedDesc}. Their request: "${rawCommandText}". Apply the action directly to the selected node(s) using their IDs.`;
+    }
 
     const messages: Message[] = [
       { role: "system", content: persona.system_prompt },

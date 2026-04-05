@@ -165,12 +165,22 @@ export class ActionExecutor {
     const nodeId = args.nodeId as string;
     const updates: Record<string, unknown> = {};
 
+    // Layout
     if (args.position) updates.position = args.position;
-    if (args.width) updates.width = args.width;
-    if (args.height) updates.height = args.height;
-    if (args.text !== undefined) updates["data.text"] = args.text;
-    if (args.label !== undefined) updates["data.label"] = args.label;
-    if (args.color !== undefined) updates["data.color"] = args.color;
+    if (args.width || args.height) updates.style = { ...(args.width ? { width: args.width } : {}), ...(args.height ? { height: args.height } : {}) };
+
+    // Content — text for text/sticky_note, label for shapes
+    if (args.text !== undefined) updates["data.content.text"] = args.text;
+    if (args.label !== undefined) updates["data.content.label"] = args.label;
+
+    // Style properties
+    if (args.color !== undefined) updates["data.style.color"] = args.color;
+    if (args.textColor !== undefined) updates["data.style.textColor"] = args.textColor;
+    if (args.fontSize !== undefined) updates["data.style.fontSize"] = args.fontSize;
+    if (args.fontWeight !== undefined) updates["data.style.fontWeight"] = args.fontWeight;
+    if (args.paintStyle !== undefined) updates["data.style.paintStyle"] = args.paintStyle;
+    if (args.strokeWidth !== undefined) updates["data.style.strokeWidth"] = args.strokeWidth;
+    if (args.shapeKind !== undefined) updates["data.shapeKind"] = args.shapeKind;
 
     this.storage.setNode(nodeId, updates);
   }

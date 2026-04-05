@@ -146,14 +146,72 @@ app.post("/api/ai/rooms/:roomId/feedback", async (req, res) => {
       userId: request.userId,
     };
 
-    await compiledGraph.invoke(
-      new Command({ resume: feedback }),
-      { configurable: { thread_id: threadId } },
+    // Check if graph is actually interrupted for this thread
+    const graphState = await compiledGraph.getState({ configurable: { thread_id: threadId } });
+    const isInterrupted = (graphState.tasks ?? []).some(
+      (t: any) => t.interrupts && t.interrupts.length > 0
     );
+    console.info(`[feedback] Thread ${threadId} — interrupted: ${isInterrupted}, next: ${graphState.next}`);
+
+    if (isInterrupted) {
+      // Resume graph from interrupt
+      await compiledGraph.invoke(
+        new Command({ resume: feedback }),
+        { configurable: { thread_id: threadId } },
+      );
+      await leaveSharedRoom(roomId);
+    } else {
+      // Graph not interrupted — handle feedback directly via Liveblocks
+      console.info(`[feedback] No interrupt to resume — applying feedback directly`);
+      const { enterSharedRoom } = await import("./graph/shared-room.js");
+      const { LiveMap } = await import("@liveblocks/client");
+      const room = enterSharedRoom(liveblocks, roomId);
+      const { root } = await room.getStorage();
+      const flow = root.get("flow") as any;
+      if (flow) {
+        const nodesMap = flow.get("nodes") as any;
+        const edgesMap = flow.get("edges") as any;
+
+        if (feedback.status === "rejected") {
+          if (nodesMap) {
+            for (const id of feedback.nodeIds) {
+              if (nodesMap.has(id)) {
+                nodesMap.delete(id);
+                console.info(`[feedback] Removed node "${id}"`);
+              }
+            }
+          }
+          if (edgesMap) {
+            for (const id of feedback.edgeIds) {
+              if (edgesMap.has(id)) {
+                edgesMap.delete(id);
+                console.info(`[feedback] Removed edge "${id}"`);
+              }
+            }
+          }
+        } else if (feedback.status === "approved") {
+          if (nodesMap) {
+            for (const id of feedback.nodeIds) {
+              const nodeObj = nodesMap.get(id) as any;
+              if (!nodeObj) continue;
+              const dataObj = nodeObj.get?.("data") as any;
+              const aiObj = dataObj?.get?.("_ai") as any;
+              if (aiObj) {
+                aiObj.set("status", "approved");
+                console.info(`[feedback] Approved node "${id}"`);
+              }
+            }
+          }
+        }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      await leaveSharedRoom(roomId);
+    }
 
     res.json({ ok: true, actionId: request.actionId, status: request.status });
   } catch (err) {
     console.error("Feedback error:", err);
+    await leaveSharedRoom(req.params.roomId);
     res.status(500).json({ error: "internal", message: "Failed to process feedback" });
   }
 });

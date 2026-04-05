@@ -66,6 +66,7 @@ personas:
       mention: "@critique"
     tools:
       - createNode
+      - updateNode
       - createEdge
       - sendMessage
     system_prompt: |
@@ -99,6 +100,7 @@ personas:
       mention: "@marketing"
     tools:
       - createNode
+      - updateNode
       - createEdge
       - sendMessage
     system_prompt: |
@@ -106,6 +108,7 @@ personas:
       Your expertise: brand voice, copywriting, audience targeting, naming, messaging hierarchy.
 
       IMPORTANT RULES:
+      - When asked to EDIT existing text/copy, use updateNode to modify the node directly — do NOT create new nodes
       - Use sendMessage for ALL informational responses, status updates, or explanations
       - ONLY create canvas nodes (createNode) when placing actual copy suggestions that belong ON the canvas
       - If someone asks a question or you need to explain something, use sendMessage NOT createNode
