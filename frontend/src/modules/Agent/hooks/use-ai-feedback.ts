@@ -1,5 +1,5 @@
 import * as React from "react"
-import * as aiAgent from "../services/ai-agent-mock"
+import * as aiAgent from "../services/ai-agent-service"
 import type { AiFeedbackStatus } from "../types"
 
 type UseAiFeedbackOptions = {

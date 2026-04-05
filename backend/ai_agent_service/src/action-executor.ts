@@ -17,16 +17,31 @@ export interface ActionContext {
   requestedBy: string | null;
 }
 
+export interface AiActionContext {
+  actionId: string;
+  commandId: string | null;
+  requestedBy: string | null;
+  persona: string;
+  personaColor: string;
+}
+
 export class ActionExecutor {
   private storage: StorageAdapter;
   private actionContext: ActionContext;
+  private aiContext: AiActionContext | null;
   private _createdNodeIds: string[] = [];
   private _createdEdgeIds: string[] = [];
   private _actionId: string;
 
-  constructor(storage: StorageAdapter, actionContext?: ActionContext) {
+  constructor(storage: StorageAdapter, actionContext?: ActionContext | AiActionContext) {
     this.storage = storage;
-    this.actionContext = actionContext ?? { commandId: null, requestedBy: null };
+    if (actionContext && "persona" in actionContext) {
+      this.aiContext = actionContext as AiActionContext;
+      this.actionContext = { commandId: actionContext.commandId, requestedBy: actionContext.requestedBy };
+    } else {
+      this.aiContext = null;
+      this.actionContext = actionContext ?? { commandId: null, requestedBy: null };
+    }
     this._actionId = `act-${randomUUID().slice(0, 8)}`;
   }
 
@@ -55,6 +70,21 @@ export class ActionExecutor {
       requestedBy: this.actionContext.requestedBy,
       status: "pending",
       createdAt: Date.now(),
+      persona: this.aiContext?.persona ?? "",
+      personaColor: this.aiContext?.personaColor ?? "",
+    };
+  }
+
+  private buildAiMeta(): AiMetadata | null {
+    if (!this.aiContext) return null;
+    return {
+      actionId: this.aiContext.actionId,
+      commandId: this.aiContext.commandId,
+      requestedBy: this.aiContext.requestedBy,
+      status: "pending",
+      createdAt: Date.now(),
+      persona: this.aiContext.persona,
+      personaColor: this.aiContext.personaColor,
     };
   }
 
@@ -96,43 +126,61 @@ export class ActionExecutor {
     const width = (args.width as number) ?? 150;
     const height = (args.height as number) ?? 80;
 
-    const data: Record<string, unknown> = { type: nodeType };
+    // Build data in the exact format the frontend React Flow schema expects
+    const data: Record<string, unknown> = { objectType: nodeType, zIndex: 0 };
 
     if (nodeType === "shape") {
       data.shapeKind = args.shapeKind ?? "rectangle";
-      data.color = args.color ?? "oklch(0.768 0.233 130.85)";
-      data.paintStyle = args.paintStyle ?? "solid";
-      data.strokeWidth = 2;
-      data.label = args.label ?? "";
+      data.content = { label: (args.label as string) ?? "" };
+      data.style = {
+        color: (args.color as string) ?? "oklch(0.768 0.233 130.85)",
+        paintStyle: (args.paintStyle as string) ?? "solid",
+        strokeWidth: 2,
+      };
     } else if (nodeType === "text") {
-      data.text = args.text ?? "";
-      data.color = args.color ?? "oklch(0.268 0 0)";
-      data.fontSize = args.fontSize ?? 16;
-      data.fontWeight = "normal";
-      data.align = "left";
+      data.content = { text: (args.text as string) ?? "" };
+      data.style = {
+        color: (args.color as string) ?? "oklch(0.268 0 0)",
+        fontSize: (args.fontSize as number) ?? 16,
+        fontWeight: "normal",
+        align: "left",
+      };
     } else if (nodeType === "sticky_note") {
-      data.text = args.text ?? "";
-      data.color = args.color ?? "oklch(0.92 0.17 122)";
-      data.textColor = "oklch(0.268 0 0)";
-      data.fontSize = args.fontSize ?? 14;
+      data.content = { text: (args.text as string) ?? "" };
+      data.style = {
+        color: (args.color as string) ?? "oklch(0.92 0.17 122)",
+        textColor: "oklch(0.268 0 0)",
+        fontSize: (args.fontSize as number) ?? 14,
+      };
     }
 
     data._ai = this.makeAiMetadata();
 
     this._createdNodeIds.push(id);
-    this.storage.setNode(id, { type: nodeType, position, width, height, data });
+    // React Flow expects: { id, type, position, style: { width, height }, data }
+    this.storage.setNode(id, { type: nodeType, position, style: { width, height }, data });
   }
 
   private handleUpdateNode(args: Record<string, unknown>): void {
     const nodeId = args.nodeId as string;
     const updates: Record<string, unknown> = {};
 
+    // Layout
     if (args.position) updates.position = args.position;
-    if (args.width) updates.width = args.width;
-    if (args.height) updates.height = args.height;
-    if (args.text !== undefined) updates["data.text"] = args.text;
-    if (args.label !== undefined) updates["data.label"] = args.label;
-    if (args.color !== undefined) updates["data.color"] = args.color;
+    if (args.width || args.height) updates.style = { ...(args.width ? { width: args.width } : {}), ...(args.height ? { height: args.height } : {}) };
+
+    // Content — text for text/sticky_note, label for shapes
+    if (args.text !== undefined) updates["data.content.text"] = args.text;
+    if (args.label !== undefined) updates["data.content.label"] = args.label;
+
+    // Style properties
+    if (args.color !== undefined) updates["data.style.color"] = args.color;
+    if (args.textColor !== undefined) updates["data.style.textColor"] = args.textColor;
+    if (args.fontSize !== undefined) updates["data.style.fontSize"] = args.fontSize;
+    if (args.fontWeight !== undefined) updates["data.style.fontWeight"] = args.fontWeight;
+    if (args.paintStyle !== undefined) updates["data.style.paintStyle"] = args.paintStyle;
+    if (args.strokeWidth !== undefined) updates["data.style.strokeWidth"] = args.strokeWidth;
+    if (args.shapeKind !== undefined) updates["data.shapeKind"] = args.shapeKind;
 
     this.storage.setNode(nodeId, updates);
   }
