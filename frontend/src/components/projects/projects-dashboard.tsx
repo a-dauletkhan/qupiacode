@@ -42,7 +42,7 @@ export function ProjectsDashboard() {
     useProjects()
 
   const [viewMode, setViewMode] = React.useState<ViewMode>(() => {
-    return (localStorage.getItem("higjam_view_mode") as ViewMode) || "table"
+    return (localStorage.getItem("higgsjam_view_mode") as ViewMode) || "table"
   })
 
   const [dialogMode, setDialogMode] = React.useState<
@@ -53,7 +53,7 @@ export function ProjectsDashboard() {
 
   const switchView = (mode: ViewMode) => {
     setViewMode(mode)
-    localStorage.setItem("higjam_view_mode", mode)
+    localStorage.setItem("higgsjam_view_mode", mode)
   }
 
   const openCreate = () => {

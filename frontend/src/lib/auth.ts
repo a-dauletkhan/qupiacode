@@ -33,7 +33,7 @@ export class AuthError extends Error {
 
 // ---- storage ----
 
-const STORAGE_KEY = "higjam_auth"
+const STORAGE_KEY = "higgsjam_auth"
 
 function readState(): AuthState {
   try {
