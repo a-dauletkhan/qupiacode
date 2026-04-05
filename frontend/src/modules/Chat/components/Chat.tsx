@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/modules/Canvas/components/ui/button"
 import { useVoiceCallContext } from "@/modules/VoiceCall/context/voice-call-context"
 import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
+import { SlashCommandMenu, useSlashCommands } from "@/modules/Chat/components/slash-command-menu"
 import { Bot } from "lucide-react"
 
 function ChatMessageFooter() {
@@ -114,6 +115,7 @@ export function Chat() {
   const virtuosoRef = React.useRef<VirtuosoHandle>(null)
   const [isAtBottom, setIsAtBottom] = React.useState(true)
   const [input, setInput] = React.useState("")
+  const slash = useSlashCommands(input, setInput)
   const { threads } = useThreads()
   const currentUserId = useSelf((me) => me.id)
   const createThread = useCreateThread()
@@ -238,21 +240,30 @@ export function Chat() {
       </div>
 
       <AiTypingIndicator />
-      <form onSubmit={handleSubmit} className="flex gap-1.5 border-t border-white/[0.06] p-2">
-        <input
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          placeholder={aiAgent ? "Message or @designer @critique @marketing..." : "Type a message..."}
-          className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:border-lime-500/30 focus:outline-none focus:ring-1 focus:ring-lime-500/20"
+      <div className="relative border-t border-white/[0.06] p-2">
+        <SlashCommandMenu
+          visible={slash.menuOpen && aiAgent != null}
+          filter={slash.filter}
+          selectedIndex={slash.selectedIndex}
+          onSelect={slash.selectCommand}
         />
-        <button
-          type="submit"
-          disabled={!input.trim()}
-          className="rounded-lg bg-lime-500 px-2.5 py-1.5 text-xs font-medium text-black transition-opacity disabled:opacity-30"
-        >
-          <Send className="size-3.5" />
-        </button>
-      </form>
+        <form onSubmit={handleSubmit} className="flex gap-1.5">
+          <input
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={slash.handleKeyDown}
+            placeholder={aiAgent ? 'Type / for AI personas or message...' : "Type a message..."}
+            className="flex-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground/50 focus:border-lime-500/30 focus:outline-none focus:ring-1 focus:ring-lime-500/20"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="rounded-lg bg-lime-500 px-2.5 py-1.5 text-xs font-medium text-black transition-opacity disabled:opacity-30"
+          >
+            <Send className="size-3.5" />
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

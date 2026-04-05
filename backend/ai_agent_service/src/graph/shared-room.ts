@@ -1,13 +1,15 @@
 /**
  * Shared Liveblocks room connection for the AI agent.
- * One connection per room, reused across graph nodes.
+ * Stays connected per room, disconnects after 30s of inactivity.
  */
 
 import { Liveblocks } from "@liveblocks/node";
 import { createClient, type Room } from "@liveblocks/client";
 
 let _client: ReturnType<typeof createClient> | null = null;
-const _rooms = new Map<string, Room>();
+const _rooms = new Map<string, { room: Room; idleTimer: ReturnType<typeof setTimeout> | null }>();
+
+const IDLE_DISCONNECT_MS = 30_000; // disconnect after 30s of no activity
 
 function getClient(liveblocks: Liveblocks) {
   if (!_client) {
@@ -27,7 +29,16 @@ function getClient(liveblocks: Liveblocks) {
 
 export function enterSharedRoom(liveblocks: Liveblocks, roomId: string): Room {
   const existing = _rooms.get(roomId);
-  if (existing) return existing;
+  if (existing) {
+    // Cancel idle disconnect timer — room is active again
+    if (existing.idleTimer) {
+      clearTimeout(existing.idleTimer);
+      existing.idleTimer = null;
+    }
+    // Set presence to acting
+    existing.room.updatePresence({ status: "acting" });
+    return existing.room;
+  }
 
   const client = getClient(liveblocks);
   const { room } = client.enterRoom(roomId, {
@@ -35,21 +46,25 @@ export function enterSharedRoom(liveblocks: Liveblocks, roomId: string): Room {
     initialStorage: {},
   });
 
-  _rooms.set(roomId, room);
+  _rooms.set(roomId, { room, idleTimer: null });
   return room;
 }
 
 export async function leaveSharedRoom(roomId: string): Promise<void> {
-  const room = _rooms.get(roomId);
-  if (!room) return;
+  const entry = _rooms.get(roomId);
+  if (!entry) return;
 
-  // Set presence to watching so the frontend sees the typing stop
-  room.updatePresence({ status: "watching" });
+  // Set presence to watching (stop typing indicator)
+  entry.room.updatePresence({ status: "watching" });
 
-  // Wait for presence update to sync via WebSocket
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  room.disconnect();
-  _rooms.delete(roomId);
-  console.info(`[shared-room] Disconnected from room ${roomId}`);
+  // Start idle timer — disconnect if no new activity within 30s
+  if (entry.idleTimer) clearTimeout(entry.idleTimer);
+  entry.idleTimer = setTimeout(() => {
+    const current = _rooms.get(roomId);
+    if (current) {
+      current.room.disconnect();
+      _rooms.delete(roomId);
+      console.info(`[shared-room] Disconnected from room ${roomId} (idle timeout)`);
+    }
+  }, IDLE_DISCONNECT_MS);
 }
