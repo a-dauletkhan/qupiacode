@@ -24,7 +24,7 @@ def test_issue_voice_token_returns_room_scoped_credentials(client: TestClient) -
         "name": "Qupia Agent",
         "wake_phrases": ["agent", "hey agent", "ai agent"],
         "transcription_mode": "mock",
-        "transcript_forwarding_enabled": False,
+        "transcript_forwarding_enabled": True,
         "transcript_partials_enabled": True,
         "diarization_enabled": False,
     }

@@ -198,7 +198,9 @@
 }
 
 .primitive-node-content {
-  @apply h-full w-full overflow-hidden whitespace-pre-wrap break-words px-4 py-3 text-center text-xs font-medium leading-[1.15] text-foreground;
+  @apply h-full w-full overflow-hidden whitespace-pre-wrap break-words px-5 py-4 text-center text-sm font-medium leading-[1.25] text-foreground;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .primitive-node-content-placeholder {
@@ -206,8 +208,9 @@
 }
 
 .primitive-node-editor {
-  @apply h-full min-h-0 resize-none border-none bg-transparent px-4 py-3 text-center text-xs font-medium leading-[1.15] text-foreground shadow-none outline-none focus-visible:border-none focus-visible:ring-0;
+  @apply h-full min-h-0 resize-none border-none bg-transparent px-5 py-4 text-center text-sm font-medium leading-[1.25] text-foreground shadow-none outline-none focus-visible:border-none focus-visible:ring-0;
   cursor: text;
+  overflow-wrap: anywhere;
 }
 
 .primitive-image-content {
@@ -293,7 +296,9 @@
 }
 
 .canvas-text-content {
-  @apply h-full w-full overflow-hidden whitespace-pre-wrap break-words px-3 py-2 leading-[1.15];
+  @apply h-full w-full overflow-hidden whitespace-pre-wrap break-words px-4 py-3 leading-[1.25];
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .canvas-text-content-placeholder {
@@ -301,8 +306,9 @@
 }
 
 .canvas-text-editor {
-  @apply h-full min-h-0 resize-none border-none bg-transparent px-3 py-2 text-inherit leading-[1.15] shadow-none outline-none focus-visible:border-none focus-visible:ring-0;
+  @apply h-full min-h-0 resize-none border-none bg-transparent px-4 py-3 text-inherit leading-[1.25] shadow-none outline-none focus-visible:border-none focus-visible:ring-0;
   cursor: text;
+  overflow-wrap: anywhere;
 }
 
 .canvas-sticky-node {
@@ -327,10 +333,12 @@
 }
 
 .canvas-sticky-content {
-  @apply h-full w-full overflow-hidden whitespace-pre-wrap break-words text-[length:var(--sticky-note-font-size)] leading-[1.05];
-  padding: 32px;
-  padding-right: 84px;
+  @apply h-full w-full overflow-hidden whitespace-pre-wrap break-words text-[length:var(--sticky-note-font-size)] leading-[1.18];
+  padding: 28px;
+  padding-right: 56px;
   color: var(--sticky-note-text-color);
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .canvas-sticky-content-placeholder {
@@ -338,11 +346,12 @@
 }
 
 .canvas-sticky-editor {
-  @apply h-full min-h-0 resize-none border-none bg-transparent text-[length:var(--sticky-note-font-size)] leading-[1.05] shadow-none outline-none focus-visible:border-none focus-visible:ring-0;
-  padding: 32px;
-  padding-right: 84px;
+  @apply h-full min-h-0 resize-none border-none bg-transparent text-[length:var(--sticky-note-font-size)] leading-[1.18] shadow-none outline-none focus-visible:border-none focus-visible:ring-0;
+  padding: 28px;
+  padding-right: 56px;
   color: var(--sticky-note-text-color);
   cursor: text;
+  overflow-wrap: anywhere;
 }
 
 /* AI-generated node styles */

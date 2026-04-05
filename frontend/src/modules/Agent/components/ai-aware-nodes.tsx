@@ -53,33 +53,41 @@ function withAiOverlay<N extends Node<Record<string, unknown>>>(
 
     function handleApprove() {
       if (!agent || !aiMeta) return
+      const matchingAction = agent.queue.recentActions.find((action) => action.actionId === aiMeta.actionId)
+      const nodeIds = matchingAction?.nodeIds ?? [props.id]
+      const edgeIds = matchingAction?.edgeIds ?? []
       console.info("[ai-agent] approve clicked", {
         actionId: aiMeta.actionId,
-        nodeId: props.id,
+        nodeIds,
+        edgeIds,
         commandId: aiMeta.commandId,
       })
-      agent.approve(aiMeta.actionId, [props.id], [])
+      agent.approve(aiMeta.actionId, nodeIds, edgeIds)
       agent._notifyCanvasAction({
         type: "approve",
         actionId: aiMeta.actionId,
-        nodeIds: [props.id],
-        edgeIds: [],
+        nodeIds,
+        edgeIds,
       })
     }
 
     function handleReject() {
       if (!agent || !aiMeta) return
+      const matchingAction = agent.queue.recentActions.find((action) => action.actionId === aiMeta.actionId)
+      const nodeIds = matchingAction?.nodeIds ?? [props.id]
+      const edgeIds = matchingAction?.edgeIds ?? []
       console.info("[ai-agent] reject clicked", {
         actionId: aiMeta.actionId,
-        nodeId: props.id,
+        nodeIds,
+        edgeIds,
         commandId: aiMeta.commandId,
       })
-      agent.reject(aiMeta.actionId, [props.id], [])
+      agent.reject(aiMeta.actionId, nodeIds, edgeIds)
       agent._notifyCanvasAction({
         type: "reject",
         actionId: aiMeta.actionId,
-        nodeIds: [props.id],
-        edgeIds: [],
+        nodeIds,
+        edgeIds,
       })
     }
 

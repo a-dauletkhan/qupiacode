@@ -68,6 +68,7 @@ export function CanvasWorkspace() {
   const { getProject } = useProjects()
   const { user } = useAuth()
   const project = projectId ? getProject(projectId) : null
+<<<<<<< Updated upstream
   const displayName = React.useMemo(() => {
     const resolvedName = user?.name?.trim()
     if (resolvedName) {
@@ -76,6 +77,8 @@ export function CanvasWorkspace() {
 
     return "Anonymous"
   }, [user?.name])
+=======
+>>>>>>> Stashed changes
   const shareLink = React.useMemo(
     () => new URL(`/invite/${projectId ?? ""}`, SELF_URL).toString(),
     [projectId]
@@ -237,7 +240,11 @@ export function CanvasWorkspace() {
               className="w-full"
               projectId={project.id}
               userId={user?.id}
+<<<<<<< Updated upstream
               displayName={displayName}
+=======
+              displayName={voiceDisplayName}
+>>>>>>> Stashed changes
             />
           </ResizablePanel>
         </ResizablePanelGroup>

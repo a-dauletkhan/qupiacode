@@ -19,8 +19,11 @@ from livekit.agents import (
 
 from ..core.config import get_settings
 from ..core.logging import configure_logging
-from .forwarder import VoiceAgentTranscriptForwarder
+from .forwarder import VoiceAgentHttpForwarder
+from .recordings import VoiceRoomRecordingManager
 from .runtime import (
+    build_ai_agent_system_events_url,
+    build_ai_agent_transcript_ingest_url,
     build_forwarded_transcript_payload,
     build_mock_transcript_text,
     build_mock_transcription,
@@ -30,6 +33,8 @@ from .runtime import (
     build_voice_agent_stt,
     ensure_voice_agent_worker_configuration,
     is_microphone_publication,
+    resolve_forwarder_auth_token,
+    resolve_platform_room_id,
     should_forward_transcript_segment,
 )
 
@@ -76,17 +81,32 @@ async def run_voice_agent(ctx: JobContext) -> None:
         "Starting voice agent room=%s transcription_mode=%s forward_url_configured=%s",
         ctx.room.name,
         settings.voice_agent_transcription_mode,
-        bool(settings.voice_agent_transcript_forward_url),
+        bool(settings.voice_agent_transcript_forward_url or settings.ai_agent_service_url),
     )
 
     session = build_voice_agent_session()
-    forwarder = VoiceAgentTranscriptForwarder(
-        target_url=settings.voice_agent_transcript_forward_url,
-        auth_token=(
-            settings.voice_agent_transcript_forward_auth_token.get_secret_value()
-            if settings.voice_agent_transcript_forward_auth_token is not None
-            else None
+    room_id = resolve_platform_room_id(ctx.room.name)
+    uses_ai_agent_transcript_ingest = not bool(settings.voice_agent_transcript_forward_url)
+    transcript_auth_token = resolve_forwarder_auth_token(
+        settings,
+        use_ai_agent_target=uses_ai_agent_transcript_ingest,
+    )
+    forwarder = VoiceAgentHttpForwarder(
+        target_url=(
+            settings.voice_agent_transcript_forward_url
+            or build_ai_agent_transcript_ingest_url(settings=settings, room_id=room_id)
         ),
+        auth_token=transcript_auth_token,
+    )
+    system_event_forwarder = VoiceAgentHttpForwarder(
+        target_url=build_ai_agent_system_events_url(settings=settings, room_id=room_id),
+        auth_token=resolve_forwarder_auth_token(settings, use_ai_agent_target=True),
+    )
+    recording_manager = VoiceRoomRecordingManager(
+        settings=settings,
+        room_name=ctx.room.name,
+        room_id=room_id,
+        forwarder=system_event_forwarder,
     )
 
     background_tasks: set[asyncio.Task[object]] = set()
@@ -113,6 +133,7 @@ async def run_voice_agent(ctx: JobContext) -> None:
         forwarded_segment_keys=forwarded_segment_keys,
         emitted_mock_track_keys=emitted_mock_track_keys,
         schedule_task=schedule_task,
+        recording_manager=recording_manager,
     )
 
     emit_mock_transcripts_for_existing_participants(
@@ -122,6 +143,7 @@ async def run_voice_agent(ctx: JobContext) -> None:
         emitted_mock_track_keys=emitted_mock_track_keys,
         schedule_task=schedule_task,
     )
+    schedule_task(recording_manager.sync_for_room(ctx.room))
 
 
 def register_voice_agent_callbacks(*, session: AgentSession) -> None:
@@ -159,10 +181,11 @@ def register_voice_agent_callbacks(*, session: AgentSession) -> None:
 def register_room_callbacks(
     *,
     room: rtc.Room,
-    forwarder: VoiceAgentTranscriptForwarder,
+    forwarder: VoiceAgentHttpForwarder,
     forwarded_segment_keys: set[str],
     emitted_mock_track_keys: set[str],
     schedule_task: Callable[[Coroutine[object, object, None]], None],
+    recording_manager: VoiceRoomRecordingManager,
 ) -> None:
     """Register room callbacks for forwarding transcript segments and mock mode."""
 
@@ -185,6 +208,7 @@ def register_room_callbacks(
 
     @room.on("participant_connected")
     def _on_participant_connected(participant: rtc.RemoteParticipant) -> None:
+        schedule_task(recording_manager.sync_for_room(room))
         maybe_emit_mock_transcripts_for_participant(
             room=room,
             participant=participant,
@@ -199,6 +223,7 @@ def register_room_callbacks(
         publication: rtc.RemoteTrackPublication,
         participant: rtc.RemoteParticipant,
     ) -> None:
+        schedule_task(recording_manager.sync_for_room(room))
         maybe_emit_mock_transcript_for_publication(
             room=room,
             participant=participant,
@@ -209,11 +234,15 @@ def register_room_callbacks(
             schedule_task=schedule_task,
         )
 
+    @room.on("participant_disconnected")
+    def _on_participant_disconnected(_participant: rtc.RemoteParticipant) -> None:
+        schedule_task(recording_manager.sync_for_room(room))
+
 
 def emit_mock_transcripts_for_existing_participants(
     *,
     room: rtc.Room,
-    forwarder: VoiceAgentTranscriptForwarder,
+    forwarder: VoiceAgentHttpForwarder,
     forwarded_segment_keys: set[str],
     emitted_mock_track_keys: set[str],
     schedule_task: Callable[[Coroutine[object, object, None]], None],
@@ -234,7 +263,7 @@ def maybe_emit_mock_transcripts_for_participant(
     *,
     room: rtc.Room,
     participant: rtc.RemoteParticipant,
-    forwarder: VoiceAgentTranscriptForwarder,
+    forwarder: VoiceAgentHttpForwarder,
     forwarded_segment_keys: set[str],
     emitted_mock_track_keys: set[str],
     schedule_task: Callable[[Coroutine[object, object, None]], None],
@@ -260,7 +289,7 @@ def maybe_emit_mock_transcript_for_publication(
     room: rtc.Room,
     participant: rtc.RemoteParticipant,
     publication: rtc.TrackPublication,
-    forwarder: VoiceAgentTranscriptForwarder,
+    forwarder: VoiceAgentHttpForwarder,
     forwarded_segment_keys: set[str],
     emitted_mock_track_keys: set[str],
     schedule_task: Callable[[Coroutine[object, object, None]], None],
@@ -313,7 +342,7 @@ def dispatch_transcript_segment(
     participant: rtc.Participant | None,
     publication: rtc.TrackPublication | None,
     segment: rtc.TranscriptionSegment,
-    forwarder: VoiceAgentTranscriptForwarder,
+    forwarder: VoiceAgentHttpForwarder,
     forwarded_segment_keys: set[str],
     schedule_task: Callable[[Coroutine[object, object, None]], None],
 ) -> None:
@@ -334,10 +363,10 @@ def dispatch_transcript_segment(
     forwarded_segment_keys.add(dispatch_key)
     payload = build_forwarded_transcript_payload(
         room_name=room.name,
+        room_id=resolve_platform_room_id(room.name),
         participant=participant,
         publication=publication,
         segment=segment,
-        transcription_mode=settings.voice_agent_transcription_mode,
     )
 
     logger.info(

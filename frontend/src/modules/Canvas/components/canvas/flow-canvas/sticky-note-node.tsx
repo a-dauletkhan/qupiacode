@@ -58,8 +58,8 @@ export const StickyNoteNodeCard = React.memo(function StickyNoteNodeCard({
       <NodeResizer
         color="oklch(0.768 0.233 130.85)"
         isVisible={selected && !data.draft}
-        minWidth={180}
-        minHeight={140}
+        minWidth={240}
+        minHeight={160}
         handleClassName="primitive-node-resize-handle"
         lineClassName="primitive-node-resize-line"
       />

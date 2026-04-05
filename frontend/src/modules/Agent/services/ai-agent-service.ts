@@ -52,7 +52,7 @@ async function get<T>(path: string, action: string): Promise<T> {
 }
 
 export function sendCommand(roomId: string, req: AiCommandRequest): Promise<AiCommandResponse> {
-  return post(`/api/ai/rooms/${roomId}/command`, req, `command: "${req.message}" from ${req.userName} (source: ${req.context.source})`)
+  return post(`/api/ai/rooms/${roomId}/command`, req, `command: "${req.message}" from ${req.userName} (source: ${req.source})`)
 }
 
 export function sendEvents(roomId: string, req: AiEventsRequest): Promise<AiEventsResponse> {

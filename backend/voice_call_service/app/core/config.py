@@ -43,9 +43,19 @@ class Settings(BaseSettings):
         min_length=1,
         max_length=32,
     )
+    ai_agent_service_url: str | None = None
+    ai_agent_internal_token: SecretStr | None = None
     voice_agent_transcript_forward_url: str | None = None
     voice_agent_transcript_forward_auth_token: SecretStr | None = None
     voice_agent_transcript_forward_partials_enabled: bool = False
+    voice_agent_recording_enabled: bool = False
+    voice_agent_recording_s3_bucket: str | None = None
+    voice_agent_recording_s3_region: str | None = None
+    voice_agent_recording_s3_endpoint: str | None = None
+    voice_agent_recording_s3_access_key: SecretStr | None = None
+    voice_agent_recording_s3_secret_key: SecretStr | None = None
+    voice_agent_recording_s3_force_path_style: bool = True
+    voice_agent_recording_prefix: str = Field(default="recordings", min_length=1, max_length=200)
     voice_agent_mock_transcript_template: str = Field(
         default="[mock] {participant_name} shared a prototype update.",
         min_length=1,
@@ -103,6 +113,15 @@ class Settings(BaseSettings):
 
         normalized = value.strip()
         return normalized or None
+
+    @field_validator("ai_agent_service_url", mode="before")
+    @classmethod
+    def _normalize_ai_agent_service_url(cls, value: object) -> str | None:
+        if not isinstance(value, str):
+            return None
+
+        normalized = value.strip()
+        return normalized.rstrip("/") or None
 
 
 @lru_cache(maxsize=1)

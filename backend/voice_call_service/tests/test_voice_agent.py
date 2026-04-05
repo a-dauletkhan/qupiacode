@@ -175,33 +175,29 @@ def test_build_forwarded_transcript_payload_includes_attribution_and_track_data(
 
     payload = build_forwarded_transcript_payload(
         room_name="canvas:demo",
+        room_id="demo",
         participant=cast(rtc.Participant, participant),
         publication=cast(rtc.TrackPublication, publication),
         segment=segment,
-        transcription_mode="mock",
         received_at=1_700_000_000.0,
     )
 
-    assert payload["event_type"] == "voice.transcript.segment"
+    assert payload["room_id"] == "demo"
     assert payload["room_name"] == "canvas:demo"
-    assert payload["transcription_mode"] == "mock"
-    assert payload["participant"] == {
-        "identity": "user:alice",
-        "name": "Alice",
-        "sid": "PA_123",
-    }
+    assert payload["utterance_id"] == "seg-1"
+    assert payload["segment_id"] == "seg-1"
+    assert payload["participant_identity"] == "user:alice"
+    assert payload["speaker_name"] == "Alice"
+    assert payload["source"] == "livekit"
+    assert payload["text"] == "hello world"
+    assert payload["is_final"] is True
+    assert payload["start_time_ms"] == 100
+    assert payload["end_time_ms"] == 250
     assert payload["track"] == {
         "sid": "TR_123",
         "name": "microphone",
         "source": "microphone",
-    }
-    assert payload["segment"] == {
-        "id": "seg-1",
-        "text": "hello world",
         "language": "en",
-        "is_final": True,
-        "start_time_ms": 100,
-        "end_time_ms": 250,
     }
     assert payload["speaker_id"] is None
     assert payload["attribution_source"] == "participant"

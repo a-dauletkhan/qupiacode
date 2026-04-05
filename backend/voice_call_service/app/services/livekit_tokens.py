@@ -94,7 +94,9 @@ def build_voice_agent_metadata(settings: Settings) -> VoiceAgentMetadata:
         name=settings.voice_agent_name,
         wake_phrases=settings.voice_agent_wake_phrases,
         transcription_mode=settings.voice_agent_transcription_mode,
-        transcript_forwarding_enabled=bool(settings.voice_agent_transcript_forward_url),
+        transcript_forwarding_enabled=bool(
+            settings.voice_agent_transcript_forward_url or settings.ai_agent_service_url
+        ),
         transcript_partials_enabled=settings.voice_agent_transcript_partials_enabled,
         diarization_enabled=settings.voice_agent_diarization_enabled,
     )

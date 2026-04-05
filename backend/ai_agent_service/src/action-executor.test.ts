@@ -1,30 +1,13 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { ActionExecutor } from "./action-executor.js";
 import type { ToolCall } from "./llm/types.js";
 
-function createMockStorage() {
-  const nodes = new Map<string, Record<string, unknown>>();
-  const edges = new Map<string, Record<string, unknown>>();
-  const messages: string[] = [];
-
-  return {
-    nodes,
-    edges,
-    messages,
-    getNodes: () => Array.from(nodes.entries()).map(([id, data]) => ({ id, ...data })),
-    getEdges: () => Array.from(edges.entries()).map(([id, data]) => ({ id, ...data })),
-    setNode: (id: string, data: Record<string, unknown>) => nodes.set(id, data),
-    deleteNode: (id: string) => nodes.delete(id),
-    setEdge: (id: string, data: Record<string, unknown>) => edges.set(id, data),
-    deleteEdge: (id: string) => edges.delete(id),
-    sendMessage: (text: string) => messages.push(text),
-  };
-}
-
 describe("ActionExecutor", () => {
-  it("executes createNode tool call", async () => {
-    const storage = createMockStorage();
-    const executor = new ActionExecutor(storage);
+  it("collects createNode tool calls as frontend actions", async () => {
+    const executor = new ActionExecutor({
+      commandId: "cmd-001",
+      requestedBy: "user-1",
+    });
 
     const toolCall: ToolCall = {
       name: "createNode",
@@ -32,120 +15,175 @@ describe("ActionExecutor", () => {
         nodeType: "sticky_note",
         position: { x: 100, y: 200 },
         text: "Hello",
-        color: "#yellow",
       },
     };
 
     await executor.execute([toolCall]);
 
-    expect(storage.nodes.size).toBe(1);
-    const node = Array.from(storage.nodes.values())[0];
-    expect(node.type).toBe("sticky_note");
-    expect(node.position).toEqual({ x: 100, y: 200 });
-  });
-
-  it("executes deleteNode tool call", async () => {
-    const storage = createMockStorage();
-    storage.setNode("node-1", { type: "shape" });
-
-    const executor = new ActionExecutor(storage);
-
-    await executor.execute([{ name: "deleteNode", arguments: { nodeId: "node-1" } }]);
-
-    expect(storage.nodes.size).toBe(0);
-  });
-
-  it("executes sendMessage tool call", async () => {
-    const storage = createMockStorage();
-    const executor = new ActionExecutor(storage);
-
-    await executor.execute([{ name: "sendMessage", arguments: { text: "I organized the board" } }]);
-
-    expect(storage.messages).toEqual(["I organized the board"]);
-  });
-
-  it("executes multiple tool calls in sequence", async () => {
-    const storage = createMockStorage();
-    const executor = new ActionExecutor(storage);
-
-    await executor.execute([
-      { name: "createNode", arguments: { nodeType: "shape", position: { x: 0, y: 0 }, shapeKind: "rectangle" } },
-      { name: "createNode", arguments: { nodeType: "shape", position: { x: 200, y: 0 }, shapeKind: "rectangle" } },
-      { name: "sendMessage", arguments: { text: "Added two shapes" } },
-    ]);
-
-    expect(storage.nodes.size).toBe(2);
-    expect(storage.messages).toEqual(["Added two shapes"]);
-  });
-
-  it("skips unknown tool calls without throwing", async () => {
-    const storage = createMockStorage();
-    const executor = new ActionExecutor(storage);
-
-    await executor.execute([{ name: "unknownTool", arguments: {} }]);
-
-    expect(storage.nodes.size).toBe(0);
-  });
-
-  it("injects _ai metadata into created nodes with context", async () => {
-    const storage = createMockStorage();
-    const executor = new ActionExecutor(storage, {
-      commandId: "cmd-001",
-      requestedBy: "user-1",
+    expect(executor.actions).toHaveLength(1);
+    expect(executor.actions[0]).toMatchObject({
+      type: "create_node",
+      nodeType: "sticky_note",
+      position: { x: 100, y: 200 },
+      content: { text: "Hello" },
     });
-
-    await executor.execute([{
-      name: "createNode",
-      arguments: { nodeType: "sticky_note", position: { x: 0, y: 0 }, text: "test" },
-    }]);
-
-    expect(storage.nodes.size).toBe(1);
-    const node = Array.from(storage.nodes.values())[0];
-    const data = node.data as Record<string, unknown>;
-    const ai = data._ai as Record<string, unknown>;
-    expect(ai.actionId).toBe(executor.actionId);
-    expect(ai.commandId).toBe("cmd-001");
-    expect(ai.requestedBy).toBe("user-1");
-    expect(ai.status).toBe("pending");
-    expect(ai.createdAt).toBeTypeOf("number");
     expect(executor.createdNodeIds).toHaveLength(1);
   });
 
-  it("injects _ai metadata into created edges", async () => {
-    const storage = createMockStorage();
-    const executor = new ActionExecutor(storage, {
-      commandId: null,
-      requestedBy: null,
+  it("collects createEdge tool calls as frontend actions", async () => {
+    const executor = new ActionExecutor();
+
+    await executor.execute([{ name: "createEdge", arguments: { source: "n1", target: "n2", label: "test" } }]);
+
+    expect(executor.actions).toHaveLength(1);
+    expect(executor.actions[0]).toMatchObject({
+      type: "create_edge",
+      source: "n1",
+      target: "n2",
+      label: "test",
     });
-
-    await executor.execute([{
-      name: "createEdge",
-      arguments: { source: "n1", target: "n2", label: "test" },
-    }]);
-
-    expect(storage.edges.size).toBe(1);
-    const edge = Array.from(storage.edges.values())[0];
-    const edgeData = edge.data as Record<string, unknown>;
-    const ai = edgeData._ai as Record<string, unknown>;
-    expect(ai.actionId).toBe(executor.actionId);
-    expect(ai.status).toBe("pending");
     expect(executor.createdEdgeIds).toHaveLength(1);
   });
 
-  it("always injects _ai metadata (even without explicit context)", async () => {
-    const storage = createMockStorage();
-    const executor = new ActionExecutor(storage);
+  it("collects sendMessage tool calls", async () => {
+    const executor = new ActionExecutor();
 
-    await executor.execute([{
-      name: "createNode",
-      arguments: { nodeType: "shape", position: { x: 0, y: 0 } },
-    }]);
+    await executor.execute([{ name: "sendMessage", arguments: { text: "I organized the board" } }]);
 
-    const node = Array.from(storage.nodes.values())[0];
-    const data = node.data as Record<string, unknown>;
-    const ai = data._ai as Record<string, unknown>;
-    expect(ai.actionId).toBe(executor.actionId);
-    expect(ai.commandId).toBeNull();
-    expect(ai.requestedBy).toBeNull();
+    expect(executor.messages).toEqual(["I organized the board"]);
+  });
+
+  it("sizes long sticky-note text for readability", async () => {
+    const executor = new ActionExecutor();
+
+    await executor.execute([
+      {
+        name: "createNode",
+        arguments: {
+          nodeType: "sticky_note",
+          position: { x: 0, y: 0 },
+          text: "Oil-based, Water-based, Micellar water, balm cleanser, and gentle gel cleanser options",
+        },
+      },
+    ]);
+
+    expect(executor.actions[0]).toMatchObject({
+      type: "create_node",
+      nodeType: "sticky_note",
+    });
+    const action = executor.actions[0] as Extract<(typeof executor.actions)[number], { type: "create_node" }>;
+    expect(action.width).toBeGreaterThanOrEqual(280);
+    expect(action.height).toBeGreaterThanOrEqual(168);
+  });
+
+  it("expands createDiagram into multiple node and edge actions", async () => {
+    const executor = new ActionExecutor({
+      canvasSnapshot: {
+        roomId: "room-1",
+        projectId: "project-1",
+        nodes: [],
+        edges: [],
+        selectedNodeIds: [],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+    });
+
+    await executor.execute([
+      {
+        name: "createDiagram",
+        arguments: {
+          diagramType: "mindmap",
+          summary: "Prepared a five-step routine mindmap.",
+          nodes: [
+            { key: "root", nodeType: "shape", label: "Skincare Routine" },
+            { key: "cleanser", nodeType: "sticky_note", text: "Cleanser" },
+            { key: "toner", nodeType: "sticky_note", text: "Toner" },
+            { key: "vitc", nodeType: "sticky_note", text: "Vitamin C" },
+          ],
+          edges: [
+            { sourceKey: "root", targetKey: "cleanser" },
+            { sourceKey: "cleanser", targetKey: "toner" },
+            { sourceKey: "toner", targetKey: "vitc" },
+          ],
+        },
+      },
+    ]);
+
+    expect(executor.actions.filter((action) => action.type === "create_node")).toHaveLength(4);
+    expect(executor.actions.filter((action) => action.type === "create_edge")).toHaveLength(3);
+    expect(executor.messages).toContain("Prepared a five-step routine mindmap.");
+  });
+
+  it("can reuse an existing selected node as a diagram root", async () => {
+    const executor = new ActionExecutor({
+      canvasSnapshot: {
+        roomId: "room-1",
+        projectId: "project-1",
+        nodes: [
+          {
+            id: "existing-root",
+            type: "shape",
+            position: { x: 500, y: 180 },
+            data: {
+              objectType: "shape",
+              content: { label: "Skincare Routine" },
+              style: { color: "oklch(0.8 0.1 40)" },
+            },
+          },
+        ],
+        edges: [],
+        selectedNodeIds: ["existing-root"],
+        viewport: { x: 0, y: 0, zoom: 1 },
+      },
+    });
+
+    await executor.execute([
+      {
+        name: "createDiagram",
+        arguments: {
+          diagramType: "mindmap",
+          rootKey: "root",
+          nodes: [
+            { key: "root", existingNodeId: "existing-root", nodeType: "shape" },
+            { key: "cleanser", nodeType: "sticky_note", text: "Cleanser" },
+            { key: "moisturizer", nodeType: "sticky_note", text: "Moisturizer" },
+          ],
+          edges: [
+            { sourceKey: "root", targetKey: "cleanser" },
+            { sourceKey: "root", targetKey: "moisturizer" },
+          ],
+        },
+      },
+    ]);
+
+    expect(executor.actions.filter((action) => action.type === "create_node")).toHaveLength(2);
+    expect(executor.actions.filter((action) => action.type === "create_edge")).toHaveLength(2);
+    expect(
+      executor.actions.find(
+        (action): action is Extract<(typeof executor.actions)[number], { type: "create_edge" }> =>
+          action.type === "create_edge",
+      ),
+    ).toMatchObject({
+      source: "existing-root",
+    });
+  });
+
+  it("ignores unsupported tool calls", async () => {
+    const executor = new ActionExecutor();
+
+    await executor.execute([{ name: "deleteNode", arguments: { nodeId: "node-1" } }]);
+
+    expect(executor.actions).toHaveLength(0);
+    expect(executor.messages).toHaveLength(0);
+  });
+
+  it("keeps an action id for pending frontend approval", async () => {
+    const executor = new ActionExecutor();
+
+    await executor.execute([
+      { name: "createNode", arguments: { nodeType: "shape", position: { x: 0, y: 0 } } },
+    ]);
+
+    expect(executor.actionId).toMatch(/^act-/);
   });
 });

@@ -15,6 +15,8 @@ _LIVEBLOCKS_HEADERS = {
     "Content-Type": "application/json",
 }
 _SUPABASE_AUTH_URL = f"{settings.supabase_url}/auth/v1"
+
+
 def _liveblocks_headers() -> dict[str, str]:
     key = settings.liveblocks_secret_key
     if not key:
@@ -30,6 +32,13 @@ def _supabase_admin_headers() -> dict[str, str]:
     return {
         "apikey": key,
         "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json",
+    }
+
+
+def _ai_agent_headers() -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {settings.ai_agent_internal_token}",
         "Content-Type": "application/json",
     }
 
@@ -75,7 +84,8 @@ async def create_liveblocks_session(user_id: str, user_name: str, room_id: str |
         if room_id:
             try:
                 await client.post(
-                    f"{settings.ai_agent_service_url}/api/rooms/{room_id}/join",
+                    f"{settings.ai_agent_service_url.rstrip('/')}/internal/rooms/{room_id}/join",
+                    headers=_ai_agent_headers(),
                     timeout=2.0,
                 )
             except Exception as exc:
@@ -85,6 +95,11 @@ async def create_liveblocks_session(user_id: str, user_name: str, room_id: str |
 
 
 def _fallback_user_info(user_id: str) -> dict:
+    if user_id == "ai-agent":
+        return {
+            "name": "AI Agent",
+            "avatar": "",
+        }
     return {
         "name": user_id,
         "avatar": "",

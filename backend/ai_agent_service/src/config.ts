@@ -1,8 +1,15 @@
 import "dotenv/config";
 
 export const config = {
+  supabase: {
+    url: requireEnv("SUPABASE_URL"),
+    serviceRoleKey: requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  },
   liveblocks: {
     secretKey: requireEnv("LIVEBLOCKS_SECRET_KEY"),
+  },
+  internal: {
+    token: process.env.AI_AGENT_INTERNAL_TOKEN ?? "dev-ai-agent-token",
   },
   llm: {
     provider: (process.env.LLM_PROVIDER ?? "claude") as "claude" | "openai",

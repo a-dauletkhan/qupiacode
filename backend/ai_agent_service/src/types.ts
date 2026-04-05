@@ -9,48 +9,50 @@ export interface AgentPresence {
 }
 
 export type CanvasObjectType = "shape" | "text" | "sticky_note";
+<<<<<<< Updated upstream
 export type ShapeKind = "rectangle" | "ellipse";
 export type PaintStyle = "solid" | "outline" | "sketch" | "hatch";
 export type TextAlign = "left" | "center" | "right";
 export type FontWeight = "normal" | "medium" | "bold";
+=======
+export type ShapeKind = "rectangle" | "diamond" | "ellipse";
+>>>>>>> Stashed changes
 
 export interface Position {
   x: number;
   y: number;
 }
 
-export interface ShapeData {
-  type: "shape";
-  shapeKind: ShapeKind;
-  color: string;
-  paintStyle: PaintStyle;
-  strokeWidth: number;
-  label?: string;
+export interface Viewport {
+  x: number;
+  y: number;
+  zoom: number;
 }
 
-export interface TextData {
-  type: "text";
-  text: string;
-  color: string;
-  fontSize: number;
-  fontWeight: FontWeight;
-  align: TextAlign;
+export interface AiMetadata {
+  actionId: string;
+  commandId: string | null;
+  requestedBy: string | null;
+  status: "pending" | "approved" | "rejected";
+  createdAt: number;
 }
 
-export interface StickyNoteData {
-  type: "sticky_note";
-  text: string;
-  color: string;
-  textColor: string;
-  fontSize: number;
+export interface CanvasNodeData {
+  objectType: CanvasObjectType;
+  content: Record<string, unknown>;
+  style: Record<string, unknown>;
+  shapeKind?: ShapeKind;
+  zIndex?: number;
+  draft?: boolean;
+  _ai?: AiMetadata;
+  [key: string]: unknown;
 }
-
-export type CanvasNodeData = ShapeData | TextData | StickyNoteData;
 
 export interface CanvasNode {
   id: string;
   type: CanvasObjectType;
   position: Position;
+  parentId?: string | null;
   width?: number;
   height?: number;
   data: CanvasNodeData;
@@ -61,15 +63,34 @@ export interface CanvasEdge {
   source: string;
   target: string;
   label?: string;
+  data?: Record<string, unknown>;
+}
+
+export interface CanvasSnapshot {
+  roomId: string;
+  projectId: string;
+  nodes: CanvasNode[];
+  edges: CanvasEdge[];
+  selectedNodeIds: string[];
+  viewport: Viewport;
+  agentIntensity?: Intensity;
 }
 
 export interface TranscriptSegment {
-  speakerId: string;
+  utteranceId: string;
+  segmentId: string;
+  participantIdentity: string | null;
+  speakerId: string | null;
   speakerName: string;
   text: string;
+  source: "livekit";
+  occurredAt: string;
   timestamp: number;
+  startTimeMs: number | null;
+  endTimeMs: number | null;
 }
 
+<<<<<<< Updated upstream
 // --- AI Metadata ---
 
 export type AiActionStatus = "pending" | "approved" | "rejected";
@@ -88,50 +109,72 @@ export type AiActivityEvent = ActivityEvent;
 
 // --- Command API ---
 
+=======
+>>>>>>> Stashed changes
 export type CommandSource = "chat" | "canvas_context_menu";
-
-export interface CommandContext {
-  selectedNodeIds: string[];
-  selectedEdgeIds: string[];
-  viewport: { x: number; y: number; zoom: number };
-  source: CommandSource;
-}
+export type TargetPersona = "designer" | "critique" | "marketing";
 
 export interface CommandRequest {
   userId: string;
   userName: string;
   message: string;
-  context: CommandContext;
+  source: CommandSource;
+  threadId?: string | null;
+  targetPersona?: TargetPersona | null;
+  canvasSnapshot: CanvasSnapshot;
+}
+
+export interface CreateNodeAction {
+  type: "create_node";
+  nodeId: string;
+  nodeType: CanvasObjectType;
+  position: Position;
+  parentId?: string | null;
+  width?: number;
+  height?: number;
+  objectType: CanvasObjectType;
+  content: Record<string, unknown>;
+  style: Record<string, unknown>;
+  shapeKind?: ShapeKind;
+  zIndex?: number;
+}
+
+export interface CreateEdgeAction {
+  type: "create_edge";
+  edgeId: string;
+  source: string;
+  target: string;
+  label?: string;
+}
+
+export type AiCanvasAction = CreateNodeAction | CreateEdgeAction;
+
+export interface PendingActionResponse {
+  actionId: string;
+  summary: string;
+  actions: AiCanvasAction[];
+  requiresApproval: true;
 }
 
 export interface CommandResponse {
   commandId: string;
-  status: "queued";
-  position: number;
-  estimatedWaitMs: number;
+  message: string;
+  pendingAction: PendingActionResponse | null;
 }
 
-// --- Activity Events API ---
-
-export type ActivityEventType =
-  | "node:selected"
-  | "node:deselected"
-  | "node:drag:start"
-  | "node:drag:end"
-  | "text:edit:start"
-  | "text:edit:end"
-  | "tool:switched"
-  | "undo"
-  | "redo"
-  | "copy"
-  | "paste"
-  | "delete"
-  | "property:changed"
-  | "selection:changed"
-  | "edge:created";
+export type SemanticEventType =
+  | "chat.message.created"
+  | "chat.message.mentioned_ai"
+  | "canvas.node.created"
+  | "canvas.node.drag_ended"
+  | "canvas.node.content_committed"
+  | "canvas.edge.created"
+  | "canvas.edge.deleted"
+  | "canvas.selection.changed"
+  | "canvas.tool.changed";
 
 export interface ActivityEvent {
-  type: ActivityEventType;
+  type: SemanticEventType;
   timestamp: number;
   data: Record<string, unknown>;
 }
@@ -141,7 +184,63 @@ export interface EventsRequest {
   events: ActivityEvent[];
 }
 
-// --- Feedback API ---
+export type RoomEventType =
+  | "voice.transcript.final"
+  | "chat.message.created"
+  | "chat.message.mentioned_ai"
+  | "canvas.activity.batch"
+  | "canvas.storage.synced"
+  | "ai.command.queued"
+  | "ai.suggestion.created"
+  | "ai.action.pending"
+  | "ai.action.approved"
+  | "ai.action.rejected"
+  | "recording.started"
+  | "recording.completed"
+  | "recording.failed";
+
+export type RoomEventSource = "livekit" | "frontend" | "liveblocks" | "ai_agent" | "system";
+export type RoomEventActorType = "user" | "ai" | "system";
+
+export interface TranscriptIngestionPayload {
+  room_id: string;
+  utterance_id: string;
+  segment_id: string;
+  participant_identity: string | null;
+  speaker_id: string | null;
+  speaker_name: string;
+  text: string;
+  is_final: boolean;
+  start_time_ms: number | null;
+  end_time_ms: number | null;
+  occurred_at: string;
+  source: "livekit";
+}
+
+export interface RecordingSystemEventPayload {
+  room_id: string;
+  room_name: string;
+  event_type: "recording.started" | "recording.completed" | "recording.failed";
+  occurred_at: string;
+  recording_id: string;
+  egress_id: string | null;
+  status: string;
+  storage_provider: "s3";
+  storage_bucket: string | null;
+  object_path: string | null;
+  playback_url: string | null;
+  metadata: Record<string, unknown>;
+}
+
+export interface PersistedRoomEvent {
+  roomId: string;
+  eventType: RoomEventType;
+  source: RoomEventSource;
+  actorType: RoomEventActorType;
+  actorId: string | null;
+  occurredAt: string;
+  payload: Record<string, unknown>;
+}
 
 export interface FeedbackRequest {
   userId: string;
@@ -158,14 +257,12 @@ export interface FeedbackResponse {
   status: "approved" | "rejected";
 }
 
-// --- Queue ---
-
 export interface QueueItem {
   commandId: string;
   userId: string;
   userName: string;
   message: string;
-  context: CommandContext;
+  source: CommandSource;
   queuedAt: number;
 }
 

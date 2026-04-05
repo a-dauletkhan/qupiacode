@@ -18,6 +18,7 @@ import {
   useViewport,
   type Connection,
   type Edge,
+  type EdgeChange,
   type NodeChange,
   type NodeMouseHandler,
   type OnSelectionChangeFunc,
@@ -56,6 +57,7 @@ import { AiAskButton } from "@/modules/Agent/components/ai-ask-button"
 import { AiPromptInput } from "@/modules/Agent/components/ai-prompt-input"
 import { AiQueueStatus } from "@/modules/Agent/components/ai-queue-status"
 import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
+import type { AiPendingAction, CanvasSnapshot } from "@/modules/Agent/types"
 // import { useAiMockBridge } from "@/modules/Agent/hooks/use-ai-mock-bridge"
 import { cn } from "@/lib/utils"
 import { AvatarStack } from "@liveblocks/react-ui"
@@ -75,6 +77,7 @@ type DraftCreation = {
 }
 
 const nodeTypes = aiAwareNodeTypes
+const FLOW_STORAGE_KEY = "flow"
 
 export function FlowCanvas(props: FlowCanvasProps) {
   return (
@@ -92,6 +95,7 @@ function FlowCanvasInner({
   onActiveToolChange,
 }: FlowCanvasProps) {
   const sectionRef = React.useRef<HTMLElement | null>(null)
+<<<<<<< Updated upstream
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect, onDelete } =
     useLiveblocksFlow<CanvasObjectNode, Edge>({
       suspense: true,
@@ -105,6 +109,33 @@ function FlowCanvasInner({
   const [draftCreation, setDraftCreation] =
     React.useState<DraftCreation | null>(null)
   const [draftNode, setDraftNode] = React.useState<CanvasObjectNode | null>(
+=======
+  const hasMeasuredCanvasRef = React.useRef(false)
+  const previousToolRef = React.useRef<ToolId | null>(null)
+  const suppressSemanticEventsRef = React.useRef(false)
+  const miniMapActivityTimeoutRef = React.useRef<ReturnType<
+    typeof window.setTimeout
+  > | null>(null)
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    onDelete,
+  } = useLiveblocksFlow<CanvasObjectNode, Edge>({
+    suspense: true,
+    storageKey: FLOW_STORAGE_KEY,
+    nodes: {
+      initial: initialNodes,
+    },
+    edges: {
+      initial: initialEdges,
+    },
+  })
+  const [isMiniMapVisible, setIsMiniMapVisible] = React.useState(true)
+  const [draftCreation, setDraftCreation] = React.useState<DraftCreation | null>(
+>>>>>>> Stashed changes
     null
   )
   const [selectedObjectIds, setSelectedObjectIds] = React.useState<string[]>([])
@@ -133,9 +164,21 @@ function FlowCanvasInner({
     return aiAgent.registerCanvasAction((action) => {
       if (action.type === "reject") {
         // Remove rejected nodes from canvas
+<<<<<<< Updated upstream
         const removeChanges: NodeChange<CanvasObjectNode>[] =
           action.nodeIds.map((id) => ({ type: "remove", id }))
         onNodesChange(removeChanges)
+=======
+        const removeChanges: NodeChange<CanvasObjectNode>[] = action.nodeIds.map(
+          (id) => ({ type: "remove", id }),
+        )
+        withSuppressedSemanticEvents(() => onNodesChange(removeChanges))
+        if (action.edgeIds.length > 0) {
+          withSuppressedSemanticEvents(() =>
+            onEdgesChange(action.edgeIds.map((id) => ({ type: "remove", id }))),
+          )
+        }
+>>>>>>> Stashed changes
       } else if (action.type === "approve") {
         // Update node data to mark as approved
         for (const nodeId of action.nodeIds) {
@@ -144,7 +187,7 @@ function FlowCanvasInner({
           const data = node.data as Record<string, unknown>
           const aiField = data._ai as Record<string, unknown> | undefined
           if (!aiField) continue
-          onNodesChange([
+          withSuppressedSemanticEvents(() => onNodesChange([
             {
               type: "replace",
               id: nodeId,
@@ -156,14 +199,108 @@ function FlowCanvasInner({
                 },
               } as unknown as CanvasObjectNode,
             },
-          ])
+          ]))
         }
       }
     })
-  }, [aiAgent, nodes, onNodesChange])
+  }, [aiAgent, nodes, onEdgesChange, onNodesChange])
 
   const reactFlow = useReactFlow<CanvasObjectNode, Edge>()
   const viewport = useViewport()
+
+  const withSuppressedSemanticEvents = React.useCallback((fn: () => void) => {
+    suppressSemanticEventsRef.current = true
+    try {
+      fn()
+    } finally {
+      window.setTimeout(() => {
+        suppressSemanticEventsRef.current = false
+      }, 0)
+    }
+  }, [])
+
+  const buildCanvasSnapshot = React.useCallback((): CanvasSnapshot => {
+    const visibleNodes = nodes
+      .filter((node) => !node.data.draft)
+      .map((node) => {
+        const size = getCanvasObjectSize(node)
+        return {
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          parentId: node.parentId ?? null,
+          width: node.width ?? size.width,
+          height: node.height ?? size.height,
+          data: { ...node.data },
+        }
+      })
+
+    return {
+      roomId: aiAgent?.roomId ?? "unknown-room",
+      projectId: aiAgent?.roomId ?? "unknown-room",
+      nodes: visibleNodes,
+      edges: edges.map((edge) => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        label: edge.label,
+        data: edge.data as Record<string, unknown> | undefined,
+      })),
+      selectedNodeIds: selectedObjectIds,
+      viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
+    }
+  }, [aiAgent?.roomId, edges, nodes, selectedObjectIds, viewport.x, viewport.y, viewport.zoom])
+
+  React.useEffect(() => {
+    if (!aiAgent) return
+    return aiAgent.registerCanvasSnapshotProvider(buildCanvasSnapshot)
+  }, [aiAgent, buildCanvasSnapshot])
+
+  React.useEffect(() => {
+    if (!aiAgent) return
+
+    return aiAgent.registerPendingActionApplier((pendingAction: AiPendingAction) => {
+      const nextNodes: NodeChange<CanvasObjectNode>[] = []
+      const nextEdges: EdgeChange<Edge>[] = []
+
+      for (const action of pendingAction.actions) {
+        if (action.type === "create_node") {
+          nextNodes.push({
+            type: "add",
+            item: buildNodeFromPendingAction(action, pendingAction.actionId, aiAgent.userId),
+          })
+        } else {
+          nextEdges.push({
+            type: "add",
+            item: {
+              id: action.edgeId,
+              source: action.source,
+              target: action.target,
+              label: action.label,
+              data: {
+                _ai: {
+                  actionId: pendingAction.actionId,
+                  commandId: null,
+                  requestedBy: aiAgent.userId,
+                  status: "pending",
+                  createdAt: Date.now(),
+                },
+              },
+            } as Edge,
+          })
+        }
+      }
+
+      withSuppressedSemanticEvents(() => {
+        if (nextNodes.length > 0) {
+          onNodesChange(nextNodes)
+        }
+        if (nextEdges.length > 0) {
+          onEdgesChange(nextEdges)
+        }
+      })
+    })
+  }, [aiAgent, onEdgesChange, onNodesChange, withSuppressedSemanticEvents])
 
   const renderedNodes = React.useMemo(
     () => (draftNode ? [...nodes, draftNode] : nodes),
@@ -211,8 +348,21 @@ function FlowCanvasInner({
   )
 
   const finishEditing = React.useCallback(() => {
+    if (editingObjectId && aiAgent) {
+      const editedNode = nodes.find((node) => node.id === editingObjectId)
+      if (editedNode && !suppressSemanticEventsRef.current) {
+        aiAgent.pushEvent({
+          type: "canvas.node.content_committed",
+          data: {
+            nodeId: editedNode.id,
+            nodeType: editedNode.type,
+            content: editedNode.data.content,
+          },
+        })
+      }
+    }
     setEditingObjectId(null)
-  }, [])
+  }, [aiAgent, editingObjectId, nodes])
 
   const startEditing = React.useCallback((id: string) => {
     setEditingObjectId(id)
@@ -228,6 +378,34 @@ function FlowCanvasInner({
 
       if (syncedChanges.length > 0) {
         onNodesChange(syncedChanges)
+        if (aiAgent && !suppressSemanticEventsRef.current) {
+          for (const change of syncedChanges) {
+            if (change.type === "add" && !change.item.data.draft) {
+              aiAgent.pushEvent({
+                type: "canvas.node.created",
+                data: {
+                  nodeId: change.item.id,
+                  nodeType: change.item.type,
+                  position: change.item.position,
+                },
+              })
+            }
+
+            if (
+              change.type === "position" &&
+              change.position &&
+              change.dragging === false
+            ) {
+              aiAgent.pushEvent({
+                type: "canvas.node.drag_ended",
+                data: {
+                  nodeId: change.id,
+                  position: change.position,
+                },
+              })
+            }
+          }
+        }
       }
 
       if (
@@ -238,7 +416,67 @@ function FlowCanvasInner({
         finishEditing()
       }
     },
-    [editingObjectId, finishEditing, onNodesChange]
+    [aiAgent, editingObjectId, finishEditing, onNodesChange]
+  )
+
+  const handleEdgesChange = React.useCallback(
+    (changes: EdgeChange<Edge>[]) => {
+      onEdgesChange(changes)
+
+      if (!aiAgent || suppressSemanticEventsRef.current) {
+        return
+      }
+
+      for (const change of changes) {
+        if (change.type === "add") {
+          aiAgent.pushEvent({
+            type: "canvas.edge.created",
+            data: {
+              edgeId: change.item.id,
+              source: change.item.source,
+              target: change.item.target,
+              label: change.item.label,
+            },
+          })
+        }
+
+        if (change.type === "remove") {
+          aiAgent.pushEvent({
+            type: "canvas.edge.deleted",
+            data: {
+              edgeId: change.id,
+            },
+          })
+        }
+      }
+    },
+    [aiAgent, onEdgesChange],
+  )
+
+  const handleConnect = React.useCallback(
+    (connection: Connection) => {
+      onConnect(connection)
+    },
+    [onConnect],
+  )
+
+  const handleDelete = React.useCallback(
+    ({ nodes: deletedNodes, edges: deletedEdges }: { nodes: CanvasObjectNode[]; edges: Edge[] }) => {
+      onDelete({ nodes: deletedNodes, edges: deletedEdges })
+      if (!aiAgent || suppressSemanticEventsRef.current || deletedEdges.length === 0) {
+        return
+      }
+
+      for (const edge of deletedEdges) {
+        aiAgent.pushEvent({
+          type: "canvas.edge.deleted",
+          data: {
+            edgeId: edge.id,
+          },
+        })
+      }
+    },
+    [aiAgent, onDelete],
   )
 
   const selectedObject = React.useMemo(() => {
@@ -268,6 +506,7 @@ function FlowCanvasInner({
         setInspectorOpen(false)
       }
 
+<<<<<<< Updated upstream
       // Push selection events to AI event batcher
       if (aiAgent) {
         if (nextIds.length > 0) {
@@ -278,6 +517,13 @@ function FlowCanvasInner({
         } else {
           aiAgent.pushEvent({ type: "node:deselected", data: {} })
         }
+=======
+      if (aiAgent && !suppressSemanticEventsRef.current) {
+        aiAgent.pushEvent({
+          type: "canvas.selection.changed",
+          data: { nodeIds: nextIds },
+        })
+>>>>>>> Stashed changes
       }
 
       // Close AI prompt only when selection is fully cleared
@@ -428,17 +674,17 @@ function FlowCanvasInner({
       if (!aiAgent) return
       console.info("[ai-agent] canvas prompt submitted", {
         message,
-        selectedNodeIds: selectedObjectIds,
-        viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
         source: "canvas_context_menu",
       })
       aiAgent.sendCommand(message, {
-        selectedNodeIds: selectedObjectIds,
-        viewport: { x: viewport.x, y: viewport.y, zoom: viewport.zoom },
         source: "canvas_context_menu",
       })
     },
+<<<<<<< Updated upstream
     [aiAgent, selectedObjectIds, viewport]
+=======
+    [aiAgent],
+>>>>>>> Stashed changes
   )
 
   const handleNodeDoubleClick = React.useCallback<
@@ -667,6 +913,25 @@ function FlowCanvasInner({
     }
   }, [activeTool, clearDraftNode])
 
+  React.useEffect(() => {
+    if (!aiAgent) {
+      previousToolRef.current = activeTool
+      return
+    }
+
+    if (previousToolRef.current && previousToolRef.current !== activeTool) {
+      aiAgent.pushEvent({
+        type: "canvas.tool.changed",
+        data: {
+          from: previousToolRef.current,
+          to: activeTool,
+        },
+      })
+    }
+
+    previousToolRef.current = activeTool
+  }, [activeTool, aiAgent])
+
   return (
     <CanvasEditorProvider
       value={{
@@ -693,9 +958,9 @@ function FlowCanvasInner({
             edges={edges}
             nodeTypes={nodeTypes}
             onNodesChange={handleNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onDelete={onDelete}
+            onEdgesChange={handleEdgesChange}
+            onConnect={handleConnect}
+            onDelete={handleDelete}
             onPaneClick={() => {
               finishEditing()
               setInspectedObjectId(null)
@@ -821,6 +1086,121 @@ function FlowCanvasInner({
       </section>
     </CanvasEditorProvider>
   )
+}
+
+function buildNodeFromPendingAction(
+  action: Extract<AiPendingAction["actions"][number], { type: "create_node" }>,
+  actionId: string,
+  requestedBy: string,
+): CanvasObjectNode {
+  const rect = {
+    x: action.position.x,
+    y: action.position.y,
+    width:
+      action.width ??
+      (action.nodeType === "sticky_note"
+        ? 280
+        : action.nodeType === "text"
+          ? 300
+          : action.shapeKind === "ellipse"
+            ? 260
+            : 220),
+    height:
+      action.height ??
+      (action.nodeType === "sticky_note"
+        ? 168
+        : action.nodeType === "text"
+          ? 80
+          : action.shapeKind === "ellipse"
+            ? 124
+            : 112),
+  }
+
+  const aiMeta = {
+    actionId,
+    commandId: null,
+    requestedBy,
+    status: "pending" as const,
+    createdAt: Date.now(),
+  }
+
+  if (action.nodeType === "shape") {
+    const node = createShapeNode({
+      id: action.nodeId,
+      shapeKind: action.shapeKind ?? "rectangle",
+      rect,
+      label: typeof action.content.label === "string" ? action.content.label : "",
+      preset: {
+        color: typeof action.style.color === "string" ? action.style.color : "oklch(0.768 0.233 130.85)",
+        paintStyle:
+          action.style.paintStyle === "outline" ||
+          action.style.paintStyle === "sketch" ||
+          action.style.paintStyle === "hatch"
+            ? action.style.paintStyle
+            : "solid",
+        strokeWidth: typeof action.style.strokeWidth === "number" ? action.style.strokeWidth : 2,
+      },
+    })
+    return {
+      ...node,
+      parentId: action.parentId ?? undefined,
+      data: {
+        ...node.data,
+        zIndex: action.zIndex ?? 10,
+        _ai: aiMeta,
+      },
+    }
+  }
+
+  if (action.nodeType === "text") {
+    const node = createTextNode({
+      id: action.nodeId,
+      rect,
+      text: typeof action.content.text === "string" ? action.content.text : "",
+      preset: {
+        color: typeof action.style.color === "string" ? action.style.color : "oklch(0.145 0 0)",
+        fontSize: typeof action.style.fontSize === "number" ? action.style.fontSize : 24,
+        fontWeight:
+          action.style.fontWeight === "medium" || action.style.fontWeight === "bold"
+            ? action.style.fontWeight
+            : "normal",
+        align:
+          action.style.align === "center" || action.style.align === "right"
+            ? action.style.align
+            : "left",
+      },
+    })
+    return {
+      ...node,
+      parentId: action.parentId ?? undefined,
+      data: {
+        ...node.data,
+        zIndex: action.zIndex ?? 10,
+        _ai: aiMeta,
+      },
+    }
+  }
+
+  const node = createStickyNoteNode({
+    id: action.nodeId,
+    rect,
+    text: typeof action.content.text === "string" ? action.content.text : "",
+    preset: {
+      color: typeof action.style.color === "string" ? action.style.color : "oklch(0.92 0.17 122)",
+      textColor:
+        typeof action.style.textColor === "string" ? action.style.textColor : "oklch(0.145 0 0)",
+      fontSize: typeof action.style.fontSize === "number" ? action.style.fontSize : 20,
+    },
+  })
+  return {
+    ...node,
+    parentId: action.parentId ?? undefined,
+    data: {
+      ...node.data,
+      zIndex: action.zIndex ?? 10,
+      _ai: aiMeta,
+    },
+  }
 }
 
 function getCommittedRect(

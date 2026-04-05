@@ -1,9 +1,5 @@
 import type { ToolId } from "@/modules/Canvas/components/canvas/primitives/schema"
 
-// ---------------------------------------------------------------------------
-// AI metadata attached to nodes/edges created by the agent
-// ---------------------------------------------------------------------------
-
 export type AiActionStatus = "pending" | "approved" | "rejected"
 
 export type AiMetadata = {
@@ -16,54 +12,109 @@ export type AiMetadata = {
   personaColor: string
 }
 
-// ---------------------------------------------------------------------------
-// Command — explicit user request to the AI
-// ---------------------------------------------------------------------------
-
 export type CommandSource = "chat" | "canvas_context_menu"
+export type AiTargetPersona = "designer" | "critique" | "marketing"
+export type AiChatPersona = "agent" | AiTargetPersona
 
-export type AiCommandContext = {
+export type CanvasSnapshotNode = {
+  id: string
+  type: "shape" | "text" | "sticky_note"
+  position: { x: number; y: number }
+  parentId?: string | null
+  width?: number
+  height?: number
+  data: Record<string, unknown> & {
+    objectType: "shape" | "text" | "sticky_note"
+    content: Record<string, unknown>
+    style: Record<string, unknown>
+    shapeKind?: "rectangle" | "diamond" | "ellipse"
+    zIndex?: number
+    draft?: boolean
+    _ai?: AiMetadata
+  }
+}
+
+export type CanvasSnapshotEdge = {
+  id: string
+  source: string
+  target: string
+  label?: string
+  data?: Record<string, unknown>
+}
+
+export type CanvasSnapshot = {
+  roomId: string
+  projectId: string
+  nodes: CanvasSnapshotNode[]
+  edges: CanvasSnapshotEdge[]
   selectedNodeIds: string[]
-  selectedEdgeIds: string[]
   viewport: { x: number; y: number; zoom: number }
+<<<<<<< Updated upstream
   source: CommandSource
   targetPersona?: string
+=======
+  agentIntensity?: "quiet" | "balanced" | "active"
+>>>>>>> Stashed changes
 }
 
 export type AiCommandRequest = {
   userId: string
   userName: string
   message: string
-  context: AiCommandContext
+  source: CommandSource
+  threadId?: string | null
+  targetPersona?: AiTargetPersona | null
+  canvasSnapshot: CanvasSnapshot
+}
+
+export type AiCreateNodeAction = {
+  type: "create_node"
+  nodeId: string
+  nodeType: "shape" | "text" | "sticky_note"
+  position: { x: number; y: number }
+  parentId?: string | null
+  width?: number
+  height?: number
+  objectType: "shape" | "text" | "sticky_note"
+  content: Record<string, unknown>
+  style: Record<string, unknown>
+  shapeKind?: "rectangle" | "diamond" | "ellipse"
+  zIndex?: number
+}
+
+export type AiCreateEdgeAction = {
+  type: "create_edge"
+  edgeId: string
+  source: string
+  target: string
+  label?: string
+}
+
+export type AiCanvasAction = AiCreateNodeAction | AiCreateEdgeAction
+
+export type AiPendingAction = {
+  actionId: string
+  summary: string
+  actions: AiCanvasAction[]
+  requiresApproval: true
 }
 
 export type AiCommandResponse = {
   commandId: string
-  status: "queued"
-  position: number
-  estimatedWaitMs: number
+  message: string
+  pendingAction: AiPendingAction | null
 }
 
-// ---------------------------------------------------------------------------
-// Activity events — passive frontend tracking
-// ---------------------------------------------------------------------------
-
 export type AiEventType =
-  | "node:selected"
-  | "node:deselected"
-  | "node:drag:start"
-  | "node:drag:end"
-  | "text:edit:start"
-  | "text:edit:end"
-  | "tool:switched"
-  | "undo"
-  | "redo"
-  | "copy"
-  | "paste"
-  | "delete"
-  | "property:changed"
-  | "selection:changed"
-  | "edge:created"
+  | "chat.message.created"
+  | "chat.message.mentioned_ai"
+  | "canvas.node.created"
+  | "canvas.node.drag_ended"
+  | "canvas.node.content_committed"
+  | "canvas.edge.created"
+  | "canvas.edge.deleted"
+  | "canvas.selection.changed"
+  | "canvas.tool.changed"
 
 export type AiEvent = {
   type: AiEventType
@@ -79,10 +130,6 @@ export type AiEventsRequest = {
 export type AiEventsResponse = {
   accepted: number
 }
-
-// ---------------------------------------------------------------------------
-// Feedback — approve / reject AI-generated objects
-// ---------------------------------------------------------------------------
 
 export type AiFeedbackStatus = "approved" | "rejected"
 
@@ -101,10 +148,6 @@ export type AiFeedbackResponse = {
   status: AiFeedbackStatus
 }
 
-// ---------------------------------------------------------------------------
-// Queue — current AI command queue state
-// ---------------------------------------------------------------------------
-
 export type AgentProcessingStatus = "idle" | "processing" | "acting"
 
 export type QueuedCommand = {
@@ -119,7 +162,7 @@ export type QueuedCommand = {
 export type RecentAction = {
   actionId: string
   commandId: string | null
-  type: "canvas_mutation" | "chat_message"
+  type: "canvas_mutation"
   nodeIds: string[]
   edgeIds: string[]
   status: AiActionStatus
@@ -138,10 +181,6 @@ export type AiQueueResponse = {
   queue: QueuedCommand[]
   recentActions: RecentAction[]
 }
-
-// ---------------------------------------------------------------------------
-// Tool event helpers (for building AiEvent from canvas interactions)
-// ---------------------------------------------------------------------------
 
 export type ToolSwitchData = { from: ToolId; to: ToolId }
 export type NodeSelectionData = { nodeIds: string[] }

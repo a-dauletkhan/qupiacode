@@ -9,8 +9,8 @@ from urllib.request import Request, urlopen
 logger = logging.getLogger(__name__)
 
 
-class VoiceAgentTranscriptForwarder:
-    """POST transcript payloads to an external HTTP service."""
+class VoiceAgentHttpForwarder:
+    """POST structured payloads to an external HTTP service."""
 
     def __init__(
         self,
@@ -64,3 +64,6 @@ class VoiceAgentTranscriptForwarder:
             logger.warning("Transcript forward failed url=%s detail=%s", self._target_url, exc)
         except Exception:
             logger.exception("Unexpected transcript forward failure url=%s", self._target_url)
+
+
+VoiceAgentTranscriptForwarder = VoiceAgentHttpForwarder

@@ -54,8 +54,8 @@ export const TextNodeCard = React.memo(function TextNodeCard({
       <NodeResizer
         color="oklch(0.768 0.233 130.85)"
         isVisible={selected && !data.draft}
-        minWidth={140}
-        minHeight={52}
+        minWidth={220}
+        minHeight={72}
         handleClassName="primitive-node-resize-handle"
         lineClassName="primitive-node-resize-line"
       />

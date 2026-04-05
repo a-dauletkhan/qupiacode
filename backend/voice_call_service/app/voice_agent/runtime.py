@@ -4,6 +4,7 @@ import time
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Literal
+from urllib.parse import quote
 
 from livekit import rtc
 from livekit.agents import inference, room_io
@@ -16,6 +17,9 @@ TranscriptAttributionSource = Literal["participant", "diarization", "ambiguous"]
 
 class VoiceAgentConfigurationError(RuntimeError):
     """Raised when the voice agent worker configuration is incomplete."""
+
+
+ROOM_NAME_PREFIX = "canvas:"
 
 
 def build_voice_agent_room_options(settings: Settings) -> room_io.RoomOptions:
@@ -71,6 +75,54 @@ def ensure_voice_agent_worker_configuration(settings: Settings) -> None:
         _require_text(settings.voice_agent_stt_model, "VOICE_AGENT_STT_MODEL")
         _require_text(settings.voice_agent_stt_language, "VOICE_AGENT_STT_LANGUAGE")
 
+    if settings.ai_agent_service_url:
+        _require_secret(settings.ai_agent_internal_token, "AI_AGENT_INTERNAL_TOKEN")
+
+    if settings.voice_agent_recording_enabled:
+        _require_text(settings.voice_agent_recording_s3_bucket, "VOICE_AGENT_RECORDING_S3_BUCKET")
+        _require_text(settings.voice_agent_recording_s3_region, "VOICE_AGENT_RECORDING_S3_REGION")
+        _require_secret(
+            settings.voice_agent_recording_s3_access_key,
+            "VOICE_AGENT_RECORDING_S3_ACCESS_KEY",
+        )
+        _require_secret(
+            settings.voice_agent_recording_s3_secret_key,
+            "VOICE_AGENT_RECORDING_S3_SECRET_KEY",
+        )
+
+
+def resolve_platform_room_id(room_name: str) -> str:
+    """Map a LiveKit room name back to the shared project/room id."""
+    if room_name.startswith(ROOM_NAME_PREFIX):
+        return room_name.removeprefix(ROOM_NAME_PREFIX)
+    return room_name
+
+
+def build_ai_agent_transcript_ingest_url(*, settings: Settings, room_id: str) -> str | None:
+    if settings.ai_agent_service_url is None:
+        return None
+    return f"{settings.ai_agent_service_url}/internal/rooms/{quote(room_id, safe='')}/transcripts"
+
+
+def build_ai_agent_system_events_url(*, settings: Settings, room_id: str) -> str | None:
+    if settings.ai_agent_service_url is None:
+        return None
+    return f"{settings.ai_agent_service_url}/internal/rooms/{quote(room_id, safe='')}/system-events"
+
+
+def resolve_forwarder_auth_token(settings: Settings, *, use_ai_agent_target: bool) -> str | None:
+    if use_ai_agent_target and settings.ai_agent_internal_token is not None:
+        token = settings.ai_agent_internal_token.get_secret_value().strip()
+        if token:
+            return token
+
+    if settings.voice_agent_transcript_forward_auth_token is not None:
+        token = settings.voice_agent_transcript_forward_auth_token.get_secret_value().strip()
+        if token:
+            return token
+
+    return None
+
 
 def resolve_transcript_attribution_source(
     *,
@@ -103,10 +155,10 @@ def build_transcript_dispatch_key(
 def build_forwarded_transcript_payload(
     *,
     room_name: str,
+    room_id: str,
     participant: rtc.Participant | None,
     publication: rtc.TrackPublication | None,
     segment: rtc.TranscriptionSegment,
-    transcription_mode: str,
     speaker_id: str | None = None,
     received_at: float | None = None,
 ) -> dict[str, object]:
@@ -114,31 +166,32 @@ def build_forwarded_transcript_payload(
     participant_identity = participant.identity if participant else None
     received_at_epoch = received_at if received_at is not None else time.time()
     received_at_iso = datetime.fromtimestamp(received_at_epoch, UTC).isoformat()
+    speaker_name = (
+        participant.name
+        if participant and participant.name
+        else participant_identity or "Unknown"
+    )
 
     return {
-        "event_type": "voice.transcript.segment",
+        "room_id": room_id,
         "room_name": room_name,
-        "transcription_mode": transcription_mode,
-        "received_at": received_at_iso,
-        "participant": {
-            "identity": participant_identity,
-            "name": participant.name if participant else None,
-            "sid": participant.sid if participant else None,
-        },
+        "utterance_id": segment.id,
+        "segment_id": segment.id,
+        "participant_identity": participant_identity,
+        "speaker_id": speaker_id,
+        "speaker_name": speaker_name,
+        "text": segment.text,
+        "is_final": segment.final,
+        "start_time_ms": segment.start_time,
+        "end_time_ms": segment.end_time,
+        "occurred_at": received_at_iso,
+        "source": "livekit",
         "track": {
             "sid": publication.sid if publication else None,
             "name": publication.name if publication else None,
             "source": _format_track_source(publication.source if publication else None),
-        },
-        "segment": {
-            "id": segment.id,
-            "text": segment.text,
             "language": segment.language,
-            "is_final": segment.final,
-            "start_time_ms": segment.start_time,
-            "end_time_ms": segment.end_time,
         },
-        "speaker_id": speaker_id,
         "attribution_source": resolve_transcript_attribution_source(
             participant_identity=participant_identity,
             speaker_id=speaker_id,

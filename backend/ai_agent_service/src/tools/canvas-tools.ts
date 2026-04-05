@@ -2,9 +2,137 @@ import type { Tool } from "../llm/types.js";
 
 export const canvasTools: Tool[] = [
   {
+    name: "createDiagram",
+    description:
+      "Create a complete pending diagram in one call. Use this for mindmaps, multi-step routines, processes, workflows, timelines, trees, and any request that needs multiple connected blocks.",
+    parameters: {
+      type: "object",
+      properties: {
+        diagramType: {
+          type: "string",
+          description: "The overall diagram style",
+          enum: ["mindmap", "flowchart", "timeline", "concept_map"],
+        },
+        layout: {
+          type: "string",
+          description: "Preferred layout direction for the generated draft",
+          enum: ["radial", "horizontal", "vertical"],
+        },
+        rootKey: {
+          type: "string",
+          description: "Optional key of the central or first node in the diagram",
+        },
+        summary: {
+          type: "string",
+          description: "Short summary of the draft you are preparing",
+        },
+        anchor: {
+          type: "object",
+          description: "Optional anchor position for the whole diagram",
+          properties: {
+            x: { type: "number", description: "X coordinate" },
+            y: { type: "number", description: "Y coordinate" },
+          },
+          required: ["x", "y"],
+        },
+        nodes: {
+          type: "array",
+          description:
+            "Every node that should be created. If the user asks for 5 steps, include 5 separate step nodes here.",
+          items: {
+            type: "object",
+            properties: {
+              key: {
+                type: "string",
+                description: "Temporary key used to connect edges inside this diagram",
+              },
+              existingNodeId: {
+                type: "string",
+                description:
+                  "Optional existing canvas node id to reuse instead of creating a new node for this key",
+              },
+              nodeType: {
+                type: "string",
+                description: "The type of canvas object",
+                enum: ["shape", "text", "sticky_note"],
+              },
+              label: {
+                type: "string",
+                description: "Label text for shape nodes",
+              },
+              text: {
+                type: "string",
+                description: "Text content for text and sticky note nodes",
+              },
+              shapeKind: {
+                type: "string",
+                description: "Shape variant (only for nodeType=shape)",
+                enum: ["rectangle", "diamond", "ellipse"],
+              },
+              width: { type: "number", description: "Width in pixels" },
+              height: { type: "number", description: "Height in pixels" },
+              color: { type: "string", description: "Fill or text color as oklch string" },
+              paintStyle: {
+                type: "string",
+                description: "Paint style (only for shapes)",
+                enum: ["solid", "outline", "sketch", "hatch"],
+              },
+              textColor: {
+                type: "string",
+                description: "Sticky note text color",
+              },
+              fontSize: { type: "number", description: "Font size in pixels" },
+              fontWeight: {
+                type: "string",
+                description: "Text weight (only for nodeType=text)",
+                enum: ["normal", "medium", "bold"],
+              },
+              align: {
+                type: "string",
+                description: "Text alignment (only for nodeType=text)",
+                enum: ["left", "center", "right"],
+              },
+              parentKey: {
+                type: "string",
+                description: "Optional parent key for grouping/hierarchy hints",
+              },
+              depth: {
+                type: "number",
+                description: "Optional hierarchy depth hint for layout",
+              },
+              lane: {
+                type: "number",
+                description: "Optional ordering hint among sibling nodes",
+              },
+            },
+            required: ["key", "nodeType"],
+          },
+        },
+        edges: {
+          type: "array",
+          description: "Connections between nodes in this diagram using node keys",
+          items: {
+            type: "object",
+            properties: {
+              sourceKey: { type: "string", description: "Source node key" },
+              targetKey: { type: "string", description: "Target node key" },
+              label: { type: "string", description: "Edge label text" },
+            },
+            required: ["sourceKey", "targetKey"],
+          },
+        },
+      },
+      required: ["diagramType", "nodes"],
+    },
+  },
+  {
     name: "createNode",
     description:
+<<<<<<< Updated upstream
       "Create a new node on the canvas. Use 'shape' for rectangles/ellipses, 'text' for text labels, 'sticky_note' for sticky notes.",
+=======
+      "Create a new pending node on the canvas. Use 'shape' for rectangles/diamonds/ellipses, 'text' for text labels, 'sticky_note' for sticky notes.",
+>>>>>>> Stashed changes
     parameters: {
       type: "object",
       properties: {
@@ -38,11 +166,26 @@ export const canvasTools: Tool[] = [
         text: { type: "string", description: "Text content (for text and sticky_note types)" },
         fontSize: { type: "number", description: "Font size in pixels" },
         label: { type: "string", description: "Label text (for shapes)" },
+        fontWeight: {
+          type: "string",
+          description: "Text weight (only for nodeType=text)",
+          enum: ["normal", "medium", "bold"],
+        },
+        align: {
+          type: "string",
+          description: "Text alignment (only for nodeType=text)",
+          enum: ["left", "center", "right"],
+        },
+        textColor: {
+          type: "string",
+          description: "Sticky note text color (only for nodeType=sticky_note)",
+        },
       },
       required: ["nodeType", "position"],
     },
   },
   {
+<<<<<<< Updated upstream
     name: "updateNode",
     description: "Update an existing node's properties. Use this to edit text, labels, colors, sizes, positions, and styles of nodes already on the canvas. Pass the node's ID and only the fields you want to change.",
     parameters: {
@@ -84,8 +227,10 @@ export const canvasTools: Tool[] = [
     },
   },
   {
+=======
+>>>>>>> Stashed changes
     name: "createEdge",
-    description: "Create a connection (edge) between two nodes.",
+    description: "Create a new pending connection (edge) between two nodes.",
     parameters: {
       type: "object",
       properties: {
@@ -97,66 +242,15 @@ export const canvasTools: Tool[] = [
     },
   },
   {
-    name: "deleteEdge",
-    description: "Delete an edge from the canvas.",
-    parameters: {
-      type: "object",
-      properties: {
-        edgeId: { type: "string", description: "ID of the edge to delete" },
-      },
-      required: ["edgeId"],
-    },
-  },
-  {
     name: "sendMessage",
     description:
-      "Send a chat message to explain what you did, suggest next steps, or respond to users. Use this to communicate your reasoning.",
+      "Provide the assistant reply that should appear in chat after you answer or create a pending draft.",
     parameters: {
       type: "object",
       properties: {
         text: { type: "string", description: "Message text" },
       },
       required: ["text"],
-    },
-  },
-  {
-    name: "groupNodes",
-    description:
-      "Create a visual group around a set of nodes with a label. Groups help organize related items on the canvas.",
-    parameters: {
-      type: "object",
-      properties: {
-        nodeIds: {
-          type: "array",
-          description: "IDs of nodes to group",
-          items: { type: "string", description: "Node ID" },
-        },
-        label: { type: "string", description: "Label for the group" },
-        color: { type: "string", description: "Group background color as oklch string" },
-      },
-      required: ["nodeIds", "label"],
-    },
-  },
-  {
-    name: "rearrangeNodes",
-    description:
-      "Rearrange a set of nodes into a layout pattern. Use for organizing scattered items.",
-    parameters: {
-      type: "object",
-      properties: {
-        nodeIds: {
-          type: "array",
-          description: "IDs of nodes to rearrange",
-          items: { type: "string", description: "Node ID" },
-        },
-        layout: {
-          type: "string",
-          description: "Layout pattern to apply",
-          enum: ["grid", "horizontal", "vertical", "cluster"],
-        },
-        spacing: { type: "number", description: "Spacing between nodes in pixels. Default 40." },
-      },
-      required: ["nodeIds", "layout"],
     },
   },
 ];

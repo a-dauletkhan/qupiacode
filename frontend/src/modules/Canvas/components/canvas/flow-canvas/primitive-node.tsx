@@ -107,8 +107,8 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
       <NodeResizer
         color="oklch(0.768 0.233 130.85)"
         isVisible={selected && !data.draft}
-        minWidth={72}
-        minHeight={72}
+        minWidth={140}
+        minHeight={96}
         handleClassName="primitive-node-resize-handle"
         lineClassName="primitive-node-resize-line"
       />

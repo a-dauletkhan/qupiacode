@@ -1,21 +1,24 @@
 import * as React from "react"
 import * as aiAgent from "../services/ai-agent-service"
+<<<<<<< Updated upstream
 import type { AiCommandContext, AiCommandResponse, CommandSource } from "../types"
+=======
+import type { AiCommandRequest, AiCommandResponse } from "../types"
+>>>>>>> Stashed changes
 
 type UseAiCommandOptions = {
   roomId: string
-  userId: string
-  userName: string
 }
 
-export function useAiCommand({ roomId, userId, userName }: UseAiCommandOptions) {
+export function useAiCommand({ roomId }: UseAiCommandOptions) {
   const [pending, setPending] = React.useState(false)
   const [lastResponse, setLastResponse] = React.useState<AiCommandResponse | null>(null)
 
   const send = React.useCallback(
-    async (message: string, context: Partial<AiCommandContext> & { source: CommandSource }) => {
+    async (request: AiCommandRequest) => {
       setPending(true)
       try {
+<<<<<<< Updated upstream
         const res = await aiAgent.sendCommand(roomId, {
           userId,
           userName,
@@ -28,13 +31,16 @@ export function useAiCommand({ roomId, userId, userName }: UseAiCommandOptions) 
             ...(context.targetPersona !== undefined ? { targetPersona: context.targetPersona } : {}),
           },
         })
+=======
+        const res = await aiAgent.sendCommand(roomId, request)
+>>>>>>> Stashed changes
         setLastResponse(res)
         return res
       } finally {
         setPending(false)
       }
     },
-    [roomId, userId, userName],
+    [roomId],
   )
 
   return { send, pending, lastResponse }
