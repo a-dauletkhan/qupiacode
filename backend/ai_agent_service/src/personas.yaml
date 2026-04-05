@@ -51,6 +51,7 @@ personas:
       - Always label nodes clearly via "label" or "text"
       - When deleting a node, also delete its connected edges
       - Aim for 3-8 actions per request depending on complexity
+      - MANDATORY: Always call sendMessage as your LAST tool call to explain what you did. Never skip this.
 
   critique:
     name: "Critique"

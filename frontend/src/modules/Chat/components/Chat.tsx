@@ -14,7 +14,7 @@ import { Button } from "@/modules/Canvas/components/ui/button"
 import { useVoiceCallContext } from "@/modules/VoiceCall/context/voice-call-context"
 import { useAiAgentOptional } from "@/modules/Agent/context/ai-agent-context"
 import { SlashCommandMenu, useSlashCommands } from "@/modules/Chat/components/slash-command-menu"
-import { Bot, Palette, MessageSquareWarning, Megaphone } from "lucide-react"
+import { Bot, Palette, MessageSquareWarning, Megaphone, Mic } from "lucide-react"
 
 function ChatMessageFooter() {
   return <div className="h-[88px]" />
@@ -93,13 +93,43 @@ const PERSONA_TYPING: Record<string, { icon: typeof Bot; label: string; cssColor
   marketing: { icon: Megaphone, label: "Marketing", cssColor: "oklch(0.86 0.18 95)" },
 }
 
-function AiTypingIndicator() {
-  const others = useOthers()
-  const agent = others.find((o) => o.presence.type === "ai_agent")
-  const isActing = agent?.presence.status === "acting"
-  const persona = (agent?.presence as Record<string, unknown>)?.persona as string | undefined
+function TranscriptMessage({ message }: { message: import("@/modules/VoiceCall/hooks/use-voice-call").VoiceCallChatMessageView }) {
+  const isUser = message.type === "user"
+  return (
+    <div className="w-full px-2 py-1">
+      <div className={cn("flex max-w-[90%] gap-2", isUser ? "ml-auto flex-row-reverse" : "mr-auto")}>
+        <div className="flex size-5 shrink-0 items-center justify-center rounded-full bg-white/[0.06] mt-0.5">
+          <Mic className="size-2.5 text-muted-foreground/60" />
+        </div>
+        <div className={cn(
+          "rounded-lg px-3 py-1.5 text-xs",
+          isUser ? "bg-lime-500/10 text-lime-300/90" : "bg-white/[0.04] text-foreground/80",
+          message.pending && "opacity-50"
+        )}>
+          <p className="text-[10px] font-medium text-muted-foreground/50 mb-0.5">
+            {message.author} &middot; {message.time}
+          </p>
+          <p>{message.text}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
 
-  if (!isActing) return null
+function AiStatusBar() {
+  const others = useOthers()
+  const { inCall, transcripts } = useVoiceCallContext()
+  const agent = others.find((o) => o.presence.type === "ai_agent")
+  const presence = agent?.presence as Record<string, unknown> | undefined
+  const isActing = presence?.status === "acting"
+  const persona = presence?.persona as string | undefined
+  const phase = presence?.phase as string | undefined
+  const action = presence?.action as string | undefined
+
+  const hasLiveTranscript = inCall && transcripts.length > 0
+  const isAutoSuggesting = action === "auto-suggesting"
+
+  if (!isActing && !hasLiveTranscript) return null
 
   const config = persona ? PERSONA_TYPING[persona] : undefined
   const Icon = config?.icon ?? Bot
@@ -107,27 +137,45 @@ function AiTypingIndicator() {
   const color = config?.cssColor ?? "oklch(0.768 0.233 130.85)"
 
   return (
-    <div className="flex items-center gap-2 px-4 py-2">
-      <div
-        className="flex size-6 items-center justify-center rounded-md border"
-        style={{ borderColor: `color-mix(in srgb, ${color} 30%, transparent)`, backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`, color }}
-      >
-        <Icon className="size-3" />
-      </div>
-      <div className="flex items-center gap-1.5">
-        <span className="text-[11px]" style={{ color: `color-mix(in srgb, ${color} 80%, transparent)` }}>
-          {label} is typing
-        </span>
-        <span className="flex gap-0.5">
-          {[0, 150, 300].map((delay) => (
-            <span
-              key={delay}
-              className="size-1 animate-bounce rounded-full"
-              style={{ backgroundColor: `color-mix(in srgb, ${color} 60%, transparent)`, animationDelay: `${delay}ms` }}
-            />
-          ))}
-        </span>
-      </div>
+    <div className="border-t border-white/[0.06] px-3 py-2 space-y-1.5">
+      {hasLiveTranscript && (
+        <div className="flex items-center gap-2">
+          <div className="flex size-5 items-center justify-center rounded-full bg-red-500/10">
+            <Mic className="size-2.5 text-red-400 animate-pulse" />
+          </div>
+          <span className="text-[10px] text-muted-foreground/60">
+            Transcribing &middot; {transcripts.filter((t) => t.isFinal).length} segments
+          </span>
+        </div>
+      )}
+
+      {isActing && (
+        <div className="flex items-center gap-2">
+          <div
+            className="flex size-5 items-center justify-center rounded-md border"
+            style={{ borderColor: `color-mix(in srgb, ${color} 30%, transparent)`, backgroundColor: `color-mix(in srgb, ${color} 10%, transparent)`, color }}
+          >
+            <Icon className="size-2.5" />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="text-[10px] font-medium" style={{ color: `color-mix(in srgb, ${color} 80%, transparent)` }}>
+              {label}
+            </span>
+            <span className="text-[10px] text-muted-foreground/50">
+              {isAutoSuggesting ? "auto-suggesting" : phase ?? "is acting"}
+            </span>
+            <span className="flex gap-0.5">
+              {[0, 150, 300].map((delay) => (
+                <span
+                  key={delay}
+                  className="size-1 animate-bounce rounded-full"
+                  style={{ backgroundColor: `color-mix(in srgb, ${color} 60%, transparent)`, animationDelay: `${delay}ms` }}
+                />
+              ))}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -140,36 +188,47 @@ export function Chat() {
   const { threads } = useThreads()
   const currentUserId = useSelf((me) => me.id)
   const createThread = useCreateThread()
-  const { errorMessage, inCall } = useVoiceCallContext()
+  const { errorMessage, inCall, chatMessages: voiceMessages } = useVoiceCallContext()
   const aiAgent = useAiAgentOptional()
-  const messages: ChatFeedMessage[] = threads
-    .flatMap((thread) =>
+
+  // Only show final transcripts in chat
+  const finalTranscripts = voiceMessages.filter((m) => m.source === "transcript" && !m.pending)
+
+  type UnifiedMessage = { id: string; timestamp: number } & (
+    | { kind: "comment"; comment: CommentData; isOwnMessage: boolean }
+    | { kind: "transcript"; message: (typeof finalTranscripts)[number] }
+  )
+
+  const unified: UnifiedMessage[] = [
+    ...threads.flatMap((thread) =>
       thread.comments.map((comment) => ({
         id: `${thread.id}:${comment.id}`,
+        timestamp: getCommentTimestamp(comment.createdAt),
+        kind: "comment" as const,
         comment,
         isOwnMessage: comment.userId === currentUserId,
       })),
-    )
-    .sort((left, right) => {
-      const timestampDifference =
-        getCommentTimestamp(left.comment.createdAt) -
-        getCommentTimestamp(right.comment.createdAt)
+    ),
+    ...finalTranscripts.map((m) => ({
+      id: m.id,
+      timestamp: m.timestamp,
+      kind: "transcript" as const,
+      message: m,
+    })),
+  ].sort((a, b) => {
+    if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp
+    return a.id.localeCompare(b.id)
+  })
 
-      if (timestampDifference !== 0) {
-        return timestampDifference
-      }
-
-      return left.comment.id.localeCompare(right.comment.id)
-    })
-  const initialMessageIndex = Math.max(messages.length - 1, 0)
+  const initialMessageIndex = Math.max(unified.length - 1, 0)
 
   function scrollToLatestMessage() {
-    if (messages.length === 0) {
+    if (unified.length === 0) {
       return
     }
 
     virtuosoRef.current?.scrollToIndex({
-      index: messages.length - 1,
+      index: unified.length - 1,
       align: "end",
       behavior: "smooth",
     })
@@ -221,21 +280,22 @@ export function Chat() {
         </div>
 
         <div className="relative min-h-0">
-          {messages.length > 0 ? (
+          {unified.length > 0 ? (
             <>
               <Virtuoso
                 ref={virtuosoRef}
-                data={messages}
-                computeItemKey={(_, message) => message.id}
+                data={unified}
+                computeItemKey={(_, item) => item.id}
                 atBottomStateChange={setIsAtBottom}
                 followOutput={(atBottom) => (atBottom ? "smooth" : false)}
                 initialTopMostItemIndex={initialMessageIndex}
                 components={VIRTUOSO_COMPONENTS}
-                itemContent={(_, message) => (
-                  <ChatFeedItem
-                    comment={message.comment}
-                    isOwnMessage={message.isOwnMessage}
-                  />
+                itemContent={(_, item) => (
+                  item.kind === "comment" ? (
+                    <ChatFeedItem comment={item.comment} isOwnMessage={item.isOwnMessage} />
+                  ) : (
+                    <TranscriptMessage message={item.message} />
+                  )
                 )}
                 style={{ height: "100%" }}
                 increaseViewportBy={{ top: 200, bottom: 400 }}
@@ -260,7 +320,7 @@ export function Chat() {
         </div>
       </div>
 
-      <AiTypingIndicator />
+      <AiStatusBar />
       <div className="relative border-t border-white/[0.06] p-2">
         <SlashCommandMenu
           visible={slash.menuOpen && aiAgent != null}

@@ -1,7 +1,7 @@
 import { Liveblocks } from "@liveblocks/node";
 import type { AgentStateType } from "../state.js";
 import type { CanvasNode, CanvasEdge } from "../../types.js";
-import { enterSharedRoom } from "../shared-room.js";
+import { enterSharedRoom, setPresencePhase } from "../shared-room.js";
 
 export function createGatherContextNode(liveblocks: Liveblocks) {
   return async (state: AgentStateType): Promise<Partial<AgentStateType>> => {
@@ -12,6 +12,7 @@ export function createGatherContextNode(liveblocks: Liveblocks) {
 
       // Enter shared room — sets presence to "acting" immediately
       const room = enterSharedRoom(liveblocks, roomId);
+      setPresencePhase(roomId, "reading canvas");
 
       // Wait for presence to sync to frontend before proceeding
       await new Promise((resolve) => setTimeout(resolve, 300));

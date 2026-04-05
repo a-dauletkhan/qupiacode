@@ -39,6 +39,57 @@ const eventBuffers = new Map<string, ActivityEvent[]>();
 
 let compiledGraph: Awaited<ReturnType<typeof buildGraph>> | null = null;
 
+// --- Proactive suggestion timer ---
+const proactiveTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const PROACTIVE_INTERVAL_MS = config.agent.proactiveIntervalMs;
+
+function resetProactiveTimer(roomId: string) {
+  const existing = proactiveTimers.get(roomId);
+  if (existing) clearTimeout(existing);
+
+  proactiveTimers.set(roomId, setTimeout(() => {
+    proactiveTimers.delete(roomId);
+    void triggerProactiveSuggestion(roomId);
+  }, PROACTIVE_INTERVAL_MS));
+}
+
+async function triggerProactiveSuggestion(roomId: string) {
+  if (!compiledGraph) return;
+
+  const transcript = transcriptBuffers.get(roomId);
+  if (!transcript || transcript.length === 0) return;
+
+  console.info(`[proactive] Triggering suggestion for room ${roomId} (${transcript.length} transcript segments)`);
+
+  const threadId = `room:${roomId}`;
+  try {
+    const { enterSharedRoom: enterRoom } = await import("./graph/shared-room.js");
+    enterRoom(liveblocks, roomId);
+
+    await compiledGraph.invoke(
+      {
+        roomId,
+        command: {
+          userId: "system",
+          userName: "System",
+          message: "Based on the recent conversation, proactively suggest improvements or next steps for the canvas. Use sendMessage to share your recommendations and make canvas changes if appropriate.",
+          source: "proactive",
+          selectedNodeIds: [],
+          targetPersona: null,
+        },
+        transcript,
+        userEvents: eventBuffers.get(roomId) ?? [],
+      },
+      { configurable: { thread_id: threadId } },
+    );
+
+    await leaveSharedRoom(roomId);
+  } catch (err) {
+    console.error("[proactive] Suggestion failed:", err);
+    await leaveSharedRoom(roomId);
+  }
+}
+
 async function initGraph() {
   const checkpointer = await createCheckpointer();
   compiledGraph = buildGraph(liveblocks, llm, personasFile, checkpointer);
@@ -50,18 +101,31 @@ app.get("/healthz", (_req, res) => {
 });
 
 app.post("/api/transcript", (req, res) => {
-  transcriptSource.handleEvent(req.body);
-  const event = req.body;
-  if (event.is_final && event.room_id) {
-    const buffer = transcriptBuffers.get(event.room_id) ?? [];
-    buffer.push({
-      speakerId: event.speaker_id,
-      speakerName: event.speaker_name,
-      text: event.text,
-      timestamp: event.timestamp,
-    });
+  const raw = req.body;
+
+  // Normalize: voice service sends nested payload, flatten it for internal use
+  const roomName: string = raw.room_name ?? raw.room_id ?? "";
+  // room_name from voice service is like "canvas:<boardId>", extract boardId
+  const roomId = roomName.startsWith("canvas:") ? roomName.slice("canvas:".length) : roomName;
+  const segment = raw.segment ?? {};
+  const isFinal: boolean = segment.is_final ?? raw.is_final ?? false;
+  const text: string = segment.text ?? raw.text ?? "";
+  const speakerId: string = raw.speaker_id ?? raw.participant?.identity ?? "";
+  const speakerName: string = raw.participant?.name ?? raw.speaker_name ?? speakerId;
+  const timestamp: number = raw.received_at ? new Date(raw.received_at).getTime() : Date.now();
+
+  const normalized = { room_id: roomId, speaker_id: speakerId, speaker_name: speakerName, text, timestamp, is_final: isFinal };
+  transcriptSource.handleEvent(normalized);
+
+  if (isFinal && roomId && text) {
+    const buffer = transcriptBuffers.get(roomId) ?? [];
+    buffer.push({ speakerId, speakerName, text, timestamp });
     if (buffer.length > 20) buffer.splice(0, buffer.length - 20);
-    transcriptBuffers.set(event.room_id, buffer);
+    transcriptBuffers.set(roomId, buffer);
+    console.info(`[transcript] Room ${roomId}: "${text}" (${speakerName})`);
+
+    // Reset proactive timer — new speech activity detected
+    resetProactiveTimer(roomId);
   }
   res.json({ ok: true });
 });

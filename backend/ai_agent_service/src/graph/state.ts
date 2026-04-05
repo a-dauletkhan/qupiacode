@@ -11,7 +11,7 @@ export interface CommandInput {
   userId: string;
   userName: string;
   message: string;
-  source: "chat" | "canvas_context_menu";
+  source: "chat" | "canvas_context_menu" | "proactive";
   selectedNodeIds: string[];
   targetPersona: string | null;
 }
