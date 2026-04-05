@@ -216,15 +216,9 @@ export function CanvasWorkspace() {
               side="right"
               collapsible="none"
               className="w-full"
-<<<<<<< Updated upstream
-              canvasId={project.id}
-              userId={user?.id}
-              displayName={displayName}
-=======
               projectId={project.id}
               userId={user?.id}
               displayName={voiceDisplayName}
->>>>>>> Stashed changes
             />
           </ResizablePanel>
         </ResizablePanelGroup>

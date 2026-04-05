@@ -1,6 +1,12 @@
 import * as React from "react"
 import { Cursors, useLiveblocksFlow } from "@liveblocks/react-flow"
 import {
+  useCanRedo,
+  useCanUndo,
+  useRedo,
+  useUndo,
+} from "@liveblocks/react/suspense"
+import {
   Background,
   BackgroundVariant,
   ConnectionMode,
@@ -113,6 +119,10 @@ function FlowCanvasInner({
     x: number
     y: number
   } | null>(null)
+  const undo = useUndo()
+  const redo = useRedo()
+  const canUndo = useCanUndo()
+  const canRedo = useCanRedo()
   const aiAgent = useAiAgentOptional()
   // useAiMockBridge({ onNodesChange })  // Mock bridge disabled — Liveblocks handles AI node sync
 
@@ -296,6 +306,47 @@ function FlowCanvasInner({
       setInspectorOpen(false)
     }
   }, [selectedObjectIds])
+
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.repeat ||
+        event.altKey ||
+        !(event.metaKey || event.ctrlKey) ||
+        isEditableTarget(event.target)
+      ) {
+        return
+      }
+
+      const key = event.key.toLowerCase()
+      const wantsUndo = key === "z" && !event.shiftKey
+      const wantsRedo = (key === "z" && event.shiftKey) || key === "y"
+
+      if (wantsUndo) {
+        if (!canUndo) {
+          return
+        }
+
+        event.preventDefault()
+        undo()
+        return
+      }
+
+      if (!wantsRedo || !canRedo) {
+        return
+      }
+
+      event.preventDefault()
+      redo()
+    }
+
+    window.addEventListener("keydown", handleKeyDown)
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [canRedo, canUndo, redo, undo])
 
   const inspectorAnchor = React.useMemo(() => {
     if (!selectedObject || !sectionRef.current) {
@@ -796,4 +847,18 @@ function areStringArraysEqual(left: string[], right: string[]) {
   }
 
   return left.every((value, index) => value === right[index])
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  if (target.isContentEditable) {
+    return true
+  }
+
+  return Boolean(
+    target.closest("input, textarea, select, [contenteditable='true']")
+  )
 }

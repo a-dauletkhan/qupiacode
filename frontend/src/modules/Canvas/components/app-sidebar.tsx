@@ -13,21 +13,13 @@ import { VoiceCall } from "@/modules/VoiceCall/components/voice-call"
 import { VoiceCallProvider } from "@/modules/VoiceCall/context/voice-call-context"
 
 type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
-<<<<<<< Updated upstream
-  canvasId?: string
-=======
   projectId: string
->>>>>>> Stashed changes
   userId?: string
   displayName?: string
 }
 
 export function AppSidebar({
-<<<<<<< Updated upstream
-  canvasId,
-=======
   projectId,
->>>>>>> Stashed changes
   userId,
   displayName,
   ...props
@@ -36,17 +28,10 @@ export function AppSidebar({
     <Sidebar {...props}>
       <SidebarContent className="overflow-hidden">
         <VoiceCallProvider
-<<<<<<< Updated upstream
-          apiBaseUrl={getVoiceApiBaseUrl()}
-          canvasId={canvasId}
-          userId={userId}
-          displayName={displayName}
-=======
           canvasId={projectId}
           userId={userId}
           displayName={displayName}
           apiBaseUrl={getVoiceApiBaseUrl()}
->>>>>>> Stashed changes
         >
           <ResizablePanelGroup
             orientation="vertical"

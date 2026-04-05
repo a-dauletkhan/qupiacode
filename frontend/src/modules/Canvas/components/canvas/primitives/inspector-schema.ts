@@ -225,13 +225,10 @@ export function applyObjectProperty(
               label:
                 !node.data.content.label ||
                 node.data.content.label === "Rectangle" ||
-                node.data.content.label === "Diamond" ||
                 node.data.content.label === "Ellipse"
                   ? value === "rectangle"
                     ? "Rectangle"
-                    : value === "diamond"
-                      ? "Diamond"
-                      : "Ellipse"
+                    : "Ellipse"
                   : node.data.content.label,
             },
           },

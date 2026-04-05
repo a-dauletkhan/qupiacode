@@ -10,11 +10,27 @@ type NodeConnectionHandlesProps = {
   hidden?: boolean
 }
 
-const HANDLE_POSITIONS = [
-  Position.Top,
-  Position.Right,
-  Position.Bottom,
-  Position.Left,
+const HANDLE_DEFINITIONS = [
+  {
+    id: "top",
+    type: "target" as const,
+    position: Position.Top,
+  },
+  {
+    id: "bottom",
+    type: "source" as const,
+    position: Position.Bottom,
+  },
+  {
+    id: "right",
+    type: "source" as const,
+    position: Position.Right,
+  },
+  {
+    id: "left",
+    type: "target" as const,
+    position: Position.Left,
+  },
 ] as const
 
 export const NodeConnectionHandles = React.memo(
@@ -35,11 +51,11 @@ export const NodeConnectionHandles = React.memo(
 
     return (
       <>
-        {HANDLE_POSITIONS.map((position) => (
+        {HANDLE_DEFINITIONS.map(({ id, type, position }) => (
           <Handle
-            key={position}
-            id={`${position}-handle`}
-            type="source"
+            key={id}
+            id={id}
+            type={type}
             position={position}
             isConnectable={isConnectable}
             className={cn(

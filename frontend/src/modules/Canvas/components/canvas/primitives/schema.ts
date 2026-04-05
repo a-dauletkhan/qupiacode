@@ -1,7 +1,6 @@
 import type { Edge, Node } from "@xyflow/react"
 import {
   Circle,
-  Diamond,
   Hand,
   Image as ImageIcon,
   MousePointer2,
@@ -15,7 +14,6 @@ export type ToolId =
   | "hand"
   | "selection"
   | "rectangle"
-  | "diamond"
   | "ellipse"
   | "sticky_note"
   | "arrow"
@@ -25,7 +23,7 @@ export type ToolId =
   | "image"
   | "eraser"
 
-export type ShapeKind = Extract<ToolId, "rectangle" | "diamond" | "ellipse">
+export type ShapeKind = Extract<ToolId, "rectangle" | "ellipse">
 export type CanvasCreationTool = ShapeKind | "text" | "sticky_note"
 export type CanvasObjectType = "shape" | "text" | "sticky_note"
 export type PrimitivePaintStyle = "solid" | "outline" | "sketch" | "hatch"
@@ -179,14 +177,6 @@ export const TOOL_CONFIGS: ToolConfig[] = [
     implemented: true,
   },
   {
-    id: "diamond",
-    label: "Diamond",
-    shortcut: "3",
-    icon: Diamond,
-    fillable: true,
-    implemented: true,
-  },
-  {
     id: "ellipse",
     label: "Ellipse",
     shortcut: "4",
@@ -237,7 +227,6 @@ export const PAINT_STYLE_OPTIONS: PaintStyleOption[] = [
 
 export const SHAPE_KIND_OPTIONS = [
   { value: "rectangle", label: "Rectangle" },
-  { value: "diamond", label: "Diamond" },
   { value: "ellipse", label: "Ellipse" },
 ] as const
 
@@ -253,10 +242,9 @@ export const FONT_WEIGHT_OPTIONS = [
   { value: "bold", label: "Bold" },
 ] as const
 
-const SHAPE_TOOL_IDS = new Set<ShapeKind>(["rectangle", "diamond", "ellipse"])
+const SHAPE_TOOL_IDS = new Set<ShapeKind>(["rectangle", "ellipse"])
 const CANVAS_CREATION_TOOLS = new Set<CanvasCreationTool>([
   "rectangle",
-  "diamond",
   "ellipse",
   "text",
   "sticky_note",
@@ -294,8 +282,6 @@ export function getShapeLabel(shapeKind: ShapeKind) {
   switch (shapeKind) {
     case "rectangle":
       return "Rectangle"
-    case "diamond":
-      return "Diamond"
     case "ellipse":
       return "Ellipse"
   }

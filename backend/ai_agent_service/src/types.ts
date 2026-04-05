@@ -9,7 +9,7 @@ export interface AgentPresence {
 }
 
 export type CanvasObjectType = "shape" | "text" | "sticky_note";
-export type ShapeKind = "rectangle" | "diamond" | "ellipse";
+export type ShapeKind = "rectangle" | "ellipse";
 export type PaintStyle = "solid" | "outline" | "sketch" | "hatch";
 export type TextAlign = "left" | "center" | "right";
 export type FontWeight = "normal" | "medium" | "bold";

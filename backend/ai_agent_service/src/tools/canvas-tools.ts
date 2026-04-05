@@ -4,7 +4,7 @@ export const canvasTools: Tool[] = [
   {
     name: "createNode",
     description:
-      "Create a new node on the canvas. Use 'shape' for rectangles/diamonds/ellipses, 'text' for text labels, 'sticky_note' for sticky notes.",
+      "Create a new node on the canvas. Use 'shape' for rectangles/ellipses, 'text' for text labels, 'sticky_note' for sticky notes.",
     parameters: {
       type: "object",
       properties: {
@@ -27,7 +27,7 @@ export const canvasTools: Tool[] = [
         shapeKind: {
           type: "string",
           description: "Shape variant (only for nodeType=shape)",
-          enum: ["rectangle", "diamond", "ellipse"],
+          enum: ["rectangle", "ellipse"],
         },
         color: { type: "string", description: "Fill color as oklch string" },
         paintStyle: {

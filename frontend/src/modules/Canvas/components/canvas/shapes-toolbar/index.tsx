@@ -1,11 +1,14 @@
 import { useEffect, useId, useMemo, useState } from "react"
-import { Settings2 } from "lucide-react"
+import { Redo2, Undo2 } from "lucide-react"
+import {
+  useCanRedo,
+  useCanUndo,
+  useRedo,
+  useUndo,
+} from "@liveblocks/react/suspense"
 
 import {
-  PAINT_STYLE_OPTIONS,
   TOOL_CONFIGS,
-  clampFontSize,
-  clampStrokeWidth,
   isCanvasCreationTool,
   isShapeTool,
   type CanvasEditorDefaults,
@@ -13,16 +16,6 @@ import {
 } from "@/modules/Canvas/components/canvas/primitives/schema"
 import "@/modules/Canvas/components/canvas/shapes-toolbar/styles.css"
 import { Button } from "@/modules/Canvas/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/modules/Canvas/components/ui/dropdown-menu"
-import { Slider } from "@/modules/Canvas/components/ui/slider"
 import { cn } from "@/lib/utils"
 
 type ShapesToolbarProps = {
@@ -35,15 +28,14 @@ type ShapesToolbarProps = {
   ) => void
 }
 
-export function ShapesToolbar({
-  className,
-  activeTool,
-  editorDefaults,
-  onActiveToolChange,
-  onEditorDefaultsChange,
-}: ShapesToolbarProps) {
+export function ShapesToolbar(props: ShapesToolbarProps) {
+  const { className, activeTool, onActiveToolChange } = props
   const [isHintVisible, setIsHintVisible] = useState(true)
   const headingId = useId()
+  const undo = useUndo()
+  const redo = useRedo()
+  const canUndo = useCanUndo()
+  const canRedo = useCanRedo()
 
   const dismissHint = () => {
     setIsHintVisible(false)
@@ -151,191 +143,36 @@ export function ShapesToolbar({
 
           <div className="shape-divider" aria-hidden="true" />
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="Default object settings"
-                title="Default object settings"
-                className="shape-tool size-8 rounded-xl border border-transparent p-0 text-foreground/80"
-                onPointerDown={dismissHint}
-              >
-                {renderIcon(Settings2)}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              className="shape-style-menu w-72 border border-border/70 bg-card/95 p-0 shadow-none"
-              align="center"
-            >
-              <ToolbarDefaultsPanel
-                activeTool={activeTool}
-                editorDefaults={editorDefaults}
-                onEditorDefaultsChange={onEditorDefaultsChange}
-              />
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Undo canvas change"
+            title="Undo (Ctrl/Cmd+Z)"
+            className="shape-tool size-8 rounded-xl border border-transparent p-0 text-foreground/80"
+            disabled={!canUndo}
+            onClick={undo}
+            onPointerDown={dismissHint}
+          >
+            <Undo2 className="size-[18px] stroke-[1.7]" />
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Redo canvas change"
+            title="Redo (Ctrl/Cmd+Shift+Z)"
+            className="shape-tool size-8 rounded-xl border border-transparent p-0 text-foreground/80"
+            disabled={!canRedo}
+            onClick={redo}
+            onPointerDown={dismissHint}
+          >
+            <Redo2 className="size-[18px] stroke-[1.7]" />
+          </Button>
         </div>
       </div>
     </section>
-  )
-}
-
-function ToolbarDefaultsPanel({
-  activeTool,
-  editorDefaults,
-  onEditorDefaultsChange,
-}: Pick<ShapesToolbarProps, "activeTool" | "editorDefaults" | "onEditorDefaultsChange">) {
-  if (isShapeTool(activeTool)) {
-    return (
-      <div className="space-y-3 p-3">
-        <div>
-          <DropdownMenuLabel className="px-0 py-0 text-[11px] uppercase tracking-[0.18em] text-primary">
-            Shape Paint
-          </DropdownMenuLabel>
-          <DropdownMenuRadioGroup
-            value={editorDefaults.shape.paintStyle}
-            onValueChange={(value) =>
-              onEditorDefaultsChange((currentDefaults) => ({
-                ...currentDefaults,
-                shape: {
-                  ...currentDefaults.shape,
-                  paintStyle: value as typeof currentDefaults.shape.paintStyle,
-                },
-              }))
-            }
-          >
-            {PAINT_STYLE_OPTIONS.map((option) => (
-              <DropdownMenuRadioItem
-                key={option.id}
-                value={option.id}
-                className="mt-2 items-start rounded-none border border-transparent px-0 py-0 data-[state=checked]:border-primary/25"
-              >
-                <div className="pr-7">
-                  <p className="text-xs font-medium text-foreground">
-                    {option.label}
-                  </p>
-                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground">
-                    {option.description}
-                  </p>
-                </div>
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-        </div>
-
-        <DropdownMenuSeparator />
-
-        <div>
-          <DropdownMenuLabel className="px-0 py-0 text-[11px] uppercase tracking-[0.18em] text-primary">
-            Shape Stroke
-          </DropdownMenuLabel>
-          <div className="mt-3 flex items-center gap-3">
-            <Slider
-              min={1}
-              max={8}
-              step={1}
-              value={[editorDefaults.shape.strokeWidth]}
-              onValueChange={(values) =>
-                onEditorDefaultsChange((currentDefaults) => ({
-                  ...currentDefaults,
-                  shape: {
-                    ...currentDefaults.shape,
-                    strokeWidth: clampStrokeWidth(
-                      values[0] ?? currentDefaults.shape.strokeWidth
-                    ),
-                  },
-                }))
-              }
-            />
-            <span className="w-8 text-right text-xs font-medium text-foreground">
-              {editorDefaults.shape.strokeWidth}
-            </span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (activeTool === "text") {
-    return (
-      <div className="space-y-3 p-3">
-        <DropdownMenuLabel className="px-0 py-0 text-[11px] uppercase tracking-[0.18em] text-primary">
-          Text Defaults
-        </DropdownMenuLabel>
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-            Font Size
-          </p>
-          <div className="mt-3 flex items-center gap-3">
-            <Slider
-              min={12}
-              max={72}
-              step={1}
-              value={[editorDefaults.text.fontSize]}
-              onValueChange={(values) =>
-                onEditorDefaultsChange((currentDefaults) => ({
-                  ...currentDefaults,
-                  text: {
-                    ...currentDefaults.text,
-                    fontSize: clampFontSize(
-                      values[0] ?? currentDefaults.text.fontSize
-                    ),
-                  },
-                }))
-              }
-            />
-            <span className="w-8 text-right text-xs font-medium text-foreground">
-              {editorDefaults.text.fontSize}
-            </span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  if (activeTool === "sticky_note") {
-    return (
-      <div className="space-y-3 p-3">
-        <DropdownMenuLabel className="px-0 py-0 text-[11px] uppercase tracking-[0.18em] text-primary">
-          Sticky Defaults
-        </DropdownMenuLabel>
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-            Font Size
-          </p>
-          <div className="mt-3 flex items-center gap-3">
-            <Slider
-              min={12}
-              max={48}
-              step={1}
-              value={[editorDefaults.stickyNote.fontSize]}
-              onValueChange={(values) =>
-                onEditorDefaultsChange((currentDefaults) => ({
-                  ...currentDefaults,
-                  stickyNote: {
-                    ...currentDefaults.stickyNote,
-                    fontSize: clampFontSize(
-                      values[0] ?? currentDefaults.stickyNote.fontSize
-                    ),
-                  },
-                }))
-              }
-            />
-            <span className="w-8 text-right text-xs font-medium text-foreground">
-              {editorDefaults.stickyNote.fontSize}
-            </span>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="p-3 text-[11px] leading-5 text-muted-foreground">
-      Select a creation tool to adjust its default properties.
-    </div>
   )
 }
 
