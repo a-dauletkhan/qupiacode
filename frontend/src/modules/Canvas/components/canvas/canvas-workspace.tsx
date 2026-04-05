@@ -4,6 +4,8 @@ import {
   ArrowLeft,
   ChevronDown,
   Link2,
+  PanelRightClose,
+  PanelRightOpen,
   Share2,
 } from "lucide-react"
 import { usePanelRef } from "react-resizable-panels"
@@ -80,6 +82,7 @@ export function CanvasWorkspace() {
   )
 
   const sidebarPanelRef = usePanelRef()
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true)
   const [activeTool, setActiveTool] = React.useState<ToolId>("selection")
   const [editorDefaults, setEditorDefaults] = React.useState<CanvasEditorDefaults>(
     DEFAULT_EDITOR_DEFAULTS
@@ -115,6 +118,17 @@ export function CanvasWorkspace() {
   const copyShareLink = React.useCallback(() => {
     void navigator.clipboard.writeText(shareLink)
   }, [shareLink])
+
+  const toggleSidebar = React.useCallback(() => {
+    if (!sidebarPanelRef.current) return
+    if (isSidebarOpen) {
+      sidebarPanelRef.current.collapse()
+      setIsSidebarOpen(false)
+    } else {
+      sidebarPanelRef.current.expand()
+      setIsSidebarOpen(true)
+    }
+  }, [isSidebarOpen, sidebarPanelRef])
 
   if (!project) {
     return (
@@ -174,6 +188,19 @@ export function CanvasWorkspace() {
                 </DropdownMenu>
               </div>
 
+              <div className="absolute top-4 right-4 z-30">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="border-border bg-card/80 text-foreground backdrop-blur hover:bg-accent"
+                  onClick={toggleSidebar}
+                  aria-label={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+                >
+                  {isSidebarOpen ? <PanelRightClose className="size-4" /> : <PanelRightOpen className="size-4" />}
+                </Button>
+              </div>
+
               <FlowCanvas
                 activeTool={activeTool}
                 editorDefaults={editorDefaults}
@@ -201,6 +228,8 @@ export function CanvasWorkspace() {
             maxSize={`${MAX_SIDEBAR_WIDTH}px`}
             minSize={`${MIN_SIDEBAR_WIDTH}px`}
             panelRef={sidebarPanelRef}
+            onCollapse={() => setIsSidebarOpen(false)}
+            onExpand={() => setIsSidebarOpen(true)}
           >
             <AppSidebar
               side="right"
