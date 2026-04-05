@@ -369,7 +369,6 @@ export class RoomManager {
     }
   }
 
-<<<<<<< Updated upstream
   private async processQueue(roomId: string): Promise<void> {
     const log = roomLogger(roomId);
     const session = this.sessions.get(roomId);
@@ -422,11 +421,6 @@ export class RoomManager {
     }
   ): Promise<void> {
     const log = roomLogger(roomId);
-=======
-  private async act(roomId: string, session: RoomSession, isDirect: boolean, commandId?: string, requestedBy?: string): Promise<void> {
-    const log = roomLogger(roomId);
-    const actionId = `act-${randomUUID().slice(0, 8)}`;
->>>>>>> Stashed changes
     const context = session.accumulator.buildContext();
 
     log.debug({ isDirect: opts.isDirect, contextLength: context.length }, "Building LLM request");

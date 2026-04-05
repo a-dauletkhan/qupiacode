@@ -9,6 +9,7 @@ import {
   type PrimitivePaintStyle,
   type ShapeNode,
 } from "@/modules/Canvas/components/canvas/primitives/schema"
+import { requestImageGeneration } from "@/modules/Canvas/services/image-generation-service"
 import { Button } from "@/modules/Canvas/components/ui/button"
 import { Textarea } from "@/modules/Canvas/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -28,12 +29,24 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
   width,
   height,
 }: NodeProps<ShapeNode>) {
-  const { editingObjectId, finishEditing, updateCanvasObject } =
+  const { editingObjectId, finishEditing, startEditing, updateCanvasObject } =
     useCanvasEditor()
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
+  const [isSubmittingImageRequest, setIsSubmittingImageRequest] =
+    React.useState(false)
+  const [imageRequestError, setImageRequestError] = React.useState<string | null>(
+    null
+  )
+  const [imageRequestSent, setImageRequestSent] = React.useState(false)
   const isImagePlaceholder = data.sourceTool === "image"
   const isEditing = editingObjectId === id && !data.draft
   const dimensions = `${Math.round(width ?? 0)} × ${Math.round(height ?? 0)}`
+  const promptText = data.content.label.trim()
+
+  React.useEffect(() => {
+    setImageRequestError(null)
+    setImageRequestSent(false)
+  }, [data.content.label])
 
   React.useEffect(() => {
     if (!isEditing) {
@@ -46,6 +59,41 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
       textareaRef.current.value.length
     )
   }, [isEditing])
+
+  const handleGenerateImageClick = React.useCallback(
+    async (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.stopPropagation()
+
+      if (!promptText) {
+        setImageRequestSent(false)
+        setImageRequestError("Add a prompt before generating.")
+        startEditing(id)
+        return
+      }
+
+      setIsSubmittingImageRequest(true)
+      setImageRequestError(null)
+
+      try {
+        await requestImageGeneration({
+          nodeId: id,
+          text: promptText,
+          resolution: getImageResolution(width, height),
+        })
+        setImageRequestSent(true)
+      } catch (error) {
+        setImageRequestSent(false)
+        setImageRequestError(
+          error instanceof Error
+            ? error.message
+            : "Image generation request failed."
+        )
+      } finally {
+        setIsSubmittingImageRequest(false)
+      }
+    },
+    [height, id, promptText, startEditing, width]
+  )
 
   return (
     <div className="primitive-node-shell">
@@ -127,16 +175,29 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
                 variant="outline"
                 size="sm"
                 className="primitive-image-action nodrag nopan"
+                disabled={isSubmittingImageRequest}
                 onPointerDown={(event) => {
                   event.stopPropagation()
                 }}
-                onClick={(event) => {
-                  event.stopPropagation()
-                }}
+                onClick={handleGenerateImageClick}
               >
                 <ImageIcon className="size-3.5" />
-                Generate image
+                {isSubmittingImageRequest
+                  ? "Requesting..."
+                  : imageRequestSent
+                    ? "Requested"
+                    : "Generate image"}
               </Button>
+
+              {imageRequestError ? (
+                <div className="primitive-image-status primitive-image-status-error">
+                  {imageRequestError}
+                </div>
+              ) : imageRequestSent ? (
+                <div className="primitive-image-status" aria-live="polite">
+                  Request logged.
+                </div>
+              ) : null}
             </div>
           ) : isEditing ? (
             <Textarea
@@ -200,4 +261,25 @@ function getPrimitiveCssVars(
     "--primitive-fill-soft": `color-mix(in srgb, ${color} 12%, transparent)`,
     "--primitive-stroke-width": `${strokeWidth}px`,
   } as React.CSSProperties
+}
+
+function getImageResolution(width?: number, height?: number) {
+  const normalizedWidth = Math.max(1, Math.round(width ?? 168))
+  const normalizedHeight = Math.max(1, Math.round(height ?? 112))
+  const divisor = greatestCommonDivisor(normalizedWidth, normalizedHeight)
+
+  return `${normalizedWidth / divisor}:${normalizedHeight / divisor}`
+}
+
+function greatestCommonDivisor(a: number, b: number): number {
+  let left = a
+  let right = b
+
+  while (right !== 0) {
+    const remainder = left % right
+    left = right
+    right = remainder
+  }
+
+  return left
 }
