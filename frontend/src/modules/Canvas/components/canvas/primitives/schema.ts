@@ -65,7 +65,15 @@ type BaseCanvasObjectData<ObjectType extends CanvasObjectType, Content, Style> =
 
 export type ShapeObjectData = BaseCanvasObjectData<
   "shape",
-  { label: string },
+  {
+    label: string
+    imageUrl?: string
+    requestId?: string
+    generationStatus?: string
+    generationError?: string
+    statusUrl?: string
+    cancelUrl?: string
+  },
   ShapeStylePreset
 > & {
   shapeKind: ShapeKind

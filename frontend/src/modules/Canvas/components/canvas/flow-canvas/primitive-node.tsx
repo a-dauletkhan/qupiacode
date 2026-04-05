@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Image as ImageIcon } from "lucide-react"
+import { Image as ImageIcon, LoaderCircle } from "lucide-react"
 import { NodeResizer, type NodeProps } from "@xyflow/react"
 
 import { useCanvasEditor } from "@/modules/Canvas/components/canvas/flow-canvas/editor-context"
@@ -9,7 +9,10 @@ import {
   type PrimitivePaintStyle,
   type ShapeNode,
 } from "@/modules/Canvas/components/canvas/primitives/schema"
-import { requestImageGeneration } from "@/modules/Canvas/services/image-generation-service"
+import {
+  requestImageGeneration,
+  requestImageGenerationStatus,
+} from "@/modules/Canvas/services/image-generation-service"
 import { Button } from "@/modules/Canvas/components/ui/button"
 import { Textarea } from "@/modules/Canvas/components/ui/textarea"
 import { cn } from "@/lib/utils"
@@ -21,6 +24,10 @@ const paintStyleBadges: Record<PrimitivePaintStyle, string> = {
   hatch: "Hatch",
 }
 
+const TERMINAL_IMAGE_STATUSES = new Set(["nsfw", "failed", "canceled"])
+const IMAGE_POLL_INITIAL_DELAY_MS = 1000
+const IMAGE_POLL_MAX_DELAY_MS = 15000
+  
 export const ShapeNodeCard = React.memo(function ShapeNodeCard({
   id,
   data,
@@ -32,21 +39,27 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
   const { editingObjectId, finishEditing, startEditing, updateCanvasObject } =
     useCanvasEditor()
   const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
+  const updateCanvasObjectRef = React.useRef(updateCanvasObject)
+  const pollTimeoutRef = React.useRef<number | null>(null)
+  const pollDelayRef = React.useRef(IMAGE_POLL_INITIAL_DELAY_MS)
+  const pollInFlightRef = React.useRef(false)
+  const activePollRequestIdRef = React.useRef<string | null>(null)
   const [isSubmittingImageRequest, setIsSubmittingImageRequest] =
     React.useState(false)
-  const [imageRequestError, setImageRequestError] = React.useState<string | null>(
-    null
-  )
-  const [imageRequestSent, setImageRequestSent] = React.useState(false)
   const isImagePlaceholder = data.sourceTool === "image"
   const isEditing = editingObjectId === id && !data.draft
   const dimensions = `${Math.round(width ?? 0)} × ${Math.round(height ?? 0)}`
   const promptText = data.content.label.trim()
+  const imageUrl = data.content.imageUrl?.trim() || ""
+  const requestId = data.content.requestId?.trim() || ""
+  const generationStatus = data.content.generationStatus?.trim() || ""
+  const generationError = data.content.generationError?.trim() || ""
+  const isPollingImage =
+    Boolean(requestId) && !imageUrl && !TERMINAL_IMAGE_STATUSES.has(generationStatus)
 
   React.useEffect(() => {
-    setImageRequestError(null)
-    setImageRequestSent(false)
-  }, [data.content.label])
+    updateCanvasObjectRef.current = updateCanvasObject
+  }, [updateCanvasObject])
 
   React.useEffect(() => {
     if (!isEditing) {
@@ -60,39 +73,224 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
     )
   }, [isEditing])
 
+  React.useEffect(() => {
+    if (pollTimeoutRef.current !== null) {
+      window.clearTimeout(pollTimeoutRef.current)
+      pollTimeoutRef.current = null
+    }
+
+    if (!isImagePlaceholder || !requestId || imageUrl || !isPollingImage) {
+      activePollRequestIdRef.current = null
+      pollInFlightRef.current = false
+      pollDelayRef.current = IMAGE_POLL_INITIAL_DELAY_MS
+      return
+    }
+
+    if (activePollRequestIdRef.current === requestId) {
+      return
+    }
+
+    activePollRequestIdRef.current = requestId
+    pollDelayRef.current = IMAGE_POLL_INITIAL_DELAY_MS
+
+    const scheduleNextPoll = () => {
+      const delayMs = pollDelayRef.current
+      pollTimeoutRef.current = window.setTimeout(() => {
+        void pollImageStatus()
+      }, delayMs)
+      pollDelayRef.current = Math.min(delayMs * 2, IMAGE_POLL_MAX_DELAY_MS)
+    }
+
+    const pollImageStatus = async () => {
+      if (pollInFlightRef.current) {
+        return
+      }
+
+      pollInFlightRef.current = true
+
+      try {
+        const statusResponse = await requestImageGenerationStatus(requestId)
+        if (activePollRequestIdRef.current !== requestId) {
+          pollInFlightRef.current = false
+          return
+        }
+
+        const nextImageUrl = statusResponse.images[0]?.url ?? ""
+        const nextStatus = statusResponse.status
+        const nextStatusUrl = statusResponse.status_url ?? undefined
+        const nextCancelUrl = statusResponse.cancel_url ?? undefined
+        const nextError =
+          TERMINAL_IMAGE_STATUSES.has(nextStatus)
+            ? `Generation ${nextStatus.replace("_", " ")}.`
+            : undefined
+
+        updateCanvasObjectRef.current(id, (node) => {
+          if (!isShapeNode(node)) {
+            return node
+          }
+
+          if (
+            node.data.content.imageUrl === nextImageUrl &&
+            node.data.content.generationStatus === nextStatus &&
+            node.data.content.generationError === nextError &&
+            node.data.content.statusUrl === nextStatusUrl &&
+            node.data.content.cancelUrl === nextCancelUrl
+          ) {
+            return node
+          }
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              content: {
+                ...node.data.content,
+                imageUrl: nextImageUrl || undefined,
+                generationStatus: nextStatus,
+                generationError: nextError,
+                statusUrl: nextStatusUrl,
+                cancelUrl: nextCancelUrl,
+              },
+            },
+          }
+        })
+
+        if (!nextImageUrl && !TERMINAL_IMAGE_STATUSES.has(nextStatus)) {
+          scheduleNextPoll()
+        } else {
+          activePollRequestIdRef.current = null
+          pollDelayRef.current = IMAGE_POLL_INITIAL_DELAY_MS
+        }
+      } catch (error) {
+        if (activePollRequestIdRef.current !== requestId) {
+          pollInFlightRef.current = false
+          return
+        }
+
+        updateCanvasObjectRef.current(id, (node) => {
+          if (!isShapeNode(node)) {
+            return node
+          }
+
+          const message =
+            error instanceof Error
+              ? error.message
+              : "Image generation status request failed."
+
+          if (
+            node.data.content.generationStatus === "failed" &&
+            node.data.content.generationError === message
+          ) {
+            return node
+          }
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              content: {
+                ...node.data.content,
+                generationStatus: "failed",
+                generationError: message,
+              },
+            },
+          }
+        })
+        activePollRequestIdRef.current = null
+        pollDelayRef.current = IMAGE_POLL_INITIAL_DELAY_MS
+      } finally {
+        pollInFlightRef.current = false
+      }
+    }
+
+    scheduleNextPoll()
+
+    return () => {
+      if (activePollRequestIdRef.current === requestId) {
+        activePollRequestIdRef.current = null
+        pollInFlightRef.current = false
+        pollDelayRef.current = IMAGE_POLL_INITIAL_DELAY_MS
+      }
+      if (pollTimeoutRef.current !== null) {
+        window.clearTimeout(pollTimeoutRef.current)
+        pollTimeoutRef.current = null
+      }
+    }
+  }, [id, imageUrl, isImagePlaceholder, isPollingImage, requestId])
+
   const handleGenerateImageClick = React.useCallback(
     async (event: React.MouseEvent<HTMLButtonElement>) => {
       event.stopPropagation()
 
       if (!promptText) {
-        setImageRequestSent(false)
-        setImageRequestError("Add a prompt before generating.")
+        updateCanvasObject(id, (node) =>
+          isShapeNode(node)
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  content: {
+                    ...node.data.content,
+                    generationError: "Add a prompt before generating.",
+                  },
+                },
+              }
+            : node
+        )
         startEditing(id)
         return
       }
 
       setIsSubmittingImageRequest(true)
-      setImageRequestError(null)
 
       try {
-        await requestImageGeneration({
+        const response = await requestImageGeneration({
           nodeId: id,
           text: promptText,
-          resolution: getImageResolution(width, height),
+          resolution: "16:9",
         })
-        setImageRequestSent(true)
+
+        updateCanvasObject(id, (node) =>
+          isShapeNode(node)
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  content: {
+                    ...node.data.content,
+                    requestId: response.request_id,
+                    generationStatus: response.status,
+                    generationError: undefined,
+                    imageUrl: undefined,
+                  },
+                },
+              }
+            : node
+        )
       } catch (error) {
-        setImageRequestSent(false)
-        setImageRequestError(
-          error instanceof Error
-            ? error.message
-            : "Image generation request failed."
+        updateCanvasObject(id, (node) =>
+          isShapeNode(node)
+            ? {
+                ...node,
+                data: {
+                  ...node.data,
+                  content: {
+                    ...node.data.content,
+                    generationStatus: "failed",
+                    generationError:
+                      error instanceof Error
+                        ? error.message
+                        : "Image generation request failed.",
+                  },
+                },
+              }
+            : node
         )
       } finally {
         setIsSubmittingImageRequest(false)
       }
     },
-    [height, id, promptText, startEditing, width]
+    [id, promptText, startEditing, updateCanvasObject]
   )
 
   return (
@@ -131,7 +329,25 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
         >
           {isImagePlaceholder && !data.draft ? (
             <div className="primitive-image-content">
-              {isEditing ? (
+              {imageUrl ? (
+                <div className="primitive-image-preview">
+                  <img
+                    src={imageUrl}
+                    alt={promptText || "Generated image"}
+                    className="primitive-image-preview-media nodrag nopan"
+                    draggable={false}
+                  />
+                </div>
+              ) : isPollingImage || isSubmittingImageRequest ? (
+                <div className="primitive-image-loader" aria-live="polite">
+                  <LoaderCircle className="size-6 animate-spin text-lime-400" />
+                  <div className="primitive-image-status">
+                    {generationStatus === "submitted"
+                      ? "Starting generation..."
+                      : "Generating image..."}
+                  </div>
+                </div>
+              ) : isEditing ? (
                 <Textarea
                   ref={textareaRef}
                   value={data.content.label}
@@ -142,12 +358,13 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
                         ? {
                             ...node,
                             data: {
-                              ...node.data,
-                              content: {
-                                label: event.target.value,
-                              },
+                            ...node.data,
+                            content: {
+                              ...node.data.content,
+                              label: event.target.value,
                             },
-                          }
+                          },
+                        }
                         : node
                     )
                   }
@@ -170,32 +387,26 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
                 </div>
               )}
 
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="primitive-image-action nodrag nopan"
-                disabled={isSubmittingImageRequest}
-                onPointerDown={(event) => {
-                  event.stopPropagation()
-                }}
-                onClick={handleGenerateImageClick}
-              >
-                <ImageIcon className="size-3.5" />
-                {isSubmittingImageRequest
-                  ? "Requesting..."
-                  : imageRequestSent
-                    ? "Requested"
-                    : "Generate image"}
-              </Button>
+              {!imageUrl && !isPollingImage && !isSubmittingImageRequest ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="primitive-image-action nodrag nopan"
+                  disabled={isSubmittingImageRequest}
+                  onPointerDown={(event) => {
+                    event.stopPropagation()
+                  }}
+                  onClick={handleGenerateImageClick}
+                >
+                  <ImageIcon className="size-3.5" />
+                  Generate image
+                </Button>
+              ) : null}
 
-              {imageRequestError ? (
+              {generationError ? (
                 <div className="primitive-image-status primitive-image-status-error">
-                  {imageRequestError}
-                </div>
-              ) : imageRequestSent ? (
-                <div className="primitive-image-status" aria-live="polite">
-                  Request logged.
+                  {generationError}
                 </div>
               ) : null}
             </div>
@@ -210,11 +421,12 @@ export const ShapeNodeCard = React.memo(function ShapeNodeCard({
                     ? {
                         ...node,
                         data: {
-                          ...node.data,
-                          content: {
-                            label: event.target.value,
-                          },
+                        ...node.data,
+                        content: {
+                          ...node.data.content,
+                          label: event.target.value,
                         },
+                      },
                       }
                     : node
                 )
@@ -261,25 +473,4 @@ function getPrimitiveCssVars(
     "--primitive-fill-soft": `color-mix(in srgb, ${color} 12%, transparent)`,
     "--primitive-stroke-width": `${strokeWidth}px`,
   } as React.CSSProperties
-}
-
-function getImageResolution(width?: number, height?: number) {
-  const normalizedWidth = Math.max(1, Math.round(width ?? 168))
-  const normalizedHeight = Math.max(1, Math.round(height ?? 112))
-  const divisor = greatestCommonDivisor(normalizedWidth, normalizedHeight)
-
-  return `${normalizedWidth / divisor}:${normalizedHeight / divisor}`
-}
-
-function greatestCommonDivisor(a: number, b: number): number {
-  let left = a
-  let right = b
-
-  while (right !== 0) {
-    const remainder = left % right
-    left = right
-    right = remainder
-  }
-
-  return left
 }

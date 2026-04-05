@@ -1,5 +1,5 @@
 import logging
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from fastapi import HTTPException
@@ -8,6 +8,7 @@ from canvas_service.core.config import settings
 from canvas_service.modules.image_generation.schemas import ImageGenerationRequest
 
 logger = logging.getLogger(__name__)
+_HIGGSFIELD_ASPECT_RATIO = "16:9"
 
 
 def _higgsfield_headers() -> dict[str, str]:
@@ -18,9 +19,9 @@ def _higgsfield_headers() -> dict[str, str]:
         )
 
     return {
+        "Authorization": f"Key {settings.higgsfield_api_key}:{settings.higgsfield_api_key_secret}",
         "Content-Type": "application/json",
-        "hf-api-key": settings.higgsfield_api_key,
-        "hf-secret": settings.higgsfield_api_key_secret,
+        "Accept": "application/json",
     }
 
 
@@ -54,11 +55,8 @@ async def submit_image_generation_request(
 
     payload = {
         "prompt": data.text,
-        "batch_size": 1,
+        "aspect_ratio": _HIGGSFIELD_ASPECT_RATIO,
         "resolution": settings.higgsfield_resolution,
-        "aspect_ratio": data.resolution,
-        "enhance_prompt": True,
-        "style_strength": 1,
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -84,7 +82,7 @@ async def submit_image_generation_request(
         "Submitted image generation request user_id=%s node_id=%s aspect_ratio=%s response=%s",
         user_id,
         data.node_id,
-        data.resolution,
+        _HIGGSFIELD_ASPECT_RATIO,
         provider_payload,
     )
     return provider_payload if isinstance(provider_payload, dict) else {"status": "submitted"}
@@ -96,7 +94,7 @@ def _higgsfield_base_url() -> str:
 
 
 async def get_generation_status(request_id: str, *, user_id: str) -> dict:
-    url = f"{_higgsfield_base_url()}/requests/{request_id}/status"
+    url = urljoin(f"{_higgsfield_base_url()}/", f"requests/{request_id}/status")
 
     logger.info(
         "Polling generation status user_id=%s request_id=%s",

@@ -51,7 +51,7 @@ async def test_generate_image_submits_request(client, valid_token, monkeypatch):
         captured["text"] = data.text
         captured["resolution"] = data.resolution
         captured["user_id"] = user_id
-        return {"request_id": "req-abc-123"}
+        return {"status": "queued", "request_id": "req-abc-123"}
 
     monkeypatch.setattr(router, "submit_image_generation_request", fake_submit)
 
@@ -66,7 +66,7 @@ async def test_generate_image_submits_request(client, valid_token, monkeypatch):
     )
 
     assert response.status_code == 202
-    assert response.json() == {"status": "submitted", "request_id": "req-abc-123"}
+    assert response.json() == {"status": "queued", "request_id": "req-abc-123"}
     assert captured == {
         "node_id": "image-123",
         "text": "cinematic startup office",
@@ -90,7 +90,10 @@ async def test_generate_image_requires_auth(client):
 
 async def test_submit_image_generation_request_calls_higgsfield(monkeypatch, caplog):
     caplog.set_level(logging.INFO)
-    fake_response = FakeResponse(status_code=200, json_data={"id": "job-123"})
+    fake_response = FakeResponse(
+        status_code=200,
+        json_data={"status": "queued", "request_id": "req-abc-123"},
+    )
     fake_client = FakeAsyncClient(response=fake_response)
 
     monkeypatch.setattr(service.settings, "higgsfield_api_key", "api-key")
@@ -112,29 +115,26 @@ async def test_submit_image_generation_request_calls_higgsfield(monkeypatch, cap
         user_id="user-123",
     )
 
-    assert payload == {"id": "job-123"}
+    assert payload == {"status": "queued", "request_id": "req-abc-123"}
     assert fake_client.calls == [
         {
             "method": "POST",
             "url": "https://example.test/generate",
             "headers": {
+                "Authorization": "Key api-key:api-secret",
                 "Content-Type": "application/json",
-                "hf-api-key": "api-key",
-                "hf-secret": "api-secret",
+                "Accept": "application/json",
             },
             "json": {
                 "prompt": "cinematic startup office",
-                "batch_size": 1,
+                "aspect_ratio": "16:9",
                 "resolution": "720p",
-                "aspect_ratio": "3:2",
-                "enhance_prompt": True,
-                "style_strength": 1,
             },
         }
     ]
     assert "Received canvas image generation request" in caplog.text
     assert "Submitted image generation request" in caplog.text
-    assert "job-123" in caplog.text
+    assert "req-abc-123" in caplog.text
 
 
 async def test_generation_status_returns_provider_response(client, valid_token, monkeypatch):
@@ -196,9 +196,9 @@ async def test_get_generation_status_calls_higgsfield(monkeypatch, caplog):
             "method": "GET",
             "url": "https://platform.higgsfield.ai/requests/abc-123/status",
             "headers": {
+                "Authorization": "Key api-key:api-secret",
                 "Content-Type": "application/json",
-                "hf-api-key": "api-key",
-                "hf-secret": "api-secret",
+                "Accept": "application/json",
             },
         }
     ]

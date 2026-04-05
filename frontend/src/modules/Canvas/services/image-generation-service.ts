@@ -9,6 +9,17 @@ export type ImageGenerationRequest = {
 
 export type ImageGenerationResponse = {
   status: string
+  request_id: string
+}
+
+export type ImageGenerationStatus = {
+  request_id: string
+  status: string
+  status_url: string | null
+  cancel_url: string | null
+  images: Array<{
+    url: string
+  }>
 }
 
 function authHeaders(): Record<string, string> {
@@ -62,4 +73,24 @@ export async function requestImageGeneration({
   }
 
   return payload as ImageGenerationResponse
+}
+
+export async function requestImageGenerationStatus(
+  requestId: string
+): Promise<ImageGenerationStatus> {
+  const response = await fetch(buildApiUrl(`/images/status/${requestId}`), {
+    method: "GET",
+    headers: authHeaders(),
+  })
+
+  const payload = (await response.json().catch(() => null)) as
+    | ImageGenerationStatus
+    | { detail?: string }
+    | null
+
+  if (!response.ok) {
+    throw new Error(getErrorMessage(payload) ?? "Image generation status request failed.")
+  }
+
+  return payload as ImageGenerationStatus
 }

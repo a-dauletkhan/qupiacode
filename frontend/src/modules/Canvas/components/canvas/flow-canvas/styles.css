@@ -214,8 +214,20 @@
   @apply flex h-full w-full flex-col items-center justify-center gap-3 px-4 py-3;
 }
 
+.primitive-image-loader {
+  @apply flex h-full w-full flex-col items-center justify-center gap-3;
+}
+
 .primitive-image-action {
   @apply rounded-xl border-white/12 bg-background/90 px-3 text-[11px] font-semibold tracking-[0.02em] text-foreground shadow-sm backdrop-blur-sm;
+}
+
+.primitive-image-preview {
+  @apply h-full w-full overflow-hidden;
+}
+
+.primitive-image-preview-media {
+  @apply h-full w-full object-cover;
 }
 
 .primitive-image-status {

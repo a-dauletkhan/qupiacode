@@ -25,7 +25,7 @@ async def generate_image(
 ):
     result = await submit_image_generation_request(data, user_id=user_id)
     return ImageGenerationResponse(
-        status="submitted",
+        status=str(result.get("status", "submitted")),
         request_id=result.get("request_id", ""),
     )
 
