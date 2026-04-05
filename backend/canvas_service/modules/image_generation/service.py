@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlparse
 
 import httpx
 from fastapi import HTTPException
@@ -7,7 +8,6 @@ from canvas_service.core.config import settings
 from canvas_service.modules.image_generation.schemas import ImageGenerationRequest
 
 logger = logging.getLogger(__name__)
-_HIGGSFIELD_ASPECT_RATIO = "16:9"
 
 
 def _higgsfield_headers() -> dict[str, str]:
@@ -18,9 +18,9 @@ def _higgsfield_headers() -> dict[str, str]:
         )
 
     return {
-        "Authorization": f"Key {settings.higgsfield_api_key}:{settings.higgsfield_api_key_secret}",
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        "hf-api-key": settings.higgsfield_api_key,
+        "hf-secret": settings.higgsfield_api_key_secret,
     }
 
 
@@ -54,8 +54,11 @@ async def submit_image_generation_request(
 
     payload = {
         "prompt": data.text,
-        "aspect_ratio": _HIGGSFIELD_ASPECT_RATIO,
+        "batch_size": 1,
         "resolution": settings.higgsfield_resolution,
+        "aspect_ratio": data.resolution,
+        "enhance_prompt": True,
+        "style_strength": 1,
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
@@ -81,7 +84,45 @@ async def submit_image_generation_request(
         "Submitted image generation request user_id=%s node_id=%s aspect_ratio=%s response=%s",
         user_id,
         data.node_id,
-        _HIGGSFIELD_ASPECT_RATIO,
+        data.resolution,
         provider_payload,
     )
     return provider_payload if isinstance(provider_payload, dict) else {"status": "submitted"}
+
+
+def _higgsfield_base_url() -> str:
+    parsed = urlparse(settings.higgsfield_api_url)
+    return f"{parsed.scheme}://{parsed.netloc}"
+
+
+async def get_generation_status(request_id: str, *, user_id: str) -> dict:
+    url = f"{_higgsfield_base_url()}/requests/{request_id}/status"
+
+    logger.info(
+        "Polling generation status user_id=%s request_id=%s",
+        user_id,
+        request_id,
+    )
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.get(url, headers=_higgsfield_headers())
+
+    if response.is_error:
+        detail = _error_detail(response)
+        logger.warning(
+            "Generation status request failed user_id=%s request_id=%s status=%s detail=%s",
+            user_id,
+            request_id,
+            response.status_code,
+            detail,
+        )
+        raise HTTPException(status_code=502, detail=detail)
+
+    payload = response.json()
+    logger.info(
+        "Generation status user_id=%s request_id=%s response=%s",
+        user_id,
+        request_id,
+        payload,
+    )
+    return payload

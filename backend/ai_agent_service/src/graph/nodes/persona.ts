@@ -30,7 +30,7 @@ export function createPersonaNode(personasFile: PersonasFile, llm: LLMProvider) 
 
     if (nodes.length > 0 || edges.length > 0) {
       const nodeDesc = nodes.map((n) => {
-        const data = n.data as Record<string, unknown>;
+        const data = n.data as unknown as Record<string, unknown>;
         const content = data.content as Record<string, unknown> | undefined;
         const label = (content?.label as string) ?? (content?.text as string) ?? "";
         const selected = selectedIds.has(n.id) ? " [SELECTED]" : "";
@@ -61,7 +61,7 @@ export function createPersonaNode(personasFile: PersonasFile, llm: LLMProvider) 
     if (selectedIds.size > 0) {
       const selectedNodes = nodes.filter((n) => selectedIds.has(n.id));
       const selectedDesc = selectedNodes.map((n) => {
-        const data = n.data as Record<string, unknown>;
+        const data = n.data as unknown as Record<string, unknown>;
         const content = data.content as Record<string, unknown> | undefined;
         const label = (content?.label as string) ?? (content?.text as string) ?? "";
         return `"${label}" (id="${n.id}", type=${n.type})`;
